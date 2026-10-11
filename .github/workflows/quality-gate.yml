@@ -1,0 +1,31 @@
+# The status check main's ruleset requires. The ruleset matches the job's
+# `name:`, so renaming the job blocks every merge until the ruleset follows.
+name: Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # By hand, from the Actions tab or `gh workflow run "Quality Gate" --ref main`.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request cancels the gate's older run on it. Every other run is a
+# group of its own, so none is cancelled or held back.
+concurrency:
+  group: quality-gate-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: Quality Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # The gate checks NOTHING yet and passes on any content: a green run here means only
+      # that the job ran. Add real checks as steps below as the repo grows.
+      - name: No checks yet
+        run: echo "Quality Gate has no checks yet"
