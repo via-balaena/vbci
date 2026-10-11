@@ -243,27 +243,71 @@ mod tests {
         assert!(actions >= 2, "found {actions} actions");
     }
 
-    /// The versions a crate's manifest leaves open are pinned by Cargo.lock, but only where cargo
-    /// is told to keep to it: each cargo command in the Quality Gate that resolves dependencies
-    /// runs with `--locked`, so a lockfile out of date fails the gate instead of being rewritten.
-    #[test]
-    fn the_gate_builds_with_the_lockfile() {
-        let gate = quality_gate();
-        let mut commands = 0;
-        for line in gate.lines().filter(|l| !l.trim_start().starts_with('#')) {
-            let Some((_, command)) = line.split_once("cargo ") else {
-                continue;
-            };
-            let sub = command.split_whitespace().next().unwrap_or_default();
-            if ["build", "check", "clippy", "doc", "run", "test"].contains(&sub) {
-                commands += 1;
-                assert!(
-                    command.split_whitespace().any(|w| w == "--locked"),
-                    "the Quality Gate runs cargo {sub} without --locked: {line:?}"
-                );
+    /// Every cargo command in a workflow's text, as its subcommand and the words of its command,
+    /// whatever comes before it on the line: a command after `&&`, `||`, `;` or `|` counts, and a
+    /// toolchain (`+1.96.0`) or flag (`-q`) before the subcommand is skipped. Comment lines are not
+    /// commands.
+    fn cargo_commands(text: &str) -> Vec<(String, Vec<String>)> {
+        let mut out = Vec::new();
+        for line in text.lines().filter(|l| !l.trim_start().starts_with('#')) {
+            for command in line.split(['&', '|', ';']) {
+                let words: Vec<String> = command.split_whitespace().map(String::from).collect();
+                let Some(at) = words.iter().position(|w| w == "cargo") else {
+                    continue;
+                };
+                let sub = words[at + 1..]
+                    .iter()
+                    .find(|w| !w.starts_with('+') && !w.starts_with('-'))
+                    .cloned()
+                    .unwrap_or_default();
+                out.push((sub, words[at..].to_vec()));
             }
         }
-        assert!(commands >= 2, "found {commands} cargo commands");
+        out
+    }
+
+    #[test]
+    fn what_counts_as_a_cargo_command() {
+        let subs = |text: &str| -> Vec<String> {
+            cargo_commands(text).into_iter().map(|(s, _)| s).collect()
+        };
+        assert_eq!(subs("      - run: cargo test --locked"), ["test"]);
+        assert_eq!(subs("run: cargo +1.96.0 -q build"), ["build"]);
+        assert_eq!(
+            subs("run: cargo fmt --check && cargo update"),
+            ["fmt", "update"]
+        );
+        assert_eq!(
+            subs("cargo doc; cargo run || cargo check | tee x"),
+            ["doc", "run", "check"]
+        );
+        assert_eq!(
+            subs("      # cargo test, in a comment"),
+            Vec::<String>::new()
+        );
+        assert_eq!(subs("  ~/.cargo/registry/index"), Vec::<String>::new());
+        assert_eq!(subs("  key: cargo-${{ runner.os }}"), Vec::<String>::new());
+    }
+
+    /// The versions a crate's manifest leaves open are pinned by Cargo.lock, but only where cargo
+    /// is told to keep to it: every cargo command in the Quality Gate but `cargo fmt` runs with
+    /// `--locked`, so a lockfile that is missing or out of date fails the gate instead of being
+    /// written.
+    #[test]
+    fn the_gate_builds_with_the_lockfile() {
+        let commands = cargo_commands(&quality_gate());
+        for (sub, words) in &commands {
+            assert!(
+                sub == "fmt" || words.iter().any(|w| w == "--locked"),
+                "the Quality Gate runs cargo {sub} without --locked: {:?}",
+                words.join(" ")
+            );
+        }
+        assert!(
+            commands.len() >= 3,
+            "found {} cargo commands",
+            commands.len()
+        );
     }
 
     /// A newer push to a pull request cancels the Quality Gate's older run on it; a run on main, or
