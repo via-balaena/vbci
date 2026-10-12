@@ -388,24 +388,31 @@ pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
     };
     let mut text = serde_json::to_string_pretty(&package).map_err(|e| e.to_string())?;
     for (e, lines) in EXPORTED.iter().zip(data) {
-        let mark = serde_json::to_string(&placeholder(e.view)).map_err(|e| e.to_string())?;
-        let found: Vec<usize> = text.match_indices(&mark).map(|(at, _)| at).collect();
-        let [at] = found[..] else {
-            return Err(format!(
-                "{mark} is in the descriptor {} times, not once",
-                found.len()
-            ));
-        };
-        let line = &text[text[..at].rfind('\n').map_or(0, |n| n + 1)..at];
-        let indent = " ".repeat(line.len() - line.trim_start().len());
-        let rows = format!(
-            "[\n{indent}  {}\n{indent}]",
-            lines.join(&format!(",\n{indent}  "))
-        );
-        text.replace_range(at..at + mark.len(), &rows);
+        splice(&mut text, e.view, &lines)?;
     }
     text.push('\n');
     Ok(text)
+}
+
+/// Puts `lines` in place of `view`'s placeholder in `text`, an array with a line each, indented
+/// one step past the line the placeholder is on.
+fn splice(text: &mut String, view: &str, lines: &[String]) -> Result<(), String> {
+    let mark = serde_json::to_string(&placeholder(view)).map_err(|e| e.to_string())?;
+    let found: Vec<usize> = text.match_indices(&mark).map(|(at, _)| at).collect();
+    let [at] = found[..] else {
+        return Err(format!(
+            "{mark} is in the descriptor {} times, not once",
+            found.len()
+        ));
+    };
+    let line = &text[text[..at].rfind('\n').map_or(0, |n| n + 1)..at];
+    let indent = " ".repeat(line.len() - line.trim_start().len());
+    let rows = format!(
+        "[\n{indent}  {}\n{indent}]",
+        lines.join(&format!(",\n{indent}  "))
+    );
+    text.replace_range(at..at + mark.len(), &rows);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -479,6 +486,35 @@ mod tests {
                 )),
                 "{err}"
             );
+        }
+    }
+
+    #[test]
+    fn what_json_cannot_hold_or_gold_lacks_is_refused() {
+        let conn = gold(
+            "CREATE VIEW gold.t AS SELECT 1 AS k, CAST('NaN' AS DOUBLE) AS x; \
+             COMMENT ON VIEW gold.t IS 'A test.';",
+        );
+        let err = resource(&conn, &T).map(|_| ()).unwrap_err();
+        assert!(err.contains("gold.t.x: NaN has no JSON number"), "{err}");
+        let err = resource(&gold(""), &T).map(|_| ()).unwrap_err();
+        assert!(err.contains("gold.t is not a view"), "{err}");
+    }
+
+    #[test]
+    fn the_rows_take_their_placeholder_s_place_a_step_past_its_line() {
+        let mut text = "{\n    \"data\": \"<the rows of t>\"\n}".to_string();
+        splice(&mut text, "t", &["[\"k\"]".into(), "[1]".into()]).unwrap();
+        assert_eq!(
+            text,
+            "{\n    \"data\": [\n      [\"k\"],\n      [1]\n    ]\n}"
+        );
+        for mut text in [
+            "\"<the rows of u>\"".to_string(),
+            "[\"<the rows of t>\", \"<the rows of t>\"]".to_string(),
+        ] {
+            let err = splice(&mut text, "t", &[]).unwrap_err();
+            assert!(err.contains("times, not once"), "{err}");
         }
     }
 }
