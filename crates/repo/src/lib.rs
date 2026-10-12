@@ -3,6 +3,7 @@
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
     use std::fs;
     use std::path::{Path, PathBuf};
     use toml::{Table, Value};
@@ -134,6 +135,66 @@ mod tests {
         assert!(
             tests >= 7 && paths >= 4,
             "found {tests} tests and {paths} paths"
+        );
+    }
+
+    /// The paths a markdown text names in backticks, each as the file or the folder it lies in: a
+    /// pattern such as `recipes/<name>.cook` is the folder `recipes/`.
+    fn record_paths(text: &str) -> BTreeSet<String> {
+        text.split('`')
+            .skip(1)
+            .step_by(2)
+            .map(|token| match token.split_once('/') {
+                Some((dir, _)) => format!("{dir}/"),
+                None => token.to_string(),
+            })
+            .collect()
+    }
+
+    /// The project's own data records are CC0 (DATA-LICENSE.md). The paths it lists as CC0 are the
+    /// records layer docs/architecture.md describes, no more and no fewer, so a records folder the
+    /// plan adds is not left under the code's license, and DATA-LICENSE.md names no path the plan
+    /// has dropped.
+    #[test]
+    fn the_data_license_covers_every_records_path() {
+        let doc = fs::read_to_string(root().join("docs/architecture.md")).unwrap();
+        let row = doc
+            .lines()
+            .find(|l| l.starts_with("| records |"))
+            .expect("docs/architecture.md's Layers table has a records row");
+        let layer = record_paths(row.split('|').nth(2).unwrap());
+        let license = fs::read_to_string(root().join("DATA-LICENSE.md")).unwrap();
+        let (_, listed) = license
+            .split_once("\n## What is CC0\n")
+            .expect("DATA-LICENSE.md has a section \"What is CC0\"");
+        let listed = listed.split("\n## ").next().unwrap();
+        let bullets: String = listed
+            .lines()
+            .filter(|l| l.starts_with("- "))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let licensed = record_paths(&bullets);
+        assert_eq!(
+            licensed, layer,
+            "DATA-LICENSE.md's CC0 paths differ from the records layer in docs/architecture.md"
+        );
+        assert!(layer.len() >= 6, "found {layer:?}");
+    }
+
+    /// LICENSE-CC0 is CC0 1.0 Universal's legal code, byte for byte as
+    /// creativecommons.org/publicdomain/zero/1.0/legalcode.txt served it on 2026-10-11 (the same
+    /// text, whitespace aside, as GitHub's licenses API gives for cc0-1.0).
+    #[test]
+    fn license_cc0_is_the_cc0_legal_code() {
+        use sha2::{Digest, Sha256};
+        let bytes = fs::read(root().join("LICENSE-CC0")).unwrap();
+        let hex: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        assert_eq!(
+            hex, "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+            "LICENSE-CC0 is not the CC0 1.0 legal code it was copied from"
         );
     }
 
