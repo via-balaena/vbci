@@ -5,10 +5,12 @@
 //! - `load`: builds the warehouse and prints each table's row count.
 //! - `coverage`: writes `docs/coverage.md`, how many foods have a value for each nutrient.
 //! - `catalogue`: writes `docs/data-catalogue.md`, every table and view with its comment.
+//! - `diet`: writes `docs/diet.md`, how many foods take each vegan and vegetarian answer, and why.
 
 use balaena_records::Sources;
 use balaena_warehouse::{
-    CATALOGUE_PATH, COVERAGE_PATH, cache_dir, catalogue, coverage_report, load, repo_root, usda,
+    CATALOGUE_PATH, COVERAGE_PATH, DIET_PATH, cache_dir, catalogue, coverage_report, diet_report,
+    load, repo_root, usda,
 };
 use std::process::ExitCode;
 
@@ -47,6 +49,12 @@ fn run(command: &str) -> Result<(), String> {
             std::fs::write(root.join(COVERAGE_PATH), report).map_err(|e| e.to_string())?;
             println!("wrote {COVERAGE_PATH}");
         }
+        "diet" => {
+            let (sources, _) = Sources::load(&root)?;
+            let report = diet_report(&load(&root, &cache)?, &sources)?;
+            std::fs::write(root.join(DIET_PATH), report).map_err(|e| e.to_string())?;
+            println!("wrote {DIET_PATH}");
+        }
         "catalogue" => {
             let text = catalogue(&load(&root, &cache)?)?;
             std::fs::write(root.join(CATALOGUE_PATH), text).map_err(|e| e.to_string())?;
@@ -54,7 +62,7 @@ fn run(command: &str) -> Result<(), String> {
         }
         other => {
             return Err(format!(
-                "unknown command {other:?}: fetch, load, coverage or catalogue"
+                "unknown command {other:?}: fetch, load, coverage, diet or catalogue"
             ));
         }
     }
