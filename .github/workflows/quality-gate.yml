@@ -23,9 +23,9 @@ jobs:
   gate:
     name: Quality Gate
     runs-on: ubuntu-24.04
-    # DuckDB builds from source when the cache lacks it: run 38190614286, the first to build it,
-    # took 1025 s, of which clippy 468 s and the fetch step (the warehouse's binary, then both
-    # downloads) 488 s. tentzhen's gate, which builds the same crate, allows 40 minutes.
+    # DuckDB builds from source when the cache lacks it, once for clippy and once for the build the
+    # fetch step and the tests share: main's run 38220150139, which built it a third time for the
+    # tests, took 25 min 23 s. tentzhen's gate, which builds the same crate, allows 40 minutes.
     timeout-minutes: 40
     # The rules the gate's checks hold are listed in docs/architecture.md, "Rules".
     steps:
@@ -45,6 +45,11 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # One build for the fetch step and the tests. Built apart, by `cargo run` and `cargo test`,
+      # they differed in serde_json's features (balaena-core, a dev-dependency, turns on
+      # float_roundtrip), and each built DuckDB: main's run 38220150139 spent 7 min 20 s of its
+      # test step on the second.
+      - run: cargo build --workspace --bins --tests --locked
       # The warehouse's tests read USDA's zips from the cache; fetching refuses bytes that differ
       # from the sha256 sources.toml pins, so a cached zip is checked again on every run.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -52,6 +57,6 @@ jobs:
           path: ~/.cache/vbci
           key: usda-${{ hashFiles('sources.toml') }}
           restore-keys: usda-
-      - name: Fetch the zips sources.toml pins
-        run: cargo run -q -p balaena-warehouse --locked -- fetch
+      - name: Fetch the zips sources.toml pins, with the binary the tests were built with
+        run: target/debug/balaena-warehouse fetch
       - run: cargo test --workspace --locked

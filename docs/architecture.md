@@ -27,6 +27,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 |---|---|
 | Every dependency is pinned to one version: each crate's own with `=`, and the rest by `Cargo.lock`, which every cargo command in the Quality Gate but `cargo fmt` runs with `--locked`, so a missing or stale lockfile fails the gate. The compiler is pinned to one release by `rust-toolchain.toml`, and every action a workflow uses by commit. | `every_dependency_is_pinned` (what counts as pinned: `what_counts_as_pinned`), `the_gate_builds_with_the_lockfile` (what counts as a cargo command: `what_counts_as_a_cargo_command`), `the_toolchain_is_one_release`, `every_action_is_pinned_by_commit` |
 | Code is formatted, clippy finds nothing at `-D warnings`, and the tests pass. | the Quality Gate's steps, in `.github/workflows/quality-gate.yml` |
+| The Quality Gate's fetch step runs the binary built by the cargo command that builds its tests, so the tests and the fetch step share one build of DuckDB, and clippy needs one more. | `the_gate_fetches_with_the_binary_its_tests_were_built_with`, on the workflow's text. How many times DuckDB builds is seen in a run's log, not tested here. |
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
 | The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in `diet/`, `ingredients/` and `units/` is a record is held by each folder's load (`the_diet_folder_holds_its_four_records_and_no_other_file`, `an_ingredient_is_named_by_its_file`, `the_units_folder_holds_count_toml_alone`); that no record lies outside the listed paths is held by nothing (`unknown`). |
@@ -62,8 +63,8 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`. The
 records' schemas are in `crates/records`, and the warehouse is `crates/warehouse`, with its layers
 in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fill it once with
-`cargo run -p balaena-warehouse -- fetch`, as the Quality Gate does before its tests. Readers share
-`crates/core`, which reads `export/datapackage.json`.
+`cargo run -p balaena-warehouse -- fetch`. The Quality Gate runs the same binary, from the build
+its tests use, before them. Readers share `crates/core`, which reads `export/datapackage.json`.
 
 ## Plan
 
