@@ -1,9 +1,9 @@
 # Data license
 
 VBCI's own data records are dedicated to the public domain under CC0 1.0 Universal
-([LICENSE-CC0](LICENSE-CC0), the legal code as Creative Commons publishes it). The code, and
-everything else in this repo, is licensed under MIT OR Apache-2.0 (README, "License"). Decided with
-Jon on 2026-10-11 (`docs/architecture.md`, "Plan").
+([LICENSE-CC0](LICENSE-CC0), the legal code as Creative Commons publishes it). The code and its
+documentation are licensed under MIT OR Apache-2.0 (README, "License"). Decided with Jon on
+2026-10-11 (`docs/architecture.md`, "Plan").
 
 ## What is CC0
 

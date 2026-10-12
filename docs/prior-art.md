@@ -11,10 +11,11 @@ them, as tentzhen does. A proposal for a new piece starts here, and searches aga
   and farm-to-table software. They read repos through GitHub's API, pages with curl, and Wikidata
   through its SPARQL endpoint. The same day, scratch scripts compared four USDA downloads (SR
   Legacy 2018-04; Foundation 2025-04-24, 2025-12-18 and 2026-04-30) and cooklang 0.19.0's source.
-- **How the sources were read:** a source marked **re-read** was checked again outside the agents
-  on 2026-10-11, for what the mark names: a license and last push through GitHub's API, a count
-  through Wikidata's SPARQL endpoint, or a sentence from the publisher's own page. The rest is as
-  the agents reported it, so re-read a source before resting anything on it.
+- **How the sources were read:** a source marked **re-read** was checked again outside the agents on
+  2026-10-11, for what the mark names: a license and last push through GitHub's API, a file through
+  GitHub's code search, a count from a repo's data at a named commit or through Wikidata's SPARQL
+  endpoint, or a sentence from the publisher's own page. The rest is as the agents reported it, so
+  re-read a source before resting anything on it.
 - **Not seen:** GitHub's repository search matches only names and descriptions, and its code search
   was rate-limited (one batch failed). Kaggle had one web search. USDA's API host did not resolve
   from the agents' sandbox, so FDC ids were sorted against the CSV downloads instead. Papers behind
@@ -32,7 +33,8 @@ them, as tentzhen does. A proposal for a new piece starts here, and searches aga
   from `food_portion`.
 - **Curated mappings from ingredient names to foods exist,** but mostly under licenses a CC0 record
   cannot take in without permission: open-tandoor-data (ODbL), capycook (MIT), Open Food Facts'
-  taxonomy (no license stated). OpenCookbook's 55 (CC0) and Wikidata (CC0) can come in as they are.
+  taxonomy (no license stated). OpenCookbook's 55 entries (49 with an fdc_id; CC0) and Wikidata
+  (CC0) can come in as they are.
 - **The searches found no crate on crates.io that reads FDC data, and no maintained loader that puts
   it in DuckDB,** so plan steps 3 and 4 are new work.
 - **Identifiers:** USDA's own Foundation files carry FoodOn ids, from an open food ontology (CC BY
@@ -45,9 +47,10 @@ them, as tentzhen does. A proposal for a new piece starts here, and searches aga
 
 | project | what it is | license, activity | what we take | source |
 |---|---|---|---|---|
+| cooklang-rs, CookCLI | Cooklang's parser and its command-line tool | MIT; pushed 2026-10-03 and 2026-10-11 | the parser (steps 7 and 9). Neither computes nutrition, as reported, and requests for it are open: cookcli#299 (opened 2026-04-02) and cookcli#459 (2026-08-25) | github.com/cooklang/cooklang-rs and github.com/cooklang/cookcli, **re-read** (license, push, the two issues) |
 | capycook | Go: maps 243 ingredient names to FDC ids (about 190 picked by hand), with 714 gram weights from `food_portion`; vendors a subset of SR Legacy and Foundation 2026-04-30 | MIT, pushed 2026-07-31 | its design, which has the same three parts as ours (a hand-picked mapping, gram weights from `food_portion`, zips pinned by sha256); its mapping only with its author's permission, since our records are CC0. Its `data/usda/PROVENANCE.md` pins the Foundation zip by the sha256 we measured (`70457ee9…`) | github.com/ogngnaoh/capycook, **re-read** (license, push, sha256) |
-| open-tandoor-data | Tandoor's food data: 391 foods, 390 with an fdc_id (237 of those in SR Legacy or Foundation), names in many languages, 163 unit conversions | ODbL schema, DbCL contents (its README), pushed 2026-10-03 | nothing without permission: ODbL is share-alike | github.com/TandoorRecipes/open-tandoor-data, **re-read** (license, push) |
-| OpenCookbook `nutrition-db.json` | 55 ingredients with aliases and an fdc_id | CC0-1.0, pushed 2026-04-18 | seed alias candidates (step 6) | github.com/JPEGtheDev/OpenCookbook, **re-read** (license, push) |
+| open-tandoor-data | Tandoor's food data: 391 foods, 390 with an fdc_id (132 in SR Legacy, 104 in Foundation 2026-04-30, 154 in neither), names in many languages, 163 unit conversions | ODbL schema, DbCL contents (its README), pushed 2026-10-03 | nothing without permission: ODbL is share-alike | github.com/TandoorRecipes/open-tandoor-data, **re-read** (license, push; the fdc_id counts at commit b4d05271bb) |
+| OpenCookbook `nutrition-db.json` | 55 ingredients with aliases, 49 of them with an fdc_id | CC0-1.0, pushed 2026-04-18 | seed alias candidates (step 6) | github.com/JPEGtheDev/OpenCookbook, **re-read** (license, push, counts) |
 | ingredient-parser | Python: parses ingredient lines, and matches them offline against bundled Foundation, SR Legacy and FNDDS foods by fusing BM25, embedding and fuzzy rankings | MIT, pushed 2026-10-11 | a reference for matching, if matching past reviewed aliases is ever needed | github.com/strangetom/ingredient-parser, **re-read** (license, push) |
 | recipya-rs | Rust: loads FDC's JSON into Postgres; takes the top full-text hit; grams from a `food_portion` modifier, else "medium" | AGPL-3.0, pushed 2026-10-11 | ideas only: the license rules out copying | github.com/reaper47/recipya-rs, **re-read** (license, push) |
 | gourd | Go: about 60 ingredient-to-FDC mappings with aliases and densities; 19 of its 59 ids are SR Legacy or Foundation | MIT, archived | nothing | github.com/nickysemenza/gourd, **re-read** (license, archived) |

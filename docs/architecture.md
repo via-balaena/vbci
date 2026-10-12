@@ -29,7 +29,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | Code is formatted, clippy finds nothing at `-D warnings`, and the tests pass. | the Quality Gate's steps, in `.github/workflows/quality-gate.yml` |
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
-| The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and everything else is MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
+| The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`.
@@ -70,7 +70,8 @@ Each step is one pull request, done when its check passes.
 2. **Prior art and the data license.** `docs/prior-art.md`, dated, from the 2026-10-11 searches
    (identifiers for foods and nutrients; tools that already link recipes to USDA data; farm
    software), and `DATA-LICENSE.md` with CC0's legal code in `LICENSE-CC0`. Done: each step below
-   names what it reuses, and `the_data_license_covers_every_records_path`.
+   names what it reuses, `the_data_license_covers_every_records_path` and
+   `license_cc0_is_the_cc0_legal_code`.
 3. **USDA data, pinned.** `sources.toml` names SR Legacy (2018-04) and Foundation (2026-04-30, the
    newest release USDA lists) by sha256. `balaena fetch` refuses bytes whose sha256 differs: a URL
    is not an identity (scratch check: the "2018-04" SR Legacy zip is served with a Last-Modified of

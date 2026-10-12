@@ -181,6 +181,23 @@ mod tests {
         assert!(layer.len() >= 6, "found {layer:?}");
     }
 
+    /// LICENSE-CC0 is CC0 1.0 Universal's legal code, byte for byte as
+    /// creativecommons.org/publicdomain/zero/1.0/legalcode.txt served it on 2026-10-11 (the same
+    /// text, whitespace aside, as GitHub's licenses API gives for cc0-1.0).
+    #[test]
+    fn license_cc0_is_the_cc0_legal_code() {
+        use sha2::{Digest, Sha256};
+        let bytes = fs::read(root().join("LICENSE-CC0")).unwrap();
+        let hex: String = Sha256::digest(&bytes)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        assert_eq!(
+            hex, "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+            "LICENSE-CC0 is not the CC0 1.0 legal code it was copied from"
+        );
+    }
+
     /// Whether a dependency names exactly one version. None when its version is kept elsewhere: a
     /// path in this workspace, or [workspace.dependencies], which is checked in its own right.
     fn pinned(spec: &Value) -> Option<bool> {
