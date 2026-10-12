@@ -1240,6 +1240,11 @@ mod tests {
             "portions that agree"
         );
         assert_eq!(
+            grams("@garlic{3%cloves}(cloves)"),
+            Ok((one(9.0), How::Portions(texts(&["clove", "cloves"])))),
+            "portions that agree, whatever the note names"
+        );
+        assert_eq!(
             grams("@garlic{2-3%cloves}"),
             Ok((both(6.0, 9.0), How::Portions(texts(&["clove", "cloves"])))),
             "a range amount"
