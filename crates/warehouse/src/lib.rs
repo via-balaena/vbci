@@ -908,9 +908,11 @@ codes = ["269", "269.3"]
         "[[taxon]]\nid = \"NCBITaxon_33208\"\nname = \"Metazoa\"\ngroup = \"animal\"\n
 [[taxon]]\nid = \"NCBITaxon_35493\"\nname = \"Streptophyta\"\ngroup = \"plant\"\n",
         "[[rule]]\ncategory = \"Dairy\"\nstarts_with = \"Cheese\"\nvegetarian = \"unknown\"\nwhy = \"Rennet.\"\n
-[[rule]]\ncategory = \"Fats\"\nstarts_with = \"Oil,\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Plant oils.\"\n",
+[[rule]]\ncategory = \"Fats\"\nstarts_with = \"Oil,\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Plant oils.\"\n
+[[rule]]\ncategory = \"Vegetables\"\nstarts_with = \"B\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Over the organism.\"\n",
         "[[food]]\nfdc_id = 7\ndescription = \"Lard\"\nvegan = \"no\"\nvegetarian = \"no\"\nwhy = \"Carcass fat.\"\n
-[[food]]\nfdc_id = 8\ndescription = \"Potatoes, mashed, with milk\"\nvegan = \"no\"\nwhy = \"Milk.\"\n",
+[[food]]\nfdc_id = 8\ndescription = \"Potatoes, mashed, with milk\"\nvegan = \"no\"\nwhy = \"Milk.\"\n
+[[food]]\nfdc_id = 6\ndescription = \"Oil, olive\"\nvegan = \"unknown\"\nwhy = \"Over the rule.\"\n",
     ];
 
     /// A warehouse whose bronze is a few rows written here, with silver loaded from them by
@@ -918,8 +920,9 @@ codes = ["269", "269.3"]
     /// rows: 1-2 give food 1 energy by 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food
     /// 2 sugars by 269.3 only; 5 gives food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2
     /// different sugars by 269; 9 names a nutrient nutrient.csv lacks; 10 has no amount; 11 is the
-    /// sample food's. Foods 4-9 sit in four categories for the diet; food 2 records an animal
-    /// organism, food 6 a plant, food 1 NA.
+    /// sample food's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
+    /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2 and an exception
+    /// overrides the rule matching food 6, so each layer is seen over the one below it.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
         synthetic_with(nutrients, SYNTHETIC_DIET)
     }
@@ -939,12 +942,13 @@ codes = ["269", "269.3"]
                ('d', '3', 'sample_food', 'C', '1'), ('d', '4', 'sr_legacy_food', 'Cheese, parmesan', '2'),
                ('d', '5', 'sr_legacy_food', 'Chicken, raw', '3'), ('d', '6', 'foundation_food', 'Oil, olive', '4'),
                ('d', '7', 'sr_legacy_food', 'Lard', '4'), ('d', '8', 'sr_legacy_food', 'Potatoes, mashed, with milk', '1'),
-               ('d', '9', 'sr_legacy_food', 'Cheese sauce', '4');
+               ('d', '9', 'sr_legacy_food', 'Cheese sauce', '4'), ('d', '10', 'foundation_food', 'D', '1');
              CREATE TABLE bronze.usda_food_attribute (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, name VARCHAR, value VARCHAR);
              INSERT INTO bronze.usda_food_attribute VALUES
                ('d', '1', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
                ('d', '2', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
                ('d', '3', '6', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_35493'),
+               ('d', '6', '10', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
                ('d', '4', '1', 'NCBI Taxon Parent', 'NA'), ('d', '5', '1', 'Common Name', 'a');
              CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
              INSERT INTO bronze.usda_nutrient VALUES
@@ -997,7 +1001,7 @@ codes = ["269", "269.3"]
                 &w,
                 "SELECT CAST(fdc_id AS VARCHAR) FROM silver.usda_food ORDER BY fdc_id"
             ),
-            ["1", "2", "4", "5", "6", "7", "8", "9"]
+            ["1", "2", "4", "5", "6", "7", "8", "9", "10"]
         );
     }
 
@@ -1128,9 +1132,10 @@ codes = ["269", "269.3"]
     }
 
     /// Each food's answers come from the first that applies: an exception, a naming rule, an
-    /// animal organism, the category. A rule applies within its category only (food 9, "Cheese
-    /// sauce", is in Fats, not Dairy); an animal organism makes a food not vegan, and a plant
-    /// category's food vegetarian: unknown (food 2); a plant organism changes nothing (food 6).
+    /// animal organism, the category, each for the diets it gives. An exception overrides a rule
+    /// (food 6's vegan) and a rule an organism (food 2); a rule applies within its category only
+    /// (food 9, "Cheese sauce", is in Fats, not Dairy); an animal organism makes a food not vegan,
+    /// and a plant category's food vegetarian: unknown (food 10); a plant organism changes nothing.
     #[test]
     fn each_food_s_answers_come_from_the_first_layer_that_applies() {
         let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
@@ -1138,13 +1143,14 @@ codes = ["269", "269.3"]
             diet_of(&w),
             [
                 "1 yes (category: plant) yes (category: plant)",
-                "2 no (organism: animal) unknown (organism: animal)",
+                "2 yes (rule: B) yes (rule: B)",
                 "4 no (category: dairy_and_egg) unknown (rule: Cheese)",
                 "5 no (category: flesh) no (category: flesh)",
-                "6 yes (rule: Oil,) yes (rule: Oil,)",
+                "6 unknown (exception) yes (rule: Oil,)",
                 "7 no (exception) no (exception)",
                 "8 no (exception) yes (category: plant)",
                 "9 unknown (category: mixed) unknown (category: mixed)",
+                "10 no (organism: animal) unknown (organism: animal)",
             ]
         );
         assert_eq!(
@@ -1152,7 +1158,11 @@ codes = ["269", "269.3"]
                 &w,
                 "SELECT CAST(fdc_id AS VARCHAR) || ' ' || taxon FROM silver.usda_food_taxon ORDER BY fdc_id"
             ),
-            ["2 NCBITaxon_33208", "6 NCBITaxon_35493"]
+            [
+                "2 NCBITaxon_33208",
+                "6 NCBITaxon_35493",
+                "10 NCBITaxon_33208"
+            ]
         );
     }
 
@@ -1202,7 +1212,7 @@ codes = ["269", "269.3"]
                     rules.into(),
                     exceptions.into(),
                 ],
-                "diet/taxa.toml lacks NCBITaxon_33208, which food 2 records",
+                "diet/taxa.toml lacks NCBITaxon_33208, which food",
             ),
             (
                 [
