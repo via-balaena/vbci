@@ -429,9 +429,8 @@ mod tests {
     }
 
     /// The build cache is restored only under its exact key, which hashes the toolchain, every
-    /// manifest, the lockfile and the workflow: a cache restored under an older key kept its builds
-    /// (locally, step 8's lockfile change left five DuckDB builds in target, where a clean build
-    /// has three), and the caches saved after it grew. Text only: what GitHub restores is seen in
+    /// manifest, the lockfile and the workflow: with a fallback to an older key, the caches saved
+    /// grew, by the sizes the workflow's comment gives. Text only: what GitHub restores is seen in
     /// a run's log.
     #[test]
     fn the_build_cache_is_restored_only_by_its_exact_key() {
