@@ -13,7 +13,7 @@ USDA's data from a cache: fill it once with `cargo run -p balaena-warehouse -- f
 
 ## Use
 
-`balaena`, the command line, reads only the export, which is built into it:
+`balaena`, the command line, takes its data only from the export, which is built into it:
 
 ```
 cargo run -p balaena -- analyze recipes/red-lentil-soup.cook

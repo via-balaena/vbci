@@ -1,5 +1,6 @@
-//! `balaena`, VBCI's command line. It reads only the export, `export/datapackage.json`, built into
-//! the binary when it is compiled, so it carries the data it was built with.
+//! `balaena`, VBCI's command line. Its data comes only from the export, `export/datapackage.json`,
+//! built into the binary when it is compiled, so it carries the data it was built with; `analyze`
+//! also reads the recipe it is given.
 //!
 //! - `analyze <recipe.cook>`: the recipe's report, as `docs/recipes/` holds VBCI's own.
 //! - `search <words>... [-n N]`: the ingredients and USDA foods whose names match.
@@ -35,7 +36,7 @@ fn cli() -> Command {
                 .arg(
                     Arg::new("n")
                         .short('n')
-                        .value_parser(value_parser!(usize))
+                        .value_parser(value_parser!(u64).range(1..))
                         .default_value("20")
                         .help("How many foods to show, the simplest names first"),
                 ),
@@ -137,7 +138,11 @@ fn run(m: &ArgMatches) -> Result<String, String> {
             let path = a.get_one::<String>("recipe").expect("required");
             let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
             let report = analyze(&text, &export).map_err(|e| format!("{path}: {e}"))?;
-            Ok(report.markdown(path))
+            let origin = format!(
+                "Printed by `balaena analyze` from `{path}`\n\
+                 and the export built into it when it was compiled."
+            );
+            Ok(report.markdown(path, &origin))
         }
         Some(("search", a)) => {
             let words: Vec<String> = a
@@ -148,7 +153,7 @@ fn run(m: &ArgMatches) -> Result<String, String> {
             found(
                 &export,
                 &words,
-                *a.get_one::<usize>("n").expect("defaulted"),
+                usize::try_from(*a.get_one::<u64>("n").expect("defaulted")).unwrap_or(usize::MAX),
             )
         }
         Some(("info", _)) => Ok(info(&export)),

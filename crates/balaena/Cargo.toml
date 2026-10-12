@@ -9,6 +9,6 @@ repository.workspace = true
 
 [dependencies]
 balaena-core = { path = "../core" }
-# The builder alone, without its default color, suggestions and terminal-width features: it adds
-# anstyle, clap_builder and clap_lex (docs/architecture.md, step 10).
+# The builder alone, without its default color and suggestions features: it adds anstyle,
+# clap_builder and clap_lex (docs/architecture.md, step 10).
 clap = { version = "=4.6.7", default-features = false, features = ["std", "help", "usage", "error-context"] }

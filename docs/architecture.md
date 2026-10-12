@@ -64,7 +64,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | `recipes/` holds only `.cook` files, each parsing with no cooklang error or warning, with a title and a whole number of servings, 1 or more. Each has its report, `docs/recipes/<name>.md`, which is what `crates/core` writes from it and the export, and no report lacks its recipe. A report shows amounts to 0.1, a range by both its ends unless they show the same, and lists the lines without grams. | `a_recipe_record_parses_without_warnings`, `the_recipe_reports_are_current`, `amounts_are_shown_to_a_tenth_and_a_range_by_both_ends`, `a_report_lists_the_lines_without_grams` |
 | Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
 | Reading the export and a recipe needs no database: `crates/core` depends on cooklang, serde and serde_json alone. | `reading_the_export_needs_no_database` |
-| `balaena`, the command line, reads only the export, which is built into it when it is compiled. `balaena analyze <recipe.cook>` prints the report `crates/core` writes; `balaena search <words>...` prints the ingredients whose aliases, and the USDA foods whose names, have a word starting with each word given, the foods with the fewest words first, then by fdc_id, and each food's diet answers and the forms that link it; `balaena info` prints the license, the sources, the pinned zips and each table's rows of the export it carries. It exits with 2 on arguments it does not know, and with 1 on a recipe it cannot read or cooklang refuses, or a search with no word. | `analyze_prints_the_report_crates_core_writes`, `search_finds_aliases_and_foods_simplest_first`, `info_names_the_zips_the_export_came_from`, `the_cli_refuses_what_it_does_not_know` |
+| `balaena`, the command line, takes its data only from the export, which is built into it when it is compiled. `balaena analyze <recipe.cook>` prints the report `crates/core` writes for the recipe, saying it was printed by `balaena analyze`; `balaena search <words>...` prints the ingredients whose aliases, and the USDA foods whose names, have a word starting with each word given, the foods with the fewest words first, then by fdc_id, and each food's diet answers and the forms that link it; `balaena info` prints the license, the sources, the pinned zips and each table's rows of the export it carries. It exits with 2 on arguments it does not take (an unknown command, no word to search, an `-n` below 1), and with 1 on a recipe it cannot read or cooklang refuses, or a search with no word of letters or digits. | `analyze_prints_the_report_crates_core_writes`, `search_finds_aliases_and_foods_simplest_first`, `info_names_the_zips_the_export_came_from`, `the_cli_refuses_what_it_does_not_know` |
 | The command line ships no database: `crates/balaena` depends on `balaena-core` and clap alone. | `the_cli_needs_no_database` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
@@ -231,17 +231,18 @@ Each step is one pull request, done when its check passes.
    unknown (parmesan, by its naming rule; vegetable broth, by its category), found the lentils dry
    and weighed the garlic by its clove portions.
 10. **The CLI.** `crates/balaena`, the binary `balaena`: `balaena analyze <recipe.cook>`,
-    `balaena search <words>... [-n N]` and `balaena info`, reading only the export, which
-    `include_str!` builds into the binary, so it carries the data it was built with and runs outside
-    the repo. Its arguments are parsed by clap 4.6.7's builder with its default features off, which
-    adds anstyle, clap, clap_builder and clap_lex to `Cargo.lock`. Searched on 2026-10-12 and passed
-    over: lexopt 0.3.2 (one crate, but help and errors by hand, and MIT alone), bpaf 0.9.28 (one
-    crate, with 8.5 million downloads to clap's 1.2 billion), pico-args 0.5.0 and gumdrop 0.8.1 (no
-    release since 2022), argh 0.1.19 (BSD-3-Clause, and 11 crates), and clap with its derive (about
-    20 crates). On 2026-10-12, a macOS arm64 release build was 11.2 MB, and each command took
-    0.11 to 0.12 s. `search` is for writing aliases and forms: no number is derived from what it
-    finds. There is no `--json` or `--servings` yet: JSON output would be a format to hold, added
-    when the app needs one. Done, with the tests in the rules above.
+    `balaena search <words>... [-n N]` and `balaena info`, taking its data only from the export,
+    which `include_str!` builds into the binary, so it carries the data it was built with and runs
+    outside the repo. Its arguments are parsed by clap 4.6.7's builder with its default features
+    off, which adds anstyle, clap, clap_builder and clap_lex to `Cargo.lock`. Searched on 2026-10-12
+    and passed over: lexopt 0.3.2 (one crate, but help and errors by hand, and MIT alone), bpaf
+    0.9.28 (one crate, with 8.5 million downloads to clap's 1.2 billion), pico-args 0.5.0 and
+    gumdrop 0.8.1 (no release since 2022), argh 0.1.19 (BSD-3-Clause, and 11 crates), and clap with
+    its derive (about 20 crates). On 2026-10-12, a macOS arm64 release build was 11.2 MB; each
+    command took 0.11 to 0.12 s, but the first run after the build 0.46 s. `search` is for writing
+    aliases and forms: no number is derived from what it finds. There is no `--json` or `--servings`
+    yet: JSON output would be a format to hold, added when the app needs one. Done, with the tests
+    in the rules above.
 
 **Later:** farm reference data. Crops link to ingredients through the organism, as Growstuff does
 with GBIF and Wikidata ids and AGROVOC with GBIF. A grower's weight per bunch or head comes from
