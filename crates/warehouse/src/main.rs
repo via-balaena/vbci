@@ -9,7 +9,10 @@
 //! - `ingredients`: writes `docs/ingredients.md`, each ingredient's aliases, forms and candidates.
 //! - `portions`: writes `docs/portions.md`, how USDA's portions' units are read.
 //! - `export`: writes `export/datapackage.json`, the gold views crates/core reads.
+//! - `recipes`: writes `docs/recipes/<name>.md`, each recipe in `recipes/` analysed against the
+//!   export by crates/core.
 
+use balaena_core::recipe::{REPORTS_DIR, reports};
 use balaena_records::Sources;
 use balaena_warehouse::export::{EXPORT_PATH, export};
 use balaena_warehouse::{
@@ -81,6 +84,13 @@ fn run(command: &str) -> Result<(), String> {
             std::fs::write(path, text).map_err(|e| e.to_string())?;
             println!("wrote {EXPORT_PATH}");
         }
+        "recipes" => {
+            std::fs::create_dir_all(root.join(REPORTS_DIR)).map_err(|e| e.to_string())?;
+            for (path, text) in reports(&root)? {
+                std::fs::write(root.join(&path), text).map_err(|e| e.to_string())?;
+                println!("wrote {path}");
+            }
+        }
         "catalogue" => {
             let text = catalogue(&load(&root, &cache)?)?;
             std::fs::write(root.join(CATALOGUE_PATH), text).map_err(|e| e.to_string())?;
@@ -88,7 +98,7 @@ fn run(command: &str) -> Result<(), String> {
         }
         other => {
             return Err(format!(
-                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, portions, catalogue or export"
+                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, portions, catalogue, export or recipes"
             ));
         }
     }

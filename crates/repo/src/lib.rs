@@ -265,11 +265,14 @@ mod tests {
         }
     }
 
-    /// Readers read the export, not the warehouse: crates/core parses its JSON, so DuckDB is not in
-    /// what reads it.
+    /// Readers read the export, not the warehouse: crates/core parses its JSON, and a recipe with
+    /// cooklang, so DuckDB is not in what reads them.
     #[test]
     fn reading_the_export_needs_no_database() {
-        assert_eq!(runtime_dependencies("crates/core"), ["serde", "serde_json"]);
+        assert_eq!(
+            runtime_dependencies("crates/core"),
+            ["cooklang", "serde", "serde_json"]
+        );
     }
 
     /// rust-toolchain.toml names one release, such as `1.96.0`: a channel like `stable` or
@@ -404,7 +407,7 @@ mod tests {
 
     /// The fetch step runs the binary built by the cargo command that builds the tests, so the two
     /// share one build of DuckDB: built apart, by `cargo run` and `cargo test`, they differed in a
-    /// feature a dev-dependency turns on, and each built DuckDB. Text only: how many times DuckDB
+    /// feature a dev-dependency turned on, and each built DuckDB. Text only: how many times DuckDB
     /// builds is seen in a run's log.
     #[test]
     fn the_gate_fetches_with_the_binary_its_tests_were_built_with() {

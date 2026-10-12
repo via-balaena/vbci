@@ -53,9 +53,9 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # One build for the fetch step and the tests. Built apart, by `cargo run` and `cargo test`,
-      # they differed in serde_json's features (balaena-core, a dev-dependency of the warehouse,
-      # turns on float_roundtrip), and each built DuckDB: main's run 38220150139 spent 7 min 20 s
-      # of its test step building DuckDB again.
+      # they differed in serde_json's features (balaena-core, then a dev-dependency of the
+      # warehouse, turned on float_roundtrip), and each built DuckDB: main's run 38220150139 spent
+      # 7 min 20 s of its test step building DuckDB again.
       - run: cargo build --workspace --bins --tests --locked
       # The warehouse's tests read USDA's zips from the cache; fetching refuses bytes that differ
       # from the sha256 sources.toml pins, so a cached zip is checked again on every run.

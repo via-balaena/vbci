@@ -26,6 +26,16 @@ pub enum State {
 }
 
 impl State {
+    /// Every state, in the order the enum lists them.
+    pub const ALL: [State; 6] = [
+        State::Raw,
+        State::Dry,
+        State::Cooked,
+        State::Canned,
+        State::Frozen,
+        State::AsSold,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             State::Raw => "raw",

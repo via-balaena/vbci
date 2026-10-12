@@ -1,7 +1,10 @@
 //! What VBCI's readers share: the export, `export/datapackage.json`, read without a database. The
 //! warehouse writes it (crates/warehouse, src/export.rs) as a Frictionless Data Package, version 2;
 //! this crate reads it into tables and checks what the descriptor says of them: each row has its
-//! fields' types, each primary key is unique, and each foreign key finds its row.
+//! fields' types, each primary key is unique, and each foreign key finds its row. `recipe` analyses
+//! a recipe against it.
+
+pub mod recipe;
 
 use serde::Deserialize;
 use serde_json::Value as Json;

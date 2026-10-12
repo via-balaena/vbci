@@ -2525,6 +2525,17 @@ codes = ["269", "269.3"]
         );
     }
 
+    /// crates/core, which does not depend on the records, reads a recipe's note for a form's state
+    /// from a list of its own: the records' states, in order.
+    #[test]
+    fn a_note_names_the_states_the_records_have() {
+        let records: Vec<&str> = balaena_records::State::ALL
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+        assert_eq!(balaena_core::recipe::STATES.to_vec(), records);
+    }
+
     #[test]
     fn every_usda_row_traces_to_the_bytes_it_came_from() {
         let w = warehouse();
