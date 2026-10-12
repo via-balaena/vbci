@@ -17,8 +17,8 @@ pub struct PortionUnit {
     pub per_unit: Option<f64>,
 }
 
-/// The text a portion's unit is read from, and the leading phrase of it: lowercased, up to its
-/// first comma or parenthesis.
+/// The leading phrase of a portion's text: lowercased, up to its first comma or parenthesis, with
+/// single spaces.
 pub fn leading_phrase(text: &str) -> String {
     let lower = text.to_lowercase();
     let end = lower.find([',', '(']).unwrap_or(lower.len());

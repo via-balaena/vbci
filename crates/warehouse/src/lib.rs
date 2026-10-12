@@ -959,7 +959,7 @@ pub fn portions_report(conn: &Connection, sources: &Sources) -> Result<String, S
     let disagree = rows(
         conn,
         "SELECT dataset, fdc_id, description, amount, unit, gram_weight, mass_ratio
-         FROM gold.portion_mass_disagreement ORDER BY abs(mass_ratio - 1) DESC, fdc_id, amount",
+         FROM gold.portion_mass_disagreement ORDER BY abs(mass_ratio - 1) DESC, dataset, id",
         |r| {
             Ok(format!(
                 "| {} | {} | {} | {} {} | {} | {:.3} |",
@@ -1288,8 +1288,9 @@ codes = ["269", "269.3"]
     /// rows: 1-2 give food 1 energy by 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food
     /// 2 sugars by 269.3 only; 5 gives food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2
     /// different sugars by 269; 9 names a nutrient nutrient.csv lacks; 10 has no amount; 11 is the
-    /// sample food's. Portions: p1 to p4 and p7 are kept with their units read or not, p5 has amount
-    /// 0, p6 is the sample food's, and p7's grams are three times its ounce's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
+    /// sample food's. Portions: p1 to p4, p7 and p9 are kept with their units read or not, p5 has
+    /// amount 0, p8 gram weight 0, p6 is the sample food's; p7 weighs three times its ounce and p9
+    /// less than its pound, and p4's measure unit is read before its modifier. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
     /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2, and exceptions
     /// override the rules matching foods 4 and 6, so each layer is seen over the one below it.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
@@ -1356,9 +1357,10 @@ codes = ["269", "269.3"]
              CREATE TABLE bronze.usda_food_portion (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, amount VARCHAR, measure_unit_id VARCHAR, modifier VARCHAR, gram_weight VARCHAR);
              INSERT INTO bronze.usda_food_portion VALUES
                ('d', 'p1', '1', '1', '9999', 'cup, chopped', '160'), ('d', 'p2', '1', '2', '9999', 'oz', '57'),
-               ('d', 'p3', '5', '1', '9999', 'steak', '200'), ('d', 'p4', '6', '1', '1000', NULL, '14'),
+               ('d', 'p3', '5', '1', '9999', 'steak', '200'), ('d', 'p4', '6', '1', '1000', 'chopped', '14'),
                ('d', 'p5', '1', '0', '9999', 'cup', '100'), ('d', 'p6', '3', '1', '9999', 'cup', '1'),
-               ('d', 'p7', '2', '1', '9999', 'oz', '86');
+               ('d', 'p7', '2', '1', '9999', 'oz', '86'), ('d', 'p8', '2', '1', '9999', 'cup', '0'),
+               ('d', 'p9', '2', '1', '9999', 'lb', '400');
              CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
              INSERT INTO bronze.usda_nutrient VALUES
                ('d', '1008', 'Energy', 'KCAL', '208'), ('d', '2048', 'Energy (Atwater)', 'KCAL', '958'),
@@ -1384,10 +1386,12 @@ codes = ["269", "269.3"]
         Ok(conn)
     }
 
-    /// Portions of silver foods are kept with their unit read (p1 cup, p2 and p7 oz, p4 the
-    /// measure unit's "tablespoon") or listed as not read (p3 "steak"); one with amount 0 is
-    /// rejected (p5); the sample food's is out of scope (p6). Grams per unit, grams per millilitre,
-    /// and a mass unit's agreement with its definition follow: p7 disagrees, and is kept and listed.
+    /// Portions of silver foods are kept with their unit read (p1 cup, p2 and p7 oz, p9 lb, p4
+    /// its measure unit "tablespoon", not its modifier "chopped") or listed as not read (p3
+    /// "steak"); one with amount 0 (p5) and one with gram weight 0 (p8) are rejected; the sample
+    /// food's is out of scope (p6). Grams per unit, grams per millilitre, and a mass unit's
+    /// agreement with its definition follow: p7 and p9 disagree, one each way, and are kept and
+    /// listed. The count units are in silver with their names.
     #[test]
     fn each_portion_s_unit_is_read_or_listed() {
         let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
@@ -1401,15 +1405,19 @@ codes = ["269", "269.3"]
                 "p2 oz mass oz",
                 "p3 steak - -",
                 "p4 tablespoon volume tbsp",
-                "p7 oz mass oz"
+                "p7 oz mass oz",
+                "p9 lb mass lb"
             ]
         );
         assert_eq!(
             strings(
                 &w,
-                "SELECT id || ': ' || reason FROM silver.usda_rejected WHERE source = 'usda_food_portion'"
+                "SELECT id || ': ' || reason FROM silver.usda_rejected WHERE source = 'usda_food_portion' ORDER BY id"
             ),
-            ["p5: amount is 0.0, so no grams per unit"]
+            [
+                "p5: amount is 0.0, so no grams per unit",
+                "p8: gram weight is 0.0"
+            ]
         );
         assert_eq!(
             strings(
@@ -1420,7 +1428,8 @@ codes = ["269", "269.3"]
                 "p1 160.0 0.676 -",
                 "p2 28.5 - 1.005",
                 "p4 14.0 0.947 -",
-                "p7 86.0 - 3.034"
+                "p7 86.0 - 3.034",
+                "p9 400.0 - 0.882"
             ]
         );
         assert_eq!(
@@ -1433,9 +1442,16 @@ codes = ["269", "269.3"]
         assert_eq!(
             strings(
                 &w,
-                "SELECT id || ' ' || description FROM gold.portion_mass_disagreement"
+                "SELECT id || ' ' || description FROM gold.portion_mass_disagreement ORDER BY id"
             ),
-            ["p7 B"]
+            ["p7 B", "p9 B"]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT n.name || ' ' || u.unit || ' ' || u.record FROM silver.count_unit u JOIN silver.count_unit_name n USING (unit)"
+            ),
+            ["medium medium units/count.toml"]
         );
     }
 

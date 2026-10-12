@@ -1,5 +1,5 @@
-//! `units/count.toml`: the count units a recipe or USDA's portion text may name, which no mass or
-//! volume unit converts. cooklang's bundled units give the mass and volume units.
+//! `units/count.toml`: count units, units a recipe or USDA's portion text counts in, which no mass
+//! or volume unit converts. cooklang's bundled units give the mass and volume units.
 
 use serde::Deserialize;
 use std::collections::BTreeSet;
