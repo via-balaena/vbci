@@ -256,7 +256,7 @@ fn resource(conn: &Connection, e: &Exported) -> Result<(Resource, Vec<String>), 
         fields.push(Field {
             name,
             kind,
-            description: comment.filter(|c| !c.trim().is_empty()),
+            description: comment,
         });
     }
     let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
