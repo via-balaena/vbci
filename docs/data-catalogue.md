@@ -336,6 +336,18 @@ Other columns: `url` VARCHAR, `sha256` VARCHAR, `bytes` BIGINT.
 
 ## silver
 
+### silver.count_unit
+
+A table. Each count unit, from units/count.toml: a unit a recipe counts in, which no mass or volume unit converts.
+
+Columns: `unit` VARCHAR, `record` VARCHAR.
+
+### silver.count_unit_name
+
+A table. Each name a count unit may be written with.
+
+Columns: `name` VARCHAR, `unit` VARCHAR.
+
 ### silver.diet_category
 
 A table. The class of each USDA category, from diet/categories.toml: plant, dairy_and_egg, flesh or mixed.
@@ -434,6 +446,12 @@ A table. The source organism's group each Foundation food records, from food_att
 
 Columns: `fdc_id` INTEGER, `dataset` VARCHAR, `taxon` VARCHAR.
 
+### silver.usda_measure_unit
+
+A table. Each measure unit of each dataset, from measure_unit.csv. SR Legacy's portions all use 9999, "undetermined", and write their unit in modifier.
+
+Columns: `dataset` VARCHAR, `id` INTEGER, `name` VARCHAR.
+
 ### silver.usda_nutrient
 
 A table. Each nutrient of each dataset, from nutrient.csv. Keyed by dataset: the same id can name a nutrient differently in two releases.
@@ -444,9 +462,30 @@ A table. Each nutrient of each dataset, from nutrient.csv. Keyed by dataset: the
 
 Other columns: `dataset` VARCHAR, `id` INTEGER, `name` VARCHAR, `unit` VARCHAR.
 
+### silver.usda_portion
+
+A table. Each portion of a silver food, from food_portion.csv: amount units of it weigh gram_weight grams.
+
+| column | type | what it is |
+|---|---|---|
+| unit_text | VARCHAR | The text its unit is read from: the measure unit's name, or modifier where the unit is undetermined. |
+
+Other columns: `dataset` VARCHAR, `id` VARCHAR, `fdc_id` INTEGER, `amount` DOUBLE, `measure_unit_id` INTEGER, `modifier` VARCHAR, `gram_weight` DOUBLE.
+
+### silver.usda_portion_unit
+
+A table. The unit each portion's text is read as, by crates/warehouse (src/portions.rs) with cooklang's bundled units and units/count.toml: one row for every portion, kind NULL where no unit is read.
+
+| column | type | what it is |
+|---|---|---|
+| phrase | VARCHAR | For a read unit, the words that named it; otherwise the text's leading phrase, up to its first comma or parenthesis. |
+| per_unit | DOUBLE | Grams in one mass unit, or millilitres in one volume unit, by cooklang's units. |
+
+Other columns: `dataset` VARCHAR, `id` VARCHAR, `kind` VARCHAR, `unit` VARCHAR.
+
 ### silver.usda_rejected
 
-A table. Each nutrient row of a silver food that silver did not keep, and why: no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another.
+A table. Each nutrient or portion row of a silver food that silver did not keep, and why: for a nutrient row, no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another; for a portion, an amount or gram weight not above 0.
 
 | column | type | what it is |
 |---|---|---|
@@ -505,3 +544,25 @@ Columns: `dataset` VARCHAR, `nutrient` VARCHAR, `position` INTEGER, `unit` VARCH
 A view. For each dataset and nutrient: how many foods took their value from each code.
 
 Columns: `dataset` VARCHAR, `nutrient` VARCHAR, `code` VARCHAR, `foods` BIGINT.
+
+### gold.portion
+
+A view. Each portion whose unit is read: grams in one of its units, and for a volume unit the food's grams per millilitre. A food may have several portions in one unit, told apart by their text and modifier ("cup, chopped" and "cup, sliced").
+
+| column | type | what it is |
+|---|---|---|
+| mass_ratio | DOUBLE | For a mass unit, the portion's grams over what the unit defines: 1 where USDA's gram weight agrees with the unit. |
+
+Other columns: `dataset` VARCHAR, `id` VARCHAR, `fdc_id` INTEGER, `amount` DOUBLE, `unit` VARCHAR, `kind` VARCHAR, `gram_weight` DOUBLE, `grams_per_unit` DOUBLE, `grams_per_ml` DOUBLE, `unit_text` VARCHAR, `modifier` VARCHAR.
+
+### gold.portion_mass_disagreement
+
+A view. Portions in a mass unit whose gram weight differs from what the unit defines by more than 2%: a finding about USDA's data, kept, not refused.
+
+Columns: `dataset` VARCHAR, `id` VARCHAR, `fdc_id` INTEGER, `amount` DOUBLE, `unit` VARCHAR, `kind` VARCHAR, `gram_weight` DOUBLE, `grams_per_unit` DOUBLE, `grams_per_ml` DOUBLE, `mass_ratio` DOUBLE, `unit_text` VARCHAR, `modifier` VARCHAR, `description` VARCHAR.
+
+### gold.portion_unread
+
+A view. The portions whose unit no mass, volume or count unit reads, by the leading phrase of their text.
+
+Columns: `dataset` VARCHAR, `phrase` VARCHAR, `portions` BIGINT, `example` VARCHAR.
