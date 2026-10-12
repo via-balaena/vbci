@@ -912,7 +912,8 @@ codes = ["269", "269.3"]
 [[rule]]\ncategory = \"Vegetables\"\nstarts_with = \"B\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Over the organism.\"\n",
         "[[food]]\nfdc_id = 7\ndescription = \"Lard\"\nvegan = \"no\"\nvegetarian = \"no\"\nwhy = \"Carcass fat.\"\n
 [[food]]\nfdc_id = 8\ndescription = \"Potatoes, mashed, with milk\"\nvegan = \"no\"\nwhy = \"Milk.\"\n
-[[food]]\nfdc_id = 6\ndescription = \"Oil, olive\"\nvegan = \"unknown\"\nwhy = \"Over the rule.\"\n",
+[[food]]\nfdc_id = 6\ndescription = \"Oil, olive\"\nvegan = \"unknown\"\nwhy = \"Over the rule.\"\n
+[[food]]\nfdc_id = 4\ndescription = \"Cheese, parmesan\"\nvegetarian = \"yes\"\nwhy = \"Vegetarian rennet, over the rule.\"\n",
     ];
 
     /// A warehouse whose bronze is a few rows written here, with silver loaded from them by
@@ -921,8 +922,8 @@ codes = ["269", "269.3"]
     /// 2 sugars by 269.3 only; 5 gives food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2
     /// different sugars by 269; 9 names a nutrient nutrient.csv lacks; 10 has no amount; 11 is the
     /// sample food's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
-    /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2 and an exception
-    /// overrides the rule matching food 6, so each layer is seen over the one below it.
+    /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2, and exceptions
+    /// override the rules matching foods 4 and 6, so each layer is seen over the one below it.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
         synthetic_with(nutrients, SYNTHETIC_DIET)
     }
@@ -1133,7 +1134,8 @@ codes = ["269", "269.3"]
 
     /// Each food's answers come from the first that applies: an exception, a naming rule, an
     /// animal organism, the category, each for the diets it gives. An exception overrides a rule
-    /// (food 6's vegan) and a rule an organism (food 2); a rule applies within its category only
+    /// (food 6's vegan, food 4's vegetarian) and a rule an organism (food 2); a rule applies within
+    /// its category only
     /// (food 9, "Cheese sauce", is in Fats, not Dairy); an animal organism makes a food not vegan,
     /// and a plant category's food vegetarian: unknown (food 10); a plant organism changes nothing.
     #[test]
@@ -1144,7 +1146,7 @@ codes = ["269", "269.3"]
             [
                 "1 yes (category: plant) yes (category: plant)",
                 "2 yes (rule: B) yes (rule: B)",
-                "4 no (category: dairy_and_egg) unknown (rule: Cheese)",
+                "4 no (category: dairy_and_egg) yes (exception)",
                 "5 no (category: flesh) no (category: flesh)",
                 "6 unknown (exception) yes (rule: Oil,)",
                 "7 no (exception) no (exception)",
