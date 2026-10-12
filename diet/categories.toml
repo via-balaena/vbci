@@ -1,0 +1,125 @@
+# The class of each of USDA's food categories, by its description exactly as USDA writes it. A
+# category's class gives its foods' answers when no exception, naming rule or organism says
+# otherwise:
+#
+#   plant          vegan yes,      vegetarian yes
+#   dairy_and_egg  vegan no,       vegetarian yes
+#   flesh          vegan no,       vegetarian no       (meat, poultry, fish and shellfish)
+#   mixed          vegan unknown,  vegetarian unknown
+#
+# A plant category's food whose USDA name hides an animal ingredient is answered wrongly unless an
+# exception or naming rule names it; its answer's basis says the answer came from the category.
+# Every category of a dataset sources.toml pins has a class here, and each listed here is a category
+# some dataset has, or the warehouse refuses to load. Read by crates/records (src/diet.rs).
+
+[[category]]
+description = "Dairy and Egg Products"
+class = "dairy_and_egg"
+
+[[category]]
+description = "Spices and Herbs"
+class = "plant"
+
+[[category]]
+description = "Baby Foods"
+class = "mixed"
+
+[[category]]
+description = "Fats and Oils"
+class = "mixed"
+
+[[category]]
+description = "Poultry Products"
+class = "flesh"
+
+[[category]]
+description = "Soups, Sauces, and Gravies"
+class = "mixed"
+
+[[category]]
+description = "Sausages and Luncheon Meats"
+class = "flesh"
+
+[[category]]
+description = "Breakfast Cereals"
+class = "mixed"
+
+[[category]]
+description = "Fruits and Fruit Juices"
+class = "plant"
+
+[[category]]
+description = "Pork Products"
+class = "flesh"
+
+[[category]]
+description = "Vegetables and Vegetable Products"
+class = "plant"
+
+[[category]]
+description = "Nut and Seed Products"
+class = "plant"
+
+[[category]]
+description = "Beef Products"
+class = "flesh"
+
+[[category]]
+description = "Beverages"
+class = "mixed"
+
+[[category]]
+description = "Finfish and Shellfish Products"
+class = "flesh"
+
+[[category]]
+description = "Legumes and Legume Products"
+class = "plant"
+
+[[category]]
+description = "Lamb, Veal, and Game Products"
+class = "flesh"
+
+[[category]]
+description = "Baked Products"
+class = "mixed"
+
+[[category]]
+description = "Sweets"
+class = "mixed"
+
+[[category]]
+description = "Cereal Grains and Pasta"
+class = "plant"
+
+[[category]]
+description = "Fast Foods"
+class = "mixed"
+
+[[category]]
+description = "Meals, Entrees, and Side Dishes"
+class = "mixed"
+
+[[category]]
+description = "Snacks"
+class = "mixed"
+
+[[category]]
+description = "American Indian/Alaska Native Foods"
+class = "mixed"
+
+[[category]]
+description = "Restaurant Foods"
+class = "mixed"
+
+[[category]]
+description = "Branded Food Products Database"
+class = "mixed"
+
+[[category]]
+description = "Quality Control Materials"
+class = "mixed"
+
+[[category]]
+description = "Alcoholic Beverages"
+class = "mixed"

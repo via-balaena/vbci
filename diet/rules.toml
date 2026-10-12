@@ -1,0 +1,98 @@
+# Naming rules. Within one category, a food whose USDA name starts with `starts_with`, exactly, case
+# and all, takes the answers the rule gives; a diet the rule leaves out keeps the answer the
+# organism or the category gives. An exception for the food overrides a rule. Every rule matches a
+# food of some dataset, and no food matches two rules, or the warehouse refuses to load. Vegan is
+# The Vegan Society's and vegetarian the Vegetarian Society's (docs/architecture.md, "Decided").
+# Read by crates/records (src/diet.rs).
+
+[[rule]]
+category = "Dairy and Egg Products"
+starts_with = "Cheese"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[rule]]
+category = "Fats and Oils"
+starts_with = "Oil,"
+vegan = "yes"
+vegetarian = "yes"
+why = "Each food named \"Oil, ...\" in Fats and Oils is a plant oil: the six whose names mention butter are plant butters (cocoa, nutmeg, ucuhuba) or a non-dairy butter flavor (read 2026-10-11)."
+
+[[rule]]
+category = "Fats and Oils"
+starts_with = "Fat,"
+vegan = "no"
+vegetarian = "no"
+why = "Beef tallow and chicken, goose and turkey fat: animal carcass fats, which the Vegetarian Society's criteria exclude."
+
+[[rule]]
+category = "Fats and Oils"
+starts_with = "Fish oil"
+vegan = "no"
+vegetarian = "no"
+why = "Oil from fish."
+
+[[rule]]
+category = "Fats and Oils"
+starts_with = "Salad dressing, blue or roquefort cheese"
+vegan = "no"
+vegetarian = "unknown"
+why = "Made with cheese, which is dairy and may be made with animal rennet."
+
+[[rule]]
+category = "Fats and Oils"
+starts_with = "Creamy dressing, made with sour cream and/or buttermilk"
+vegan = "no"
+why = "Made with sour cream or buttermilk, which are dairy."
+
+[[rule]]
+category = "Sweets"
+starts_with = "Gelatin"
+vegan = "no"
+vegetarian = "no"
+why = "Gelatine, which the Vegetarian Society's criteria exclude."
+
+[[rule]]
+category = "Cereal Grains and Pasta"
+starts_with = "Noodles, egg"
+vegan = "no"
+why = "Made with egg."
+
+[[rule]]
+category = "Cereal Grains and Pasta"
+starts_with = "Pasta, fresh-refrigerated"
+vegan = "unknown"
+why = "Fresh pasta is often made with egg; the name does not say."
+
+[[rule]]
+category = "Legumes and Legume Products"
+starts_with = "Beans, baked, canned, with pork"
+vegan = "no"
+vegetarian = "no"
+why = "Made with pork."
+
+[[rule]]
+category = "Legumes and Legume Products"
+starts_with = "Refried beans, canned, traditional"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Traditional refried beans are often made with lard, an animal carcass fat; the name does not say."
+
+[[rule]]
+category = "Vegetables and Vegetable Products"
+starts_with = "Onion rings, breaded"
+vegan = "unknown"
+why = "Batter and breading are often made with milk or egg; the name does not say."
+
+[[rule]]
+category = "Vegetables and Vegetable Products"
+starts_with = "Potatoes, au gratin"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Au gratin potatoes are usually made with cheese, which is dairy and may be made with animal rennet; the name does not always say."
+
+[[rule]]
+category = "Vegetables and Vegetable Products"
+starts_with = "Potatoes, scalloped"
+vegan = "unknown"
+why = "Scalloped potatoes are usually made with milk; the name does not always say."

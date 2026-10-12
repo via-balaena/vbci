@@ -1,0 +1,21 @@
+# The groups of the source organisms Foundation foods record, in their "NCBI Taxon Parent"
+# attribute, by NCBI Taxonomy id. An animal organism makes a food not vegan, and makes a plant
+# category's food vegetarian: unknown, as organism and category then disagree. A plant or a fungus
+# changes nothing: a food can hold ingredients its main organism does not show. Every organism a
+# Foundation food records is listed here, or the warehouse refuses to load. Read by crates/records
+# (src/diet.rs).
+
+[[taxon]]
+id = "NCBITaxon_33208"
+name = "Metazoa"
+group = "animal"
+
+[[taxon]]
+id = "NCBITaxon_35493"
+name = "Streptophyta"
+group = "plant"
+
+[[taxon]]
+id = "NCBITaxon_4751"
+name = "Fungi"
+group = "fungus"
