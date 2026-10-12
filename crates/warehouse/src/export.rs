@@ -2,9 +2,9 @@
 //! reads without a database. The file is a Frictionless Data Package, version 2
 //! (https://datapackage.org/standard/data-package/, read 2026-10-12): each view is a resource whose
 //! rows are inline, as arrays, its columns' names first (Table Dialect's `header`, true by
-//! default), then one row per line in the order of its primary key, so a change to the data is a
-//! change to the lines it touches. `_lineage`, a private property (the spec's `_` prefix for what
-//! software writes), gives the sha256 of each zip and record file the rows came from.
+//! default), then one row per line in the order of its primary key, so a diff of the file reads
+//! row by row. `_lineage`, a private property (the spec's `_` prefix for what software writes),
+//! gives the sha256 of each zip and record file the rows came from.
 
 use crate::{literal, rows};
 use balaena_records::Sources;

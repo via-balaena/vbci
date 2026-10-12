@@ -462,6 +462,24 @@ mod tests {
             "type is \"file\", not \"table\"",
         );
         refused(
+            &with(
+                "\"description\": \"Grams in one.\"}",
+                "\"description\": \"Grams in one.\", \"format\": \"default\"}",
+            ),
+            "unknown field `format`",
+        );
+        refused(
+            &with(
+                "\"primaryKey\": [\"id\"],",
+                "\"primaryKey\": [\"id\"], \"missingValues\": [\"NA\"],",
+            ),
+            "unknown field `missingValues`",
+        );
+        refused(
+            &with("\"records\": []}", "\"records\": [], \"commit\": \"x\"}"),
+            "unknown field `commit`",
+        );
+        refused(
             &with("\"name\": \"portion\"", "\"name\": \"food\""),
             "resource food: listed twice",
         );
