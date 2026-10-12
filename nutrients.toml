@@ -1,0 +1,103 @@
+# The nutrients VBCI reports, each per 100 g of food. A nutrient is found in USDA's data by its
+# codes (USDA's nutrient_nbr), written exactly as USDA writes them and never rounded: 269.3 is not
+# 269. A food's value comes from the first code it has a value for. Every code must be in every
+# dataset sources.toml pins, with the unit given here, or the warehouse refuses to load. Read by
+# crates/records (src/nutrients.rs).
+
+[[nutrient]]
+key = "energy"
+name = "Energy"
+unit = "KCAL"
+# 958 and 957 are energy from Atwater's specific and general factors.
+codes = ["208", "958", "957"]
+
+[[nutrient]]
+key = "protein"
+name = "Protein"
+unit = "G"
+codes = ["203"]
+
+[[nutrient]]
+key = "fat"
+name = "Total fat"
+unit = "G"
+codes = ["204"]
+
+[[nutrient]]
+key = "carbohydrate"
+name = "Carbohydrate, by difference"
+unit = "G"
+codes = ["205"]
+
+[[nutrient]]
+key = "fiber"
+name = "Fiber, total dietary"
+unit = "G"
+codes = ["291"]
+
+[[nutrient]]
+key = "sugars"
+name = "Sugars, total"
+unit = "G"
+codes = ["269", "269.3"]
+
+[[nutrient]]
+key = "calcium"
+name = "Calcium"
+unit = "MG"
+codes = ["301"]
+
+[[nutrient]]
+key = "iron"
+name = "Iron"
+unit = "MG"
+codes = ["303"]
+
+[[nutrient]]
+key = "magnesium"
+name = "Magnesium"
+unit = "MG"
+codes = ["304"]
+
+[[nutrient]]
+key = "potassium"
+name = "Potassium"
+unit = "MG"
+codes = ["306"]
+
+[[nutrient]]
+key = "sodium"
+name = "Sodium"
+unit = "MG"
+codes = ["307"]
+
+[[nutrient]]
+key = "zinc"
+name = "Zinc"
+unit = "MG"
+codes = ["309"]
+
+[[nutrient]]
+key = "vitamin_b12"
+name = "Vitamin B12"
+unit = "UG"
+codes = ["418"]
+
+[[nutrient]]
+key = "vitamin_d"
+name = "Vitamin D (D2 + D3)"
+unit = "UG"
+codes = ["328"]
+
+[[nutrient]]
+key = "folate"
+name = "Folate, total"
+unit = "UG"
+codes = ["417"]
+
+[[nutrient]]
+key = "ala"
+name = "Alpha-linolenic acid (ALA, 18:3 n-3)"
+unit = "G"
+# 851 alone: 619 is all of PUFA 18:3, not ALA alone, so it is no stand-in for it.
+codes = ["851"]

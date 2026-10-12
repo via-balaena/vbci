@@ -1,9 +1,9 @@
 //! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
-//! can be deleted at any time. `schema.sql` describes its layers; bronze is the only one so far.
+//! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
 pub mod usda;
 
-use balaena_records::Sources;
+use balaena_records::{Nutrients, Sources};
 use duckdb::{Connection, params};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -97,17 +97,23 @@ fn sql(e: duckdb::Error) -> String {
 }
 
 /// Builds the warehouse in memory from the records under `root` and the pinned zips in `cache`.
-/// Bronze takes `sources.toml` as read, each dataset's zip as pinned, every file in each zip with
-/// its sha256, and every CSV row for row, as text.
+/// Bronze takes `sources.toml` and `nutrients.toml` as read, each dataset's zip as pinned, every
+/// file in each zip with its sha256, and every CSV row for row, as text; then silver and gold.
 pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
-    let (sources, text) = Sources::load(root)?;
+    let (sources, sources_text) = Sources::load(root)?;
+    let (nutrients, nutrients_text) = Nutrients::load(root)?;
     let conn = Connection::open_in_memory().map_err(sql)?;
     conn.execute_batch(SCHEMA).map_err(sql)?;
-    conn.execute(
-        "INSERT INTO bronze.record VALUES (?, ?)",
-        params![Sources::PATH, text],
-    )
-    .map_err(sql)?;
+    for (path, text) in [
+        (Sources::PATH, &sources_text),
+        (Nutrients::PATH, &nutrients_text),
+    ] {
+        conn.execute(
+            "INSERT INTO bronze.record VALUES (?, ?)",
+            params![path, text],
+        )
+        .map_err(sql)?;
+    }
     let scratch = Scratch::new()?;
     let mut tables: BTreeMap<String, Vec<(String, PathBuf)>> = BTreeMap::new();
     for d in &sources.dataset {
@@ -154,7 +160,312 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
         ))
         .map_err(|e| format!("bronze.{table}: {e}"))?;
     }
+    load_silver(&conn, &nutrients)?;
     Ok(conn)
+}
+
+/// Types bronze's USDA rows into silver, keeping each nutrient row of a silver food or rejecting it
+/// with its reason (`SILVER` says which), and loads `nutrients.toml`. Then refuses a nutrient code that some dataset lacks, or has
+/// with another unit: a code is matched exactly, so a misspelt or rounded code would silently find
+/// nothing, or another nutrient.
+fn load_silver(conn: &Connection, nutrients: &Nutrients) -> Result<(), String> {
+    conn.execute_batch(SILVER)
+        .map_err(|e| format!("silver: {e}"))?;
+    for (position, n) in nutrients.nutrient.iter().enumerate() {
+        conn.execute(
+            "INSERT INTO silver.nutrient VALUES (?, ?, ?, ?, ?)",
+            params![n.key, position as i64 + 1, n.name, n.unit, Nutrients::PATH],
+        )
+        .map_err(|e| format!("silver.nutrient {}: {e}", n.key))?;
+        for (priority, code) in n.codes.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO silver.nutrient_code VALUES (?, ?, ?)",
+                params![n.key, priority as i64 + 1, code],
+            )
+            .map_err(|e| format!("silver.nutrient_code {} {code}: {e}", n.key))?;
+        }
+    }
+    let mut stmt = conn
+        .prepare(
+            "SELECT n.nutrient, c.code, z.dataset, n.unit, u.unit
+             FROM silver.nutrient n
+             JOIN silver.nutrient_code c USING (nutrient)
+             CROSS JOIN bronze.usda_zip z
+             LEFT JOIN silver.usda_nutrient u ON u.dataset = z.dataset AND u.nbr = c.code
+             WHERE u.unit IS DISTINCT FROM n.unit
+             ORDER BY n.position, c.priority, z.dataset",
+        )
+        .map_err(sql)?;
+    let wrong: Vec<(String, String, String, String, Option<String>)> = stmt
+        .query_map([], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+        })
+        .map_err(sql)?
+        .collect::<Result<_, _>>()
+        .map_err(sql)?;
+    if let Some((nutrient, code, dataset, want, got)) = wrong.into_iter().next() {
+        return Err(match got {
+            None => format!(
+                "{}: {nutrient}'s code {code} is not in {dataset}'s nutrient.csv",
+                Nutrients::PATH
+            ),
+            Some(got) => format!(
+                "{}: {nutrient}'s code {code} has unit {got} in {dataset}, not {want}",
+                Nutrients::PATH
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Silver's USDA rows, typed from bronze. A food_nutrient row of a silver food is rejected, with
+/// its reason, when it has no amount, names a nutrient its dataset's nutrient.csv lacks, repeats an
+/// earlier row for the same food and nutrient with the same amount (the earliest row by id is
+/// kept), or disagrees with another row for the same food and nutrient (every such row is
+/// rejected, so the food has no value rather than a guess). Every other row is typed, and a value
+/// that does not cast stops the load.
+const SILVER: &str = "
+INSERT INTO silver.usda_category
+SELECT dataset, CAST(id AS INTEGER), description FROM bronze.usda_food_category;
+
+INSERT INTO silver.usda_food
+SELECT CAST(fdc_id AS INTEGER), dataset, data_type, description, CAST(food_category_id AS INTEGER)
+FROM bronze.usda_food
+WHERE data_type IN ('sr_legacy_food', 'foundation_food');
+
+INSERT INTO silver.usda_nutrient
+SELECT dataset, CAST(id AS INTEGER), name, unit_name, nullif(nutrient_nbr, '')
+FROM bronze.usda_nutrient;
+
+CREATE TEMP TABLE in_scope AS
+SELECT b.dataset, b.id, CAST(b.fdc_id AS INTEGER) AS fdc_id,
+       CAST(b.nutrient_id AS INTEGER) AS nutrient_id, b.amount,
+       coalesce(b.amount, '') = '' AS no_amount,
+       NOT EXISTS (SELECT 1 FROM silver.usda_nutrient n
+                   WHERE n.dataset = b.dataset AND n.id = CAST(b.nutrient_id AS INTEGER)) AS no_nutrient
+FROM bronze.usda_food_nutrient b
+WHERE CAST(b.fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);
+
+CREATE TEMP TABLE typable AS
+SELECT dataset, id, fdc_id, nutrient_id, CAST(amount AS DOUBLE) AS amount,
+       min(CAST(amount AS DOUBLE)) OVER pair <> max(CAST(amount AS DOUBLE)) OVER pair AS conflicting,
+       row_number() OVER (pair ORDER BY CAST(id AS BIGINT)) AS copy,
+       first_value(id) OVER (pair ORDER BY CAST(id AS BIGINT)) AS first_id
+FROM in_scope
+WHERE NOT (no_amount OR no_nutrient)
+WINDOW pair AS (PARTITION BY fdc_id, nutrient_id);
+
+INSERT INTO silver.usda_rejected
+SELECT 'usda_food_nutrient', dataset, id,
+       concat_ws('; ', CASE WHEN no_amount THEN 'no amount' END,
+                       CASE WHEN no_nutrient THEN 'nutrient ' || nutrient_id || ' is not in its dataset''s nutrient.csv' END)
+FROM in_scope
+WHERE no_amount OR no_nutrient
+UNION ALL
+SELECT 'usda_food_nutrient', dataset, id,
+       'another row gives food ' || fdc_id || ' a different amount of nutrient ' || nutrient_id
+FROM typable
+WHERE conflicting
+UNION ALL
+SELECT 'usda_food_nutrient', dataset, id,
+       'repeats row ' || first_id || ': same food, nutrient and amount'
+FROM typable
+WHERE NOT conflicting AND copy > 1;
+
+INSERT INTO silver.usda_food_nutrient
+SELECT fdc_id, dataset, nutrient_id, amount, id
+FROM typable
+WHERE NOT conflicting AND copy = 1;
+
+DROP TABLE typable;
+DROP TABLE in_scope;
+";
+
+/// Where `coverage` writes its report, relative to the repo root.
+pub const COVERAGE_PATH: &str = "docs/coverage.md";
+
+/// Where `catalogue` writes the data catalogue, relative to the repo root.
+pub const CATALOGUE_PATH: &str = "docs/data-catalogue.md";
+
+fn rows<T>(
+    conn: &Connection,
+    query: &str,
+    f: impl FnMut(&duckdb::Row<'_>) -> duckdb::Result<T>,
+) -> Result<Vec<T>, String> {
+    let mut stmt = conn.prepare(query).map_err(|e| format!("{query}: {e}"))?;
+    stmt.query_map([], f)
+        .map_err(|e| format!("{query}: {e}"))?
+        .collect::<Result<_, _>>()
+        .map_err(|e| format!("{query}: {e}"))
+}
+
+/// `docs/coverage.md`, as the warehouse writes it: for each dataset, how many of its foods have a
+/// value for each nutrient VBCI reports, and which codes the values came from; then the rows silver
+/// rejected.
+pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, String> {
+    let mut out = String::from(
+        "# Nutrient coverage\n\n\
+         Generated by `cargo run -p balaena-warehouse -- coverage` from the datasets `sources.toml`\n\
+         pins and the nutrients `nutrients.toml` lists; the test `the_coverage_report_is_current`\n\
+         fails when this file differs from what that would write. Change the records, not this\n\
+         file.\n\n\
+         For each dataset: how many of its foods have a value for each nutrient, per 100 g\n\
+         (`gold.nutrient_coverage`), and how many took it from each of the nutrient's USDA codes,\n\
+         first choice first (`gold.nutrient_source`). Every food counts, meat included.\n",
+    );
+    for d in &sources.dataset {
+        let coverage = rows(
+            conn,
+            &format!(
+                "SELECT nutrient, unit, foods, with_value FROM gold.nutrient_coverage \
+                 WHERE dataset = {} ORDER BY position",
+                literal(&d.id)
+            ),
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, i64>(2)?,
+                    r.get::<_, i64>(3)?,
+                ))
+            },
+        )?;
+        let foods = coverage.first().map(|c| c.2).unwrap_or_default();
+        out.push_str(&format!(
+            "\n## {} {} (`{}`): {foods} foods\n\n\
+             | nutrient | unit | foods with a value | share | from codes |\n|---|---|---|---|---|\n",
+            d.name, d.release, d.id
+        ));
+        for (nutrient, unit, foods, with_value) in coverage {
+            let sources = rows(
+                conn,
+                &format!(
+                    "SELECT c.code, coalesce(s.foods, 0) FROM silver.nutrient_code c \
+                     LEFT JOIN gold.nutrient_source s ON s.nutrient = c.nutrient \
+                     AND s.code = c.code AND s.dataset = {} \
+                     WHERE c.nutrient = {} ORDER BY c.priority",
+                    literal(&d.id),
+                    literal(&nutrient)
+                ),
+                |r| {
+                    Ok(format!(
+                        "{}: {}",
+                        r.get::<_, String>(0)?,
+                        r.get::<_, i64>(1)?
+                    ))
+                },
+            )?;
+            let share = if foods == 0 {
+                0.0
+            } else {
+                100.0 * with_value as f64 / foods as f64
+            };
+            let from = sources.join(", ");
+            out.push_str(&format!(
+                "| {nutrient} | {unit} | {with_value} | {share:.1}% | {from} |\n"
+            ));
+        }
+    }
+    let rejected = rows(
+        conn,
+        "SELECT dataset, source, reason, count(*) FROM silver.usda_rejected \
+         GROUP BY ALL ORDER BY dataset, source, reason",
+        |r| {
+            Ok(format!(
+                "| {} | {} | {} | {} |",
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, i64>(3)?
+            ))
+        },
+    )?;
+    out.push_str(
+        "\n## Rows silver rejected\n\n\
+         Nutrient rows of silver foods that silver did not keep (`silver.usda_rejected`).\n\n",
+    );
+    if rejected.is_empty() {
+        out.push_str("None.\n");
+    } else {
+        out.push_str("| dataset | bronze table | reason | rows |\n|---|---|---|---|\n");
+        for line in rejected {
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
+    Ok(out)
+}
+
+/// `docs/data-catalogue.md`, as the warehouse writes it: every table and view, layer by layer, with
+/// the comment it carries and its columns.
+pub fn catalogue(conn: &Connection) -> Result<String, String> {
+    let mut out = String::from(
+        "# Data catalogue\n\n\
+         Every table and view in the warehouse, as DuckDB describes them, with the comments\n\
+         `crates/warehouse/schema.sql` and the loader give them. Generated by\n\
+         `cargo run -p balaena-warehouse -- catalogue`; the test `the_catalogue_is_current` fails\n\
+         when this file differs from what that would write. Change the schema, not this file.\n",
+    );
+    for schema in ["bronze", "silver", "gold"] {
+        out.push_str(&format!("\n## {schema}\n"));
+        let objects = rows(
+            conn,
+            &format!(
+                "SELECT table_name, 'table', coalesce(comment, '') FROM duckdb_tables() \
+                 WHERE schema_name = {s} AND NOT temporary \
+                 UNION ALL \
+                 SELECT view_name, 'view', coalesce(comment, '') FROM duckdb_views() \
+                 WHERE schema_name = {s} AND NOT internal AND NOT temporary \
+                 ORDER BY 1",
+                s = literal(schema)
+            ),
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
+            },
+        )?;
+        for (name, kind, comment) in objects {
+            out.push_str(&format!("\n### {schema}.{name}\n\nA {kind}. {comment}\n\n"));
+            let columns = rows(
+                conn,
+                &format!(
+                    "SELECT column_name, data_type, coalesce(comment, '') FROM duckdb_columns() \
+                     WHERE schema_name = {} AND table_name = {} ORDER BY column_index",
+                    literal(schema),
+                    literal(&name)
+                ),
+                |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                    ))
+                },
+            )?;
+            let (described, bare): (Vec<_>, Vec<_>) =
+                columns.into_iter().partition(|(_, _, c)| !c.is_empty());
+            if !described.is_empty() {
+                out.push_str("| column | type | what it is |\n|---|---|---|\n");
+                for (column, data_type, comment) in &described {
+                    out.push_str(&format!("| {column} | {data_type} | {comment} |\n"));
+                }
+            }
+            if !bare.is_empty() {
+                let names: Vec<String> =
+                    bare.iter().map(|(c, t, _)| format!("`{c}` {t}")).collect();
+                let lead = if described.is_empty() {
+                    "Columns"
+                } else {
+                    "\nOther columns"
+                };
+                out.push_str(&format!("{lead}: {}.\n", names.join(", ")));
+            }
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -344,6 +655,210 @@ mod tests {
         assert!(!dir.join("outside.csv").exists() && !out.0.join("outside.csv").exists());
     }
 
+    /// Nutrients for the synthetic bronze below.
+    const SYNTHETIC_NUTRIENTS: &str = r#"
+[[nutrient]]
+key = "energy"
+name = "Energy"
+unit = "KCAL"
+codes = ["208", "958"]
+
+[[nutrient]]
+key = "sugars"
+name = "Sugars"
+unit = "G"
+codes = ["269", "269.3"]
+"#;
+
+    /// A warehouse whose bronze is a few rows written here, with silver loaded from them by
+    /// `nutrients`. Food 3 is a sample food, out of silver's scope. Rows: 1-2 give food 1 energy by
+    /// 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food 2 sugars by 269.3 only; 5 gives
+    /// food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2 different sugars by 269; 9 names a
+    /// nutrient nutrient.csv lacks; 10 has no amount; 11 is the sample food's.
+    fn synthetic(nutrients: &str) -> Result<Connection, String> {
+        let conn = Connection::open_in_memory().map_err(sql)?;
+        conn.execute_batch(SCHEMA).map_err(sql)?;
+        conn.execute_batch(&format!(
+            "INSERT INTO bronze.usda_zip VALUES ('d', 'https://example.org/d.zip', '{}', 1);
+             INSERT INTO bronze.record VALUES ('nutrients.toml', 'synthetic');
+             CREATE TABLE bronze.usda_food_category (dataset VARCHAR, id VARCHAR, code VARCHAR, description VARCHAR);
+             INSERT INTO bronze.usda_food_category VALUES ('d', '1', '0100', 'Vegetables');
+             CREATE TABLE bronze.usda_food (dataset VARCHAR, fdc_id VARCHAR, data_type VARCHAR, description VARCHAR, food_category_id VARCHAR);
+             INSERT INTO bronze.usda_food VALUES
+               ('d', '1', 'sr_legacy_food', 'A', '1'), ('d', '2', 'foundation_food', 'B', '1'),
+               ('d', '3', 'sample_food', 'C', '1');
+             CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
+             INSERT INTO bronze.usda_nutrient VALUES
+               ('d', '1008', 'Energy', 'KCAL', '208'), ('d', '2048', 'Energy (Atwater)', 'KCAL', '958'),
+               ('d', '2000', 'Sugars, Total', 'G', '269'), ('d', '1063', 'Sugars, NLEA', 'G', '269.3'),
+               ('d', '1062', 'Energy', 'kJ', '268'), ('d', '1024', 'Specific Gravity', 'SP_GR', NULL);
+             CREATE TABLE bronze.usda_food_nutrient (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, nutrient_id VARCHAR, amount VARCHAR);
+             INSERT INTO bronze.usda_food_nutrient VALUES
+               ('d', '1', '1', '1008', '100'), ('d', '2', '1', '2048', '90'), ('d', '3', '2', '2048', '50'),
+               ('d', '4', '2', '1063', '7'), ('d', '5', '1', '2000', '3'), ('d', '6', '1', '2000', '3'),
+               ('d', '7', '2', '2000', '1'), ('d', '8', '2', '2000', '2'), ('d', '9', '1', '9999', '5'),
+               ('d', '10', '1', '1008', NULL), ('d', '11', '3', '1008', '1');",
+            "a".repeat(64)
+        ))
+        .map_err(sql)?;
+        load_silver(&conn, &Nutrients::parse(nutrients)?)?;
+        Ok(conn)
+    }
+
+    fn strings(conn: &Connection, query: &str) -> Vec<String> {
+        rows(conn, query, |r| r.get::<_, String>(0)).unwrap()
+    }
+
+    #[test]
+    fn silver_keeps_a_row_or_rejects_it_with_its_reason() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT source_id FROM silver.usda_food_nutrient ORDER BY CAST(source_id AS INTEGER)"
+            ),
+            ["1", "2", "3", "4", "5"]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT id || ': ' || reason FROM silver.usda_rejected ORDER BY CAST(id AS INTEGER)"
+            ),
+            [
+                "6: repeats row 5: same food, nutrient and amount",
+                "7: another row gives food 2 a different amount of nutrient 2000",
+                "8: another row gives food 2 a different amount of nutrient 2000",
+                "9: nutrient 9999 is not in its dataset's nutrient.csv",
+                "10: no amount",
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT description FROM silver.usda_food ORDER BY fdc_id"
+            ),
+            ["A", "B"]
+        );
+    }
+
+    #[test]
+    fn the_first_listed_code_with_a_value_is_used() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT fdc_id || ' ' || nutrient || ' ' || amount || ' ' || code FROM gold.food_nutrient ORDER BY fdc_id, nutrient"
+            ),
+            [
+                "1 energy 100.0 208",
+                "1 sugars 3.0 269",
+                "2 energy 50.0 958",
+                "2 sugars 7.0 269.3"
+            ]
+        );
+    }
+
+    /// 269.3 is not 269: with only 269 listed, food 2 (which has sugars by 269.3, and only
+    /// disagreeing rows by 269) has no sugars at all.
+    #[test]
+    fn codes_are_matched_exactly_not_rounded() {
+        let only_269 = SYNTHETIC_NUTRIENTS.replace("[\"269\", \"269.3\"]", "[\"269\"]");
+        let w = synthetic(&only_269).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT fdc_id || ' ' || code FROM gold.food_nutrient WHERE nutrient = 'sugars'"
+            ),
+            ["1 269"]
+        );
+    }
+
+    #[test]
+    fn a_nutrient_code_usda_does_not_have_is_refused() {
+        for code in ["2690", "269.30", "269.0"] {
+            let wrong = SYNTHETIC_NUTRIENTS.replace("\"269.3\"", &format!("\"{code}\""));
+            let Err(err) = synthetic(&wrong) else {
+                panic!("loaded");
+            };
+            assert!(
+                err.contains(&format!("code {code} is not in d's nutrient.csv")),
+                "{err}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_nutrient_whose_unit_differs_is_refused() {
+        let wrong = SYNTHETIC_NUTRIENTS.replace("unit = \"KCAL\"", "unit = \"kJ\"");
+        let Err(err) = synthetic(&wrong) else {
+            panic!("loaded");
+        };
+        assert!(
+            err.contains("energy's code 208 has unit KCAL in d, not kJ"),
+            "{err}"
+        );
+    }
+
+    /// Silver's keys refuse a second food with one fdc_id, a food in no category, an amount for a
+    /// nutrient its dataset lacks or a second amount for one food and nutrient, and one code in two
+    /// nutrients; the control rows beside each are accepted.
+    #[test]
+    fn the_database_refuses_what_silver_s_keys_refuse() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        let accepted = |sql: &str| {
+            w.execute_batch(&format!("BEGIN; {sql}; ROLLBACK;"))
+                .map_err(|e| {
+                    let _ = w.execute_batch("ROLLBACK");
+                    e.to_string()
+                })
+        };
+        let cases = [
+            (
+                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sr_legacy_food', 'X', 1)",
+                true,
+            ),
+            (
+                "INSERT INTO silver.usda_food VALUES (1, 'd', 'sr_legacy_food', 'X', 1)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sr_legacy_food', 'X', 7)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sample_food', 'X', 1)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.usda_food_nutrient VALUES (2, 'd', 1008, 1.0, 'x')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.usda_food_nutrient VALUES (2, 'd', 9999, 1.0, 'x')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.usda_food_nutrient VALUES (1, 'd', 1008, 1.0, 'x')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.nutrient_code VALUES ('energy', 3, '268')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.nutrient_code VALUES ('energy', 3, '269')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.usda_rejected VALUES ('t', 'd', 'x', ' ')",
+                false,
+            ),
+        ];
+        for (sql, ok) in cases {
+            assert_eq!(accepted(sql).is_ok(), ok, "{sql}: {:?}", accepted(sql));
+        }
+    }
+
     /// The warehouse, loaded once from the repo's records and the cached zips.
     fn warehouse() -> MutexGuard<'static, Connection> {
         static WAREHOUSE: OnceLock<Mutex<Connection>> = OnceLock::new();
@@ -511,6 +1026,123 @@ mod tests {
             );
             files = 0;
         }
+    }
+
+    #[test]
+    fn silver_holds_every_sr_legacy_and_foundation_food() {
+        let w = warehouse();
+        let expected = count(
+            &w,
+            "SELECT count(*) FROM bronze.usda_food WHERE data_type IN ('sr_legacy_food', 'foundation_food')",
+        );
+        assert!(expected >= 8000, "{expected}");
+        assert_eq!(count(&w, "SELECT count(*) FROM silver.usda_food"), expected);
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.usda_food s JOIN bronze.usda_food b \
+                 ON CAST(b.fdc_id AS INTEGER) = s.fdc_id AND b.dataset = s.dataset \
+                 AND b.description = s.description AND b.data_type = s.data_type"
+            ),
+            expected
+        );
+    }
+
+    /// Every food_nutrient row of a silver food is kept or rejected, never both and never neither.
+    #[test]
+    fn every_food_nutrient_row_in_scope_is_kept_or_rejected() {
+        let w = warehouse();
+        let in_scope = "SELECT dataset, id FROM bronze.usda_food_nutrient \
+                        WHERE CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food)";
+        let kept = "SELECT dataset, source_id FROM silver.usda_food_nutrient";
+        let rejected =
+            "SELECT dataset, id FROM silver.usda_rejected WHERE source = 'usda_food_nutrient'";
+        let n = |q: &str| count(&w, &format!("SELECT count(*) FROM ({q})"));
+        assert!(n(in_scope) >= 600_000);
+        assert_eq!(n(&format!("{kept} UNION ALL {rejected}")), n(in_scope));
+        assert_eq!(
+            n(&format!("{in_scope} EXCEPT ({kept} UNION {rejected})")),
+            0
+        );
+        assert_eq!(n(&format!("{kept} INTERSECT {rejected}")), 0);
+    }
+
+    /// A silver row names a dataset bronze.usda_zip holds, or a record bronze.record holds: the
+    /// link DuckDB will not hold as a foreign key across schemas.
+    #[test]
+    fn every_silver_row_traces_to_the_bytes_it_came_from() {
+        let w = warehouse();
+        for table in [
+            "usda_category",
+            "usda_food",
+            "usda_nutrient",
+            "usda_food_nutrient",
+            "usda_rejected",
+        ] {
+            let untraced = count(
+                &w,
+                &format!(
+                    "SELECT count(*) FROM silver.{table} WHERE dataset NOT IN (SELECT dataset FROM bronze.usda_zip)"
+                ),
+            );
+            assert_eq!(untraced, 0, "silver.{table}");
+        }
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.usda_food_nutrient s WHERE NOT EXISTS \
+                 (SELECT 1 FROM bronze.usda_food_nutrient b WHERE b.dataset = s.dataset AND b.id = s.source_id)"
+            ),
+            0
+        );
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.nutrient WHERE record NOT IN (SELECT path FROM bronze.record)"
+            ),
+            0
+        );
+        assert!(count(&w, "SELECT count(*) FROM silver.nutrient") >= 16);
+    }
+
+    #[test]
+    fn the_coverage_report_is_current() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let written = fs::read_to_string(repo_root().join(COVERAGE_PATH)).unwrap_or_default();
+        assert!(
+            written == coverage_report(&w, &sources).unwrap(),
+            "{COVERAGE_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- coverage`"
+        );
+    }
+
+    #[test]
+    fn the_catalogue_is_current() {
+        let w = warehouse();
+        let written = fs::read_to_string(repo_root().join(CATALOGUE_PATH)).unwrap_or_default();
+        assert!(
+            written == catalogue(&w).unwrap(),
+            "{CATALOGUE_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- catalogue`"
+        );
+    }
+
+    #[test]
+    fn every_table_and_view_says_what_it_is() {
+        let w = warehouse();
+        let silent = strings(
+            &w,
+            "SELECT schema_name || '.' || table_name FROM duckdb_tables() \
+             WHERE schema_name IN ('bronze', 'silver', 'gold') AND coalesce(trim(comment), '') = '' \
+             UNION ALL \
+             SELECT schema_name || '.' || view_name FROM duckdb_views() \
+             WHERE schema_name IN ('bronze', 'silver', 'gold') AND coalesce(trim(comment), '') = ''",
+        );
+        assert!(silent.is_empty(), "no comment: {silent:?}");
+        let described = count(
+            &w,
+            "SELECT count(*) FROM duckdb_tables() WHERE schema_name IN ('bronze', 'silver', 'gold')",
+        );
+        assert!(described >= 35, "{described}");
     }
 
     #[test]

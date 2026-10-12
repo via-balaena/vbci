@@ -2,10 +2,14 @@
 //!
 //! - `fetch`: puts each zip `sources.toml` pins into the cache, downloading the ones not there, and
 //!   refuses bytes that differ from their pin.
-//! - `load`: builds the warehouse and prints each bronze table's row count.
+//! - `load`: builds the warehouse and prints each table's row count.
+//! - `coverage`: writes `docs/coverage.md`, how many foods have a value for each nutrient.
+//! - `catalogue`: writes `docs/data-catalogue.md`, every table and view with its comment.
 
 use balaena_records::Sources;
-use balaena_warehouse::{cache_dir, load, repo_root, usda};
+use balaena_warehouse::{
+    CATALOGUE_PATH, COVERAGE_PATH, cache_dir, catalogue, coverage_report, load, repo_root, usda,
+};
 use std::process::ExitCode;
 
 fn run(command: &str) -> Result<(), String> {
@@ -22,7 +26,7 @@ fn run(command: &str) -> Result<(), String> {
             let conn = load(&root, &cache)?;
             let mut stmt = conn
                 .prepare(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'bronze' AND table_type = 'BASE TABLE' ORDER BY table_name",
+                    "SELECT table_schema || '.' || table_name FROM information_schema.tables WHERE table_schema IN ('bronze', 'silver') AND table_type = 'BASE TABLE' ORDER BY table_schema, table_name",
                 )
                 .map_err(|e| e.to_string())?;
             let tables: Vec<String> = stmt
@@ -32,14 +36,27 @@ fn run(command: &str) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
             for table in tables {
                 let rows: i64 = conn
-                    .query_row(&format!("SELECT count(*) FROM bronze.{table}"), [], |r| {
-                        r.get(0)
-                    })
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
                     .map_err(|e| e.to_string())?;
-                println!("bronze.{table}\t{rows}");
+                println!("{table}\t{rows}");
             }
         }
-        other => return Err(format!("unknown command {other:?}: fetch or load")),
+        "coverage" => {
+            let (sources, _) = Sources::load(&root)?;
+            let report = coverage_report(&load(&root, &cache)?, &sources)?;
+            std::fs::write(root.join(COVERAGE_PATH), report).map_err(|e| e.to_string())?;
+            println!("wrote {COVERAGE_PATH}");
+        }
+        "catalogue" => {
+            let text = catalogue(&load(&root, &cache)?)?;
+            std::fs::write(root.join(CATALOGUE_PATH), text).map_err(|e| e.to_string())?;
+            println!("wrote {CATALOGUE_PATH}");
+        }
+        other => {
+            return Err(format!(
+                "unknown command {other:?}: fetch, load, coverage or catalogue"
+            ));
+        }
     }
     Ok(())
 }
