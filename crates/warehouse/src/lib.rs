@@ -700,10 +700,11 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         conn.query_row(query, [], |r| r.get(0))
             .map_err(|e| format!("{query}: {e}"))
     };
-    let (ingredients, forms, candidates) = (
+    let (ingredients, forms, candidates, nutrients) = (
         count("SELECT count(*) FROM silver.ingredient")?,
         count("SELECT count(*) FROM silver.ingredient_form")?,
         count("SELECT count(*) FROM gold.alias_candidate")?,
+        count("SELECT count(*) FROM silver.nutrient")?,
     );
     let mut out = format!(
         "# Ingredients\n\n\
@@ -712,7 +713,7 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
          file differs from what that would write. Change the records, not this file.\n\n\
          {ingredients} ingredients, with {forms} forms. Each form is a state linked to one USDA food\n\
          (`gold.ingredient_form`); the first is the default, used when a recipe does not say. \"Of\n\
-         16\" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids\n\
+         {nutrients}\" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids\n\
          come from USDA's data, which gives them for Foundation foods only. {candidates} alias\n\
          candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no\n\
          ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n"
@@ -733,7 +734,7 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         )?;
         out.push_str(&format!(
             "\n## {name} (`{id}`)\n\nAliases: {}.\n\n\
-             | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |\n|---|---|---|---|---|---|---|\n",
+             | state | default | fdc_id | dataset | USDA's name | of {nutrients} | FoodOn |\n|---|---|---|---|---|---|---|\n",
             aliases.join(", ")
         ));
         let forms = rows(
@@ -1474,6 +1475,18 @@ codes = ["269", "269.3"]
                 "SELECT ingredient || ': ' || candidate || ' (' || source || ')' FROM gold.alias_candidate ORDER BY 1"
             ),
             ["a-food: plain a (SR Legacy common name)"]
+        );
+    }
+
+    /// The report counts the nutrients `nutrients.toml` lists rather than naming a number: the
+    /// synthetic warehouse lists two.
+    #[test]
+    fn the_ingredients_report_counts_the_nutrients_listed() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        let report = ingredients_report(&w).unwrap();
+        assert!(
+            report.contains("| of 2 |") && report.contains("\"Of\n2\" is how many"),
+            "{report}"
         );
     }
 

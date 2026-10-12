@@ -2,6 +2,10 @@
 //! aliases recipes may call it by, and one or more forms, each a state linked to one USDA food by
 //! its fdc_id and USDA's name for it. The first form is the default, used when a recipe does not
 //! say which state.
+//!
+//! An alias is another name for its ingredient's foods, not for a near one: a name USDA gives a food
+//! of its own, such as Foundation's "Spinach, baby" or "Oil, olive, extra virgin", belongs to an
+//! ingredient of its own. A review holds that, not a test.
 
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};

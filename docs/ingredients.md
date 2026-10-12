@@ -79,7 +79,7 @@ Aliases: brown lentils, green lentils, lentil, lentils.
 
 ## Olive oil (`olive-oil`)
 
-Aliases: evoo, extra virgin olive oil, olive oil.
+Aliases: olive oil.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -87,7 +87,7 @@ Aliases: evoo, extra virgin olive oil, olive oil.
 
 ## Onion (`onion`)
 
-Aliases: brown onion, onion, onions, white onion, yellow onion.
+Aliases: onion, onions.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -121,7 +121,7 @@ Aliases: masoor dal, pink lentils, red lentil, red lentils, split red lentils.
 
 ## Spinach (`spinach`)
 
-Aliases: baby spinach, spinach.
+Aliases: spinach.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|

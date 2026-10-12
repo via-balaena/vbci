@@ -1,5 +1,5 @@
 name = "Spinach"
-aliases = ["spinach", "baby spinach"]
+aliases = ["spinach"]
 
 [[form]]
 state = "raw"

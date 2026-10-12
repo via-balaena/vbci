@@ -1,5 +1,5 @@
 name = "Olive oil"
-aliases = ["olive oil", "extra virgin olive oil", "evoo"]
+aliases = ["olive oil"]
 
 [[form]]
 state = "as_sold"

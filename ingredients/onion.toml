@@ -1,5 +1,5 @@
 name = "Onion"
-aliases = ["onion", "onions", "yellow onion", "white onion", "brown onion"]
+aliases = ["onion", "onions"]
 
 [[form]]
 state = "raw"
