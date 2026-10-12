@@ -1,9 +1,10 @@
 //! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
 //! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
+pub mod portions;
 pub mod usda;
 
-use balaena_records::{Diet, Ingredients, Nutrients, Sources};
+use balaena_records::{CountUnits, Diet, Ingredients, Nutrients, Sources};
 use duckdb::{Connection, params};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -104,6 +105,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
     let diet = Diet::load(root)?;
     let ingredients = Ingredients::load(root)?;
+    let (counts, counts_text) = CountUnits::load(root)?;
     let conn = Connection::open_in_memory().map_err(sql)?;
     conn.execute_batch(SCHEMA).map_err(sql)?;
     let mut records = vec![
@@ -111,6 +113,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
         (Nutrients::PATH.to_string(), nutrients_text),
     ];
     records.extend(diet.files.iter().cloned());
+    records.push((CountUnits::PATH.to_string(), counts_text));
     records.extend(
         ingredients
             .ingredient
@@ -173,7 +176,86 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     load_silver(&conn, &nutrients)?;
     load_diet(&conn, &diet)?;
     load_ingredients(&conn, &ingredients)?;
+    load_portions(&conn, &counts)?;
     Ok(conn)
+}
+
+/// Loads USDA's portions of silver foods and the count units into silver, refusing a count unit's
+/// name cooklang knows; a portion whose amount or gram weight is not above 0 is rejected with its
+/// reason. Then reads each kept portion's unit from its text: one row per portion, with no unit
+/// where none is read.
+fn load_portions(conn: &Connection, counts: &CountUnits) -> Result<(), String> {
+    let converter = cooklang::convert::Converter::bundled();
+    portions::check_count_units(counts, &converter)?;
+    conn.execute_batch(
+        "INSERT INTO silver.usda_measure_unit
+         SELECT dataset, CAST(id AS INTEGER), name FROM bronze.usda_measure_unit;
+         CREATE TEMP TABLE portion_in_scope AS
+         SELECT p.dataset, p.id, CAST(p.fdc_id AS INTEGER) AS fdc_id,
+                CAST(p.amount AS DOUBLE) AS amount, CAST(p.measure_unit_id AS INTEGER) AS measure_unit_id,
+                p.modifier, CAST(p.gram_weight AS DOUBLE) AS gram_weight,
+                CASE WHEN m.name = 'undetermined' THEN coalesce(p.modifier, '') ELSE m.name END AS unit_text
+         FROM bronze.usda_food_portion p
+         LEFT JOIN bronze.usda_measure_unit m ON m.dataset = p.dataset AND m.id = p.measure_unit_id
+         WHERE CAST(p.fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);
+         INSERT INTO silver.usda_rejected
+         SELECT 'usda_food_portion', dataset, id,
+                concat_ws('; ', CASE WHEN amount <= 0 THEN 'amount is ' || amount || ', so no grams per unit' END,
+                                CASE WHEN gram_weight <= 0 THEN 'gram weight is ' || gram_weight END)
+         FROM portion_in_scope WHERE amount <= 0 OR gram_weight <= 0;
+         INSERT INTO silver.usda_portion
+         SELECT * FROM portion_in_scope WHERE amount > 0 AND gram_weight > 0;
+         DROP TABLE portion_in_scope;",
+    )
+    .map_err(|e| format!("silver.usda_portion: {e}"))?;
+    for u in &counts.unit {
+        conn.execute(
+            "INSERT INTO silver.count_unit VALUES (?, ?)",
+            params![u.key, CountUnits::PATH],
+        )
+        .map_err(|e| format!("{} {}: {e}", CountUnits::PATH, u.key))?;
+        for name in &u.names {
+            conn.execute(
+                "INSERT INTO silver.count_unit_name VALUES (?, ?)",
+                params![name, u.key],
+            )
+            .map_err(|e| format!("{} {name:?}: {e}", CountUnits::PATH))?;
+        }
+    }
+    let texts = rows(
+        conn,
+        "SELECT dataset, id, unit_text FROM silver.usda_portion ORDER BY dataset, id",
+        |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    conn.execute_batch("BEGIN").map_err(sql)?;
+    let mut insert = conn
+        .prepare("INSERT INTO silver.usda_portion_unit VALUES (?, ?, ?, ?, ?, ?)")
+        .map_err(sql)?;
+    for (dataset, id, text) in &texts {
+        let read = portions::portion_unit(text, &converter, counts);
+        let phrase = read
+            .as_ref()
+            .map(|u| u.phrase.clone())
+            .unwrap_or_else(|| portions::leading_phrase(text));
+        insert
+            .execute(params![
+                dataset,
+                id,
+                phrase,
+                read.as_ref().map(|u| u.kind),
+                read.as_ref().map(|u| u.unit.clone()),
+                read.as_ref().and_then(|u| u.per_unit)
+            ])
+            .map_err(|e| format!("silver.usda_portion_unit {dataset} {id}: {e}"))?;
+    }
+    conn.execute_batch("COMMIT").map_err(sql)?;
+    Ok(())
 }
 
 /// Loads the FoodOn ids and common names USDA's data gives foods, and the ingredients, into
@@ -583,7 +665,7 @@ pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, S
     )?;
     out.push_str(
         "\n## Rows silver rejected\n\n\
-         Nutrient rows of silver foods that silver did not keep (`silver.usda_rejected`).\n\n",
+         Rows of silver foods that silver did not keep (`silver.usda_rejected`).\n\n",
     );
     if rejected.is_empty() {
         out.push_str("None.\n");
@@ -771,6 +853,140 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         )?;
         if !found.is_empty() {
             out.push_str(&format!("\nAlias candidates: {}.\n", found.join("; ")));
+        }
+    }
+    Ok(out)
+}
+
+/// Where `portions` writes its report, relative to the repo root.
+pub const PORTIONS_PATH: &str = "docs/portions.md";
+
+/// `docs/portions.md`, as the warehouse writes it: how many portions' units are read as a mass,
+/// volume or count unit, every leading phrase no unit reads, and the mass portions whose gram
+/// weight disagrees with their unit.
+pub fn portions_report(conn: &Connection, sources: &Sources) -> Result<String, String> {
+    let count = |query: String| -> Result<i64, String> {
+        conn.query_row(&query, [], |r| r.get(0))
+            .map_err(|e| format!("{query}: {e}"))
+    };
+    let mut out = String::from(
+        "# Portions\n\n\
+         Generated by `cargo run -p balaena-warehouse -- portions` from the datasets `sources.toml`\n\
+         pins and `units/count.toml`; the test `the_portions_report_is_current` fails when this file\n\
+         differs from what that would write. Change the records, not this file.\n\n\
+         USDA's portions give the grams in an amount of a unit (`silver.usda_portion`). Each\n\
+         portion's unit is read from its text (`silver.usda_portion_unit`): the longest run of its\n\
+         leading phrase's first words that is a mass or volume unit cooklang knows, or a count unit\n\
+         `units/count.toml` lists. A portion no unit reads is listed below by its leading phrase,\n\
+         not guessed.\n",
+    );
+    for d in &sources.dataset {
+        let ds = literal(&d.id);
+        let all = count(format!(
+            "SELECT count(*) FROM silver.usda_portion WHERE dataset = {ds}"
+        ))?;
+        out.push_str(&format!(
+            "\n## {} {} (`{}`): {all} portions\n\n| unit read as | portions |\n|---|---|\n",
+            d.name, d.release, d.id
+        ));
+        for kind in ["mass", "volume", "count"] {
+            let n = count(format!(
+                "SELECT count(*) FROM silver.usda_portion_unit WHERE dataset = {ds} AND kind = {}",
+                literal(kind)
+            ))?;
+            out.push_str(&format!("| {kind} | {n} |\n"));
+        }
+        let unread = count(format!(
+            "SELECT count(*) FROM silver.usda_portion_unit WHERE dataset = {ds} AND kind IS NULL"
+        ))?;
+        out.push_str(&format!("| not read | {unread} |\n"));
+    }
+    out.push_str(
+        "\n## Count units\n\n\
+         Each count unit `units/count.toml` lists, and the portions it reads in each dataset. A\n\
+         count unit has no grams of its own: its grams for a food come from that food's portion in\n\
+         it.\n\n",
+    );
+    let datasets: Vec<&str> = sources.dataset.iter().map(|d| d.id.as_str()).collect();
+    out.push_str(&format!(
+        "| count unit | {} |\n|---|{}\n",
+        datasets.join(" | "),
+        "---|".repeat(datasets.len())
+    ));
+    let units = rows(
+        conn,
+        "SELECT unit FROM silver.count_unit ORDER BY unit",
+        |r| r.get::<_, String>(0),
+    )?;
+    for unit in units {
+        let mut cells = Vec::new();
+        for ds in &datasets {
+            cells.push(
+                count(format!(
+                    "SELECT count(*) FROM silver.usda_portion_unit WHERE dataset = {} AND kind = 'count' AND unit = {}",
+                    literal(ds),
+                    literal(&unit)
+                ))?
+                .to_string(),
+            );
+        }
+        out.push_str(&format!("| {unit} | {} |\n", cells.join(" | ")));
+    }
+    out.push_str(
+        "\n## Not read\n\n\
+         Every leading phrase whose portions no unit reads (`gold.portion_unread`), most portions\n\
+         first. A unit later in the text is not read as the portion's: \"serving 8 oz\" is a serving.\n\
+         A count unit added to `units/count.toml` reads the phrases that name it.\n\n\
+         | dataset | leading phrase | portions | example |\n|---|---|---|---|\n",
+    );
+    let unread = rows(
+        conn,
+        "SELECT dataset, phrase, portions, example FROM gold.portion_unread ORDER BY portions DESC, dataset, phrase",
+        |r| {
+            Ok(format!(
+                "| {} | {} | {} | {} |",
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, String>(3)?.replace('|', "\\|")
+            ))
+        },
+    )?;
+    for line in unread {
+        out.push_str(&line);
+        out.push('\n');
+    }
+    let disagree = rows(
+        conn,
+        "SELECT dataset, fdc_id, description, amount, unit, gram_weight, mass_ratio
+         FROM gold.portion_mass_disagreement ORDER BY abs(mass_ratio - 1) DESC, fdc_id, amount",
+        |r| {
+            Ok(format!(
+                "| {} | {} | {} | {} {} | {} | {:.3} |",
+                r.get::<_, String>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?.replace('|', "\\|"),
+                r.get::<_, f64>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, f64>(5)?,
+                r.get::<_, f64>(6)?
+            ))
+        },
+    )?;
+    out.push_str(&format!(
+        "\n## Mass portions that disagree with their unit\n\n\
+         {} portions in a mass unit whose gram weight differs from what the unit defines by more\n\
+         than 2% (`gold.portion_mass_disagreement`): a finding about USDA's data, kept as USDA gives\n\
+         it. The ratio is the portion's grams over the unit's.\n",
+        disagree.len()
+    ));
+    if !disagree.is_empty() {
+        out.push_str(
+            "\n| dataset | fdc_id | food | amount | grams | ratio |\n|---|---|---|---|---|---|\n",
+        );
+        for line in disagree {
+            out.push_str(&line);
+            out.push('\n');
         }
     }
     Ok(out)
@@ -1072,7 +1288,8 @@ codes = ["269", "269.3"]
     /// rows: 1-2 give food 1 energy by 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food
     /// 2 sugars by 269.3 only; 5 gives food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2
     /// different sugars by 269; 9 names a nutrient nutrient.csv lacks; 10 has no amount; 11 is the
-    /// sample food's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
+    /// sample food's. Portions: p1 to p4 and p7 are kept with their units read or not, p5 has amount
+    /// 0, p6 is the sample food's, and p7's grams are three times its ounce's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
     /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2, and exceptions
     /// override the rules matching foods 4 and 6, so each layer is seen over the one below it.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
@@ -1091,14 +1308,23 @@ codes = ["269", "269.3"]
         ),
     ];
 
+    /// Count units for the synthetic bronze.
+    const SYNTHETIC_COUNT_UNITS: &str = "[[unit]]\nkey = \"medium\"\nnames = [\"medium\"]\n";
+
     fn synthetic_with(nutrients: &str, diet: [&str; 4]) -> Result<Connection, String> {
-        synthetic_full(nutrients, diet, &SYNTHETIC_INGREDIENTS)
+        synthetic_full(
+            nutrients,
+            diet,
+            &SYNTHETIC_INGREDIENTS,
+            SYNTHETIC_COUNT_UNITS,
+        )
     }
 
     fn synthetic_full(
         nutrients: &str,
         diet: [&str; 4],
         ingredients: &[(&str, &str)],
+        counts: &str,
     ) -> Result<Connection, String> {
         let conn = Connection::open_in_memory().map_err(sql)?;
         conn.execute_batch(SCHEMA).map_err(sql)?;
@@ -1125,6 +1351,14 @@ codes = ["269", "269.3"]
                ('d', '5', '1', '1000', NULL, 'Ay, a-food, plain a'),
                ('d', '7', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826'),
                ('d', '8', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826');
+             CREATE TABLE bronze.usda_measure_unit (dataset VARCHAR, id VARCHAR, name VARCHAR);
+             INSERT INTO bronze.usda_measure_unit VALUES ('d', '9999', 'undetermined'), ('d', '1000', 'tablespoon');
+             CREATE TABLE bronze.usda_food_portion (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, amount VARCHAR, measure_unit_id VARCHAR, modifier VARCHAR, gram_weight VARCHAR);
+             INSERT INTO bronze.usda_food_portion VALUES
+               ('d', 'p1', '1', '1', '9999', 'cup, chopped', '160'), ('d', 'p2', '1', '2', '9999', 'oz', '57'),
+               ('d', 'p3', '5', '1', '9999', 'steak', '200'), ('d', 'p4', '6', '1', '1000', NULL, '14'),
+               ('d', 'p5', '1', '0', '9999', 'cup', '100'), ('d', 'p6', '3', '1', '9999', 'cup', '1'),
+               ('d', 'p7', '2', '1', '9999', 'oz', '86');
              CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
              INSERT INTO bronze.usda_nutrient VALUES
                ('d', '1008', 'Energy', 'KCAL', '208'), ('d', '2048', 'Energy (Atwater)', 'KCAL', '958'),
@@ -1146,7 +1380,82 @@ codes = ["269", "269.3"]
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
         load_ingredients(&conn, &Ingredients::parse(&files)?)?;
+        load_portions(&conn, &CountUnits::parse(counts)?)?;
         Ok(conn)
+    }
+
+    /// Portions of silver foods are kept with their unit read (p1 cup, p2 and p7 oz, p4 the
+    /// measure unit's "tablespoon") or listed as not read (p3 "steak"); one with amount 0 is
+    /// rejected (p5); the sample food's is out of scope (p6). Grams per unit, grams per millilitre,
+    /// and a mass unit's agreement with its definition follow: p7 disagrees, and is kept and listed.
+    #[test]
+    fn each_portion_s_unit_is_read_or_listed() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT id || ' ' || phrase || ' ' || coalesce(kind, '-') || ' ' || coalesce(unit, '-') FROM silver.usda_portion_unit ORDER BY id"
+            ),
+            [
+                "p1 cup volume c",
+                "p2 oz mass oz",
+                "p3 steak - -",
+                "p4 tablespoon volume tbsp",
+                "p7 oz mass oz"
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT id || ': ' || reason FROM silver.usda_rejected WHERE source = 'usda_food_portion'"
+            ),
+            ["p5: amount is 0.0, so no grams per unit"]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT id || ' ' || round(grams_per_unit, 3) || ' ' || coalesce(round(grams_per_ml, 3)::VARCHAR, '-') || ' ' || coalesce(round(mass_ratio, 3)::VARCHAR, '-') FROM gold.portion ORDER BY id"
+            ),
+            [
+                "p1 160.0 0.676 -",
+                "p2 28.5 - 1.005",
+                "p4 14.0 0.947 -",
+                "p7 86.0 - 3.034"
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT phrase || ' ' || portions FROM gold.portion_unread"
+            ),
+            ["steak 1"]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT id || ' ' || description FROM gold.portion_mass_disagreement"
+            ),
+            ["p7 B"]
+        );
+    }
+
+    /// A count unit cooklang knows as a mass or volume unit stops the load: "cup" must mean one
+    /// thing in a recipe and in USDA's text.
+    #[test]
+    fn the_load_refuses_a_count_unit_cooklang_knows() {
+        let clash = "[[unit]]\nkey = \"cup\"\nnames = [\"cups\"]\n";
+        let Err(err) = synthetic_full(
+            SYNTHETIC_NUTRIENTS,
+            SYNTHETIC_DIET,
+            &SYNTHETIC_INGREDIENTS,
+            clash,
+        ) else {
+            panic!("loaded a count unit named \"cups\"");
+        };
+        assert!(
+            err.contains("count unit cup's name \"cups\" is a unit cooklang knows"),
+            "{err}"
+        );
     }
 
     fn strings(conn: &Connection, query: &str) -> Vec<String> {
@@ -1166,7 +1475,7 @@ codes = ["269", "269.3"]
         assert_eq!(
             strings(
                 &w,
-                "SELECT id || ': ' || reason FROM silver.usda_rejected ORDER BY CAST(id AS INTEGER)"
+                "SELECT id || ': ' || reason FROM silver.usda_rejected WHERE source = 'usda_food_nutrient' ORDER BY CAST(id AS INTEGER)"
             ),
             [
                 "6: repeats row 5: same food, nutrient and amount",
@@ -1510,7 +1819,12 @@ codes = ["269", "269.3"]
         ];
         for (text, why) in cases {
             let files = [("a-food.toml", text.as_str()), SYNTHETIC_INGREDIENTS[1]];
-            let Err(err) = synthetic_full(SYNTHETIC_NUTRIENTS, SYNTHETIC_DIET, &files) else {
+            let Err(err) = synthetic_full(
+                SYNTHETIC_NUTRIENTS,
+                SYNTHETIC_DIET,
+                &files,
+                SYNTHETIC_COUNT_UNITS,
+            ) else {
                 panic!("loaded, though it should refuse: {why}");
             };
             assert!(err.contains(why), "{err:?} does not say {why:?}");
@@ -1756,6 +2070,14 @@ codes = ["269", "269.3"]
         assert_eq!(
             count(
                 &w,
+                "SELECT count(*) FROM silver.usda_portion s WHERE NOT EXISTS \
+                 (SELECT 1 FROM bronze.usda_food_portion b WHERE b.dataset = s.dataset AND b.id = s.id)"
+            ),
+            0
+        );
+        assert_eq!(
+            count(
+                &w,
                 "SELECT count(*) FROM silver.nutrient WHERE record NOT IN (SELECT path FROM bronze.record)"
             ),
             0
@@ -1767,6 +2089,7 @@ codes = ["269", "269.3"]
             "diet_rule",
             "diet_exception",
             "ingredient",
+            "count_unit",
         ] {
             let untraced = count(
                 &w,
@@ -1780,6 +2103,9 @@ codes = ["269", "269.3"]
             "usda_food_taxon",
             "usda_food_foodon",
             "usda_food_common_name",
+            "usda_measure_unit",
+            "usda_portion",
+            "usda_portion_unit",
         ] {
             let untraced = count(
                 &w,
@@ -1789,6 +2115,66 @@ codes = ["269", "269.3"]
             );
             assert_eq!(untraced, 0, "silver.{table}");
         }
+    }
+
+    /// The Done of plan step 7: every portion of a silver food is kept or rejected, and every kept
+    /// portion has its unit read or is listed in docs/portions.md by its leading phrase.
+    #[test]
+    fn every_portion_is_read_or_listed() {
+        let w = warehouse();
+        let in_scope = count(
+            &w,
+            "SELECT count(*) FROM bronze.usda_food_portion WHERE CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food)",
+        );
+        let kept = count(&w, "SELECT count(*) FROM silver.usda_portion");
+        let rejected = count(
+            &w,
+            "SELECT count(*) FROM silver.usda_rejected WHERE source = 'usda_food_portion'",
+        );
+        assert!(kept >= 14_000, "{kept}");
+        assert_eq!(kept + rejected, in_scope);
+        assert_eq!(
+            count(&w, "SELECT count(*) FROM silver.usda_portion_unit"),
+            kept
+        );
+        let read = count(
+            &w,
+            "SELECT count(*) FROM silver.usda_portion_unit WHERE kind IS NOT NULL",
+        );
+        let listed = count(
+            &w,
+            "SELECT coalesce(sum(portions), 0) FROM gold.portion_unread",
+        );
+        assert_eq!(read + listed, kept);
+    }
+
+    /// "fl oz" is a fluid ounce, a volume, not a portion in "fl" units.
+    #[test]
+    fn fluid_ounce_portions_are_read_as_volume() {
+        let w = warehouse();
+        let fl_oz = count(
+            &w,
+            "SELECT count(*) FROM silver.usda_portion WHERE starts_with(lower(unit_text), 'fl oz')",
+        );
+        assert!(fl_oz >= 400, "{fl_oz}");
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.usda_portion p JOIN silver.usda_portion_unit u USING (dataset, id) WHERE starts_with(lower(p.unit_text), 'fl oz') AND u.kind = 'volume' AND u.unit = 'fl oz'"
+            ),
+            fl_oz
+        );
+    }
+
+    #[test]
+    fn the_portions_report_is_current() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let written = fs::read_to_string(repo_root().join(PORTIONS_PATH)).unwrap_or_default();
+        assert!(
+            written == portions_report(&w, &sources).unwrap(),
+            "{PORTIONS_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- portions`"
+        );
     }
 
     #[test]

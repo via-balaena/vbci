@@ -53,9 +53,10 @@ first choice first (`gold.nutrient_source`). Every food counts, meat included.
 
 ## Rows silver rejected
 
-Nutrient rows of silver foods that silver did not keep (`silver.usda_rejected`).
+Rows of silver foods that silver did not keep (`silver.usda_rejected`).
 
 | dataset | bronze table | reason | rows |
 |---|---|---|---|
 | foundation | usda_food_nutrient | no amount; nutrient 2066 is not in its dataset's nutrient.csv | 33 |
 | foundation | usda_food_nutrient | repeats row 35089441: same food, nutrient and amount | 1 |
+| sr-legacy | usda_food_portion | amount is 0.0, so no grams per unit | 18 |

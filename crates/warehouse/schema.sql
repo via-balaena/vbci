@@ -2,7 +2,7 @@
 --
 --   bronze  every file exactly as read: the records, and every CSV in USDA's pinned zips, as text
 --   silver  typed rows with keys, foreign keys and checks; each names the dataset or record it came
---           from. A nutrient row of a silver food that silver does not keep is in
+--           from. A nutrient or portion row of a silver food that silver does not keep is in
 --           silver.usda_rejected with its reason; any other value that does not cast stops the load
 --   gold    views that answer questions; never stored, always derived
 --
@@ -106,7 +106,7 @@ CREATE TABLE silver.usda_rejected (
     reason  TEXT NOT NULL CHECK (trim(reason) <> ''),
     PRIMARY KEY (source, dataset, id)
 );
-COMMENT ON TABLE silver.usda_rejected IS 'Each nutrient row of a silver food that silver did not keep, and why: no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another.';
+COMMENT ON TABLE silver.usda_rejected IS 'Each nutrient or portion row of a silver food that silver did not keep, and why: for a nutrient row, no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another; for a portion, an amount or gram weight not above 0.';
 COMMENT ON COLUMN silver.usda_rejected.source IS 'The bronze table the row is in.';
 COMMENT ON COLUMN silver.usda_rejected.id IS 'The row''s id in that table, as written.';
 
@@ -214,6 +214,57 @@ CREATE TABLE silver.ingredient_form (
 );
 COMMENT ON TABLE silver.ingredient_form IS 'Each form of an ingredient: a state linked to one USDA food in the pinned release, with USDA''s name for it. Position 1 is the default.';
 
+CREATE TABLE silver.usda_measure_unit (
+    dataset TEXT NOT NULL,
+    id      INTEGER NOT NULL,
+    name    TEXT NOT NULL,
+    PRIMARY KEY (dataset, id)
+);
+COMMENT ON TABLE silver.usda_measure_unit IS 'Each measure unit of each dataset, from measure_unit.csv. SR Legacy''s portions all use 9999, "undetermined", and write their unit in modifier.';
+
+CREATE TABLE silver.usda_portion (
+    dataset         TEXT NOT NULL,
+    id              TEXT NOT NULL,
+    fdc_id          INTEGER NOT NULL REFERENCES silver.usda_food (fdc_id),
+    amount          DOUBLE NOT NULL CHECK (amount > 0),
+    measure_unit_id INTEGER NOT NULL,
+    modifier        TEXT,
+    gram_weight     DOUBLE NOT NULL CHECK (gram_weight > 0),
+    unit_text       TEXT NOT NULL,
+    PRIMARY KEY (dataset, id),
+    FOREIGN KEY (dataset, measure_unit_id) REFERENCES silver.usda_measure_unit (dataset, id)
+);
+COMMENT ON TABLE silver.usda_portion IS 'Each portion of a silver food, from food_portion.csv: amount units of it weigh gram_weight grams.';
+COMMENT ON COLUMN silver.usda_portion.unit_text IS 'The text its unit is read from: the measure unit''s name, or modifier where the unit is undetermined.';
+
+CREATE TABLE silver.count_unit (
+    unit   TEXT PRIMARY KEY,
+    record TEXT NOT NULL
+);
+COMMENT ON TABLE silver.count_unit IS 'Each count unit, from units/count.toml: a unit a recipe counts in, which no mass or volume unit converts.';
+
+CREATE TABLE silver.count_unit_name (
+    name TEXT PRIMARY KEY,
+    unit TEXT NOT NULL REFERENCES silver.count_unit (unit)
+);
+COMMENT ON TABLE silver.count_unit_name IS 'Each name a count unit may be written with.';
+
+CREATE TABLE silver.usda_portion_unit (
+    dataset  TEXT NOT NULL,
+    id       TEXT NOT NULL,
+    phrase   TEXT NOT NULL,
+    kind     TEXT CHECK (kind IN ('mass', 'volume', 'count')),
+    unit     TEXT,
+    per_unit DOUBLE CHECK (per_unit IS NULL OR per_unit > 0),
+    PRIMARY KEY (dataset, id),
+    FOREIGN KEY (dataset, id) REFERENCES silver.usda_portion (dataset, id),
+    CHECK ((kind IS NULL) = (unit IS NULL)),
+    CHECK ((kind IN ('mass', 'volume')) = (per_unit IS NOT NULL))
+);
+COMMENT ON TABLE silver.usda_portion_unit IS 'The unit each portion''s text is read as, by crates/warehouse (src/portions.rs) with cooklang''s bundled units and units/count.toml: one row for every portion, kind NULL where no unit is read.';
+COMMENT ON COLUMN silver.usda_portion_unit.phrase IS 'For a read unit, the words that named it; otherwise the text''s leading phrase, up to its first comma or parenthesis.';
+COMMENT ON COLUMN silver.usda_portion_unit.per_unit IS 'Grams in one mass unit, or millilitres in one volume unit, by cooklang''s units.';
+
 -- ---------------------------------------------------------------- gold
 
 CREATE SCHEMA gold;
@@ -318,3 +369,30 @@ FROM named
 WHERE candidate <> '' AND NOT starts_with(candidate, 'includes')
   AND candidate NOT IN (SELECT alias FROM silver.ingredient_alias);
 COMMENT ON VIEW gold.alias_candidate IS 'Names USDA''s data gives a linked food that no ingredient lists as an alias yet: unknown until a person reviews one into an ingredient''s aliases. From SR Legacy''s common names and from the parentheses in USDA''s names, less notes such as "Includes foods for ...".';
+
+CREATE VIEW gold.portion AS
+SELECT p.dataset, p.id, p.fdc_id, p.amount, u.unit, u.kind, p.gram_weight,
+       p.gram_weight / p.amount AS grams_per_unit,
+       CASE WHEN u.kind = 'volume' THEN p.gram_weight / (p.amount * u.per_unit) END AS grams_per_ml,
+       CASE WHEN u.kind = 'mass' THEN p.gram_weight / (p.amount * u.per_unit) END AS mass_ratio,
+       p.unit_text, p.modifier
+FROM silver.usda_portion p
+JOIN silver.usda_portion_unit u ON u.dataset = p.dataset AND u.id = p.id
+WHERE u.kind IS NOT NULL;
+COMMENT ON VIEW gold.portion IS 'Each portion whose unit is read: grams in one of its units, and for a volume unit the food''s grams per millilitre. A food may have several portions in one unit, told apart by their text and modifier ("cup, chopped" and "cup, sliced").';
+COMMENT ON COLUMN gold.portion.mass_ratio IS 'For a mass unit, the portion''s grams over what the unit defines: 1 where USDA''s gram weight agrees with the unit.';
+
+CREATE VIEW gold.portion_unread AS
+SELECT p.dataset, u.phrase, count(*) AS portions, min(p.unit_text) AS example
+FROM silver.usda_portion p
+JOIN silver.usda_portion_unit u ON u.dataset = p.dataset AND u.id = p.id
+WHERE u.kind IS NULL
+GROUP BY ALL;
+COMMENT ON VIEW gold.portion_unread IS 'The portions whose unit no mass, volume or count unit reads, by the leading phrase of their text.';
+
+CREATE VIEW gold.portion_mass_disagreement AS
+SELECT p.*, f.description
+FROM gold.portion p
+JOIN silver.usda_food f ON f.fdc_id = p.fdc_id
+WHERE p.kind = 'mass' AND abs(p.mass_ratio - 1) > 0.02;
+COMMENT ON VIEW gold.portion_mass_disagreement IS 'Portions in a mass unit whose gram weight differs from what the unit defines by more than 2%: a finding about USDA''s data, kept, not refused.';
