@@ -27,9 +27,10 @@ under those terms." This file is the notice for the paths above.
 
 ## What is not ours
 
-- **USDA FoodData Central** is not in the repo: `balaena fetch` downloads it (plan step 3), and
-  `sources.toml` will record each dataset's terms. data.gov's record for FoodData Central gives its
-  license as the U.S. Public Domain label, https://www.usa.gov/publicdomain/label/1.0/, with the
-  Agricultural Research Service as publisher (record modified 2025-11-21; read 2026-10-11).
+- **USDA FoodData Central** is not in the repo: `cargo run -p balaena-warehouse -- fetch`
+  downloads it into a cache. USDA publishes it under CC0 1.0 and asks to be listed as the source;
+  `sources.toml` quotes its terms and its suggested citation from
+  https://fdc.nal.usda.gov/api-guide.html (read 2026-10-11). data.gov's record for FoodData Central
+  gives the U.S. Public Domain label (record modified 2025-11-21; read 2026-10-11).
 - **Data under another license** (ODbL, CC BY, MIT, AGPL) comes into a CC0 record only with its
   holder's permission. `docs/prior-art.md` lists the sources weighed and their licenses.

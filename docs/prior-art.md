@@ -85,7 +85,7 @@ no paper from 2023 to 2026 released a set of ingredients matched to FDC foods.
 | source | what it is | license | what we take | source of this row |
 |---|---|---|---|---|
 | cooklang's bundled units | `units.toml`: mass and volume with their spellings, `fl oz` among them; no count units | MIT | step 7 | cooklang 0.19.0's source, scratch check |
-| USDA's organism attributes | Foundation's `food_attribute.csv` gives a food's source organism and its group, for 365 of the 2026-04-30 release's 469 foods: plants (NCBITaxon 35493), fungi (4751), animals (33208), or NA for mixed foods | public domain, by data.gov's record | step 5 | scratch check |
+| USDA's organism attributes | Foundation's `food_attribute.csv` gives a food's source organism and its group, for 365 of the 2026-04-30 release's 469 foods: plants (NCBITaxon 35493), fungi (4751), animals (33208), or NA for mixed foods | CC0, by USDA's API guide (quoted in `sources.toml`) | step 5 | scratch check |
 | diet-badges | a cook.md plugin: vegan, vegetarian and pescatarian badges from word lists, with look-alike exceptions such as "beef tomatoes" and "chicken of the woods" | MIT (its own `LICENSE`) | a reference for step 5's fixtures; its lists only with its notice | github.com/cook-md/plugins, **re-read** (license) |
 
 ## Farm and farm-to-table software

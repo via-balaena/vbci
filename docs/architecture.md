@@ -30,9 +30,18 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
 | The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
+| Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know`, for `sources.toml`, the only record so far |
+| `sources.toml` pins each dataset by its zip's sha256, as 64 lowercase hex digits, and its length; a dataset has an id no other has, names a publisher the record lists, and is fetched over https; a publisher's terms are quoted, with the day they were read. | `a_dataset_is_pinned_by_a_lowercase_sha256_and_a_length`, `dataset_ids_are_unique_and_plain`, `a_dataset_names_a_publisher_the_record_lists`, `a_dataset_and_its_terms_are_fetched_over_https`, `a_publisher_says_when_its_terms_were_read`, `the_sources_record_loads` |
+| A zip is used only as pinned: fetching refuses a download whose length or sha256 differs and writes nothing, refuses a cached zip that differs and leaves it as it is, and keeps a good zip in the cache under its sha256; loading refuses a cached zip that differs. | `bytes_that_differ_from_the_pin_are_refused`, `a_cached_zip_that_differs_from_its_pin_is_refused`, `a_good_download_is_cached_under_its_sha256`. The cache is `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `$HOME/.cache/vbci`: `the_cache_follows_the_environment`. |
+| Bronze holds `sources.toml` as read, every file in each pinned zip with its length and sha256, and every CSV in a zip row for row, all text; each bronze USDA row names the zip and the file it came from. A CSV whose name would not make a plain table name is refused, not renamed. | `the_sources_record_is_in_bronze_as_read`; `every_csv_in_the_pinned_zips_is_in_bronze_row_for_row`, which counts each CSV's records apart from DuckDB (`what_counts_as_a_csv_record`); `every_usda_row_traces_to_the_bytes_it_came_from`; `what_counts_as_a_csv_table` |
+| SR Legacy's bronze row counts equal USDA's own count of them, `all_downloaded_table_record_counts.csv`. | `the_sr_legacy_row_counts_equal_usda_s_own` |
+| Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
-The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`.
+The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`. The
+records' schemas are in `crates/records`, and the warehouse is `crates/warehouse`, with its layers
+in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fill it once with
+`cargo run -p balaena-warehouse -- fetch`, as the Quality Gate does before its tests.
 
 ## Plan
 
@@ -52,7 +61,7 @@ The tests that span crates live in `crates/repo`, a member of the workspace in `
 | layer | where | what it is |
 |---|---|---|
 | records | `sources.toml`, `nutrients.toml`, `ingredients/`, `diet/`, `units/`, `recipes/<name>.cook` | The system of record, reviewed by pull request. |
-| upstream | USDA's zips, fetched by `balaena fetch` into the user's cache, never committed | Pinned in `sources.toml` by sha256, with URL, release, license and citation. |
+| upstream | USDA's zips, fetched by `cargo run -p balaena-warehouse -- fetch` into the user's cache, never committed | Pinned in `sources.toml` by sha256 and length, with URL and release, and the publisher's license, quoted terms and citation. |
 | schemas and loaders | `crates/records` | Typed schemas that refuse a key they don't know. cooklang parses recipes here. |
 | warehouse | `crates/warehouse`, DuckDB, described in a generated `docs/data-catalogue.md` | Bronze holds every file as read, with its sha256; silver holds typed rows with keys; gold holds views that answer questions. It can be deleted at any time. |
 | export | one file generated from gold | What runtime readers load, stamped with the sha256s it came from. |
@@ -73,13 +82,14 @@ Each step is one pull request, done when its check passes.
    names what it reuses, `the_data_license_covers_every_records_path` and
    `license_cc0_is_the_cc0_legal_code`.
 3. **USDA data, pinned.** `sources.toml` names SR Legacy (2018-04) and Foundation (2026-04-30, the
-   newest release USDA lists) by sha256. `balaena fetch` refuses bytes whose sha256 differs: a URL
-   is not an identity (scratch check: the "2018-04" SR Legacy zip is served with a Last-Modified of
+   newest release USDA lists) by sha256 and length, with USDA's terms quoted from its API guide:
+   CC0. `cargo run -p balaena-warehouse -- fetch` refuses bytes whose sha256 differs: a URL is not
+   an identity (scratch check: the "2018-04" SR Legacy zip is served with a Last-Modified of
    2023-10-25). Bronze holds each CSV as read, all text, with its file's sha256; CI fetches through
-   a cache keyed by the sha256s. Done when mismatched bytes are refused, and SR Legacy's row counts
-   equal USDA's own `all_downloaded_table_record_counts.csv`. Whether GitHub's runners reach
-   fdc.nal.usda.gov is `unknown` until this step's first run; the fallback, a mirror on a GitHub
-   release, is a step on Jon's account. Reuses DuckDB's `read_csv`.
+   a cache. Reuses DuckDB's `read_csv`, ureq for https, the zip crate, and sha2. Done:
+   `bytes_that_differ_from_the_pin_are_refused`, `the_sr_legacy_row_counts_equal_usda_s_own`, and
+   the rules above. Whether GitHub's runners reach fdc.nal.usda.gov is seen in this step's first run
+   on GitHub.
 4. **USDA's tables in silver, and our nutrients.** Every SR Legacy and Foundation food (data types
    `sr_legacy_food` and `foundation_food`; the Foundation zip's sample and acquisition rows stay in
    bronze), meat included: choosing what a reader sees is gold's job, and "chicken stock" should
@@ -102,11 +112,10 @@ Each step is one pull request, done when its check passes.
 6. **Ingredient identity and aliases.** Our own ingredient ids in `ingredients/`, each linked per
    state (raw, cooked, canned, dry) to an fdc_id in the pinned release, with FoodOn ids and Wikidata
    ids as cross-references (scratch check: USDA's Foundation 2026-04-30 files give a FoodOn id for
-   365 of its 469 foods). Alias candidates come from sources free to reuse: SR Legacy's common names
-   (public domain, by data.gov's record), Wikidata and OpenCookbook (CC0); each is `unknown` until
-   reviewed. capycook's and open-tandoor-data's mappings come in only with their holders'
-   permission. Done when an alias naming no ingredient, or a link to a food outside the pinned
-   release, is refused.
+   365 of its 469 foods). Alias candidates come from sources free to reuse: SR Legacy's common
+   names, Wikidata and OpenCookbook, all CC0; each is `unknown` until reviewed. capycook's and
+   open-tandoor-data's mappings come in only with their holders' permission. Done when an alias
+   naming no ingredient, or a link to a food outside the pinned release, is refused.
 7. **Units and portions.** cooklang's bundled units for mass and volume, their spellings and
    `fl oz`, and count units (clove, bunch, head) as records in `units/`. cooklang 0.19.0 builds only
    with its `aisle` feature on (its `ingredient_list.rs` imports `aisle` whatever the features), so
@@ -142,5 +151,7 @@ what it rests on. The exact mapping is settled in steps 6 and 9.
 - The license of the Open Food Facts ingredients taxonomy: `unknown`.
 - How long DuckDB takes to build in this repo's CI: `unknown`. Tentzhen's workflow says a cold
   cache builds DuckDB in about 17 minutes, and gives the job 40.
+- USDA asks to be told about a product that uses FoodData Central's data (its terms, quoted in
+  `sources.toml`): a step on Jon's account, once VBCI ships one.
 - A crate published for others to depend on would pass its `=` pins on to them. How to pin one is
   decided if a crate is ever published.
