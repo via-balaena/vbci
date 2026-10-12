@@ -68,6 +68,11 @@ fn literal(s: &str) -> String {
 struct Scratch(PathBuf);
 
 impl Scratch {
+    /// The directory's name, from the process, the time and the process's count.
+    fn name(process: u32, nanos: u128, n: u64) -> String {
+        format!("balaena-warehouse-{process}-{nanos}-{n}")
+    }
+
     fn new() -> Result<Self, String> {
         static MADE: AtomicU64 = AtomicU64::new(0);
         let n = MADE.fetch_add(1, Ordering::Relaxed);
@@ -75,7 +80,7 @@ impl Scratch {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or_default();
-        let dir = env::temp_dir().join(format!("balaena-warehouse-{}-{nanos}-{n}", process::id()));
+        let dir = env::temp_dir().join(Self::name(process::id(), nanos, n));
         fs::create_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         Ok(Scratch(dir))
     }
@@ -171,9 +176,13 @@ mod tests {
         }
     }
 
+    /// Two scratch dirs made at the same clock reading get different names. Making 256 in a row on
+    /// one thread never collided even without the count, as each takes more than a microsecond;
+    /// the collision came from tests on parallel threads, so the name is checked, not the timing.
     #[test]
     fn scratch_dirs_made_together_are_distinct() {
-        let dirs: Vec<Scratch> = (0..256).map(|_| Scratch::new().unwrap()).collect();
+        assert_ne!(Scratch::name(7, 1_000, 0), Scratch::name(7, 1_000, 1));
+        let dirs: Vec<Scratch> = (0..64).map(|_| Scratch::new().unwrap()).collect();
         let names: std::collections::BTreeSet<_> = dirs.iter().map(|d| d.0.clone()).collect();
         assert_eq!(names.len(), dirs.len());
     }
