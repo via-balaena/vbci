@@ -23,8 +23,9 @@ jobs:
   gate:
     name: Quality Gate
     runs-on: ubuntu-24.04
-    # DuckDB builds from source on a cold cache. tentzhen's gate, which builds the same crate, says
-    # that takes about 17 minutes there, and allows 40.
+    # DuckDB builds from source when the cache lacks it: run 38190614286, the first to build it,
+    # took 1025 s, of which clippy 468 s and the fetch step (the warehouse's binary, then both
+    # downloads) 488 s. tentzhen's gate, which builds the same crate, allows 40 minutes.
     timeout-minutes: 40
     # The rules the gate's checks hold are listed in docs/architecture.md, "Rules".
     steps:

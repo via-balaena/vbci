@@ -88,8 +88,8 @@ Each step is one pull request, done when its check passes.
    2023-10-25). Bronze holds each CSV as read, all text, with its file's sha256; CI fetches through
    a cache. Reuses DuckDB's `read_csv`, ureq for https, the zip crate, and sha2. Done:
    `bytes_that_differ_from_the_pin_are_refused`, `the_sr_legacy_row_counts_equal_usda_s_own`, and
-   the rules above. Whether GitHub's runners reach fdc.nal.usda.gov is seen in this step's first run
-   on GitHub.
+   the rules above. GitHub's runners reach fdc.nal.usda.gov: this step's first run on GitHub (run
+   38190614286) downloaded both zips, as pinned, before its tests.
 4. **USDA's tables in silver, and our nutrients.** Every SR Legacy and Foundation food (data types
    `sr_legacy_food` and `foundation_food`; the Foundation zip's sample and acquisition rows stay in
    bronze), meat included: choosing what a reader sees is gold's job, and "chicken stock" should
@@ -149,8 +149,6 @@ what it rests on. The exact mapping is settled in steps 6 and 9.
 
 - Whether bare FoodOn ids may sit in CC0 records: `unknown`.
 - The license of the Open Food Facts ingredients taxonomy: `unknown`.
-- How long DuckDB takes to build in this repo's CI: `unknown`. Tentzhen's workflow says a cold
-  cache builds DuckDB in about 17 minutes, and gives the job 40.
 - USDA asks to be told about a product that uses FoodData Central's data (its terms, quoted in
   `sources.toml`): a step on Jon's account, once VBCI ships one.
 - A crate published for others to depend on would pass its `=` pins on to them. How to pin one is
