@@ -3,13 +3,15 @@
 //! from the export's tables, so a user's recipe is analysed as one of VBCI's records is.
 //!
 //! How sure each number is comes from how it was reached, never typed: each line says how its grams
-//! were reached, an amount the data does not pin to one number is the range of what it gives
-//! (decided with Jon, 2026-10-12), and each total says how many lines it covers.
+//! were reached, or why it has none; an amount the data does not pin to one number is the range of
+//! what it gives (decided with Jon, 2026-10-12); and each total says how many lines it covers.
 
 use crate::{Export, Table, Value};
 use cooklang::convert::PhysicalQuantity;
 use cooklang::metadata::Servings;
-use cooklang::{Converter, CooklangParser, Extensions, Quantity, Value as Amount};
+use cooklang::{
+    Converter, CooklangParser, Extensions, IngredientReferenceTarget, Quantity, Value as Amount,
+};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -189,7 +191,7 @@ pub fn check_record(text: &str) -> Result<(), String> {
     }
 }
 
-/// A cell's text, number or integer; none for null or another type.
+/// A cell's text; none for null or another type, as for `number` and `integer`.
 fn text(v: &Value) -> Option<&str> {
     match v {
         Value::String(s) => Some(s),
@@ -276,7 +278,7 @@ struct Kitchen {
 impl Kitchen {
     fn new(export: &Export) -> Result<Kitchen, String> {
         let bad =
-            |table: &str, n: usize| format!("the export's {table}: row {} is not as read", n + 1);
+            |table: &str, n: usize| format!("the export's {table}: row {} lacks a value", n + 1);
         let (t, [alias, ingredient]) =
             columns(export, "ingredient_alias", ["alias", "ingredient"])?;
         let mut aliases = BTreeMap::new();
@@ -413,12 +415,10 @@ impl Kitchen {
         )?;
         let mut portions = Vec::new();
         for (n, r) in t.rows.iter().enumerate() {
-            // A portion whose unit was not read has no kind; no line can use it.
-            let (Some(k), Some(u)) = (text(&r[kind]), text(&r[unit])) else {
-                continue;
-            };
-            let (Some(f), Some(g), Some(ut)) = (
+            let (Some(f), Some(k), Some(u), Some(g), Some(ut)) = (
                 integer(&r[fdc_id]),
+                text(&r[kind]),
+                text(&r[unit]),
                 number(&r[grams_per_unit]),
                 text(&r[unit_text]),
             ) else {
@@ -515,8 +515,14 @@ impl Kitchen {
         };
         let unit = q.unit().ok_or(NoGrams::NoUnit)?;
         // A unit is read as the warehouse reads a portion's (crates/warehouse, src/portions.rs):
-        // a mass or volume unit cooklang knows, by its first symbol, else a count unit's name.
-        if let Some(u) = self.converter.find_unit(unit) {
+        // lowercased with single spaces, a mass or volume unit cooklang knows, by its first symbol,
+        // else a count unit's name.
+        let name = unit
+            .to_lowercase()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if let Some(u) = self.converter.find_unit(&name) {
             let symbol = u.symbols.first().or(u.names.first()).map(|s| s.to_string());
             let symbol = symbol.unwrap_or_default();
             return match u.physical_quantity {
@@ -543,11 +549,6 @@ impl Kitchen {
                 _ => Err(NoGrams::Unit(unit.to_string())),
             };
         }
-        let name = unit
-            .to_lowercase()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
         let count = self
             .counts
             .get(&name)
@@ -630,7 +631,12 @@ pub fn analyze(text: &str, export: &Export) -> Result<Report, String> {
         if !ing.relation.is_definition() && ing.quantity.is_none() {
             continue;
         }
-        let note = ing.note.clone().unwrap_or_default();
+        // A reference is its definition's food, so it reads the definition's note.
+        let note = match ing.relation.references_to() {
+            Some((at, IngredientReferenceTarget::Ingredient)) => &recipe.ingredients[at].note,
+            _ => &ing.note,
+        };
+        let note = note.clone().unwrap_or_default();
         let (food, grams) = match kitchen.food(&ing.name, &note) {
             Ok(f) => {
                 let g = kitchen.grams(f.fdc_id, ing.quantity.as_ref(), &note);
@@ -775,9 +781,10 @@ impl Report {
              when this file differs from what that would write. Change the recipe or the records,\n\
              not this file.\n\n\
              How sure each number is comes from how it was reached: each line says how its grams\n\
-             were reached, an amount the data does not pin to one number is the range of what it\n\
-             gives, and each total says how many of the recipe's lines it covers. Grams and\n\
-             amounts are rounded to 0.1, and one above 0 that rounds to 0.0 is shown as <0.1.\n\n",
+             were reached, or why it has none; an amount the data does not pin to one number is\n\
+             the range of what it gives; and each total says how many of the recipe's lines it\n\
+             covers. Grams and amounts are rounded to 0.1, and one above 0 that rounds to 0.0 is\n\
+             shown as <0.1.\n\n",
             self.title.as_deref().unwrap_or(path)
         );
         let with_grams = self.lines.iter().filter(|l| l.grams.is_ok()).count();
@@ -785,7 +792,7 @@ impl Report {
             out.push_str(&format!("Serves {n}. "));
         }
         out.push_str(&format!(
-            "{} ingredient lines, {with_grams} with grams.\n\n## Diet\n\n\
+            "Ingredient lines: {}, with grams: {with_grams}.\n\n## Diet\n\n\
              Vegan is The Vegan Society's definition and vegetarian the Vegetarian Society's\n\
              criteria (`docs/architecture.md`, \"Decided\"). A recipe's answer is the weakest of\n\
              its lines': no if one is, else unknown if one is or a line has no food, else yes.\n\n\
@@ -1072,16 +1079,6 @@ mod tests {
                 Value::Null,
             ]);
         }
-        // A portion whose unit was not read.
-        portions.push(vec![
-            i(6),
-            Value::Null,
-            Value::Null,
-            n(30.0),
-            Value::Null,
-            s("serving"),
-            s("serving"),
-        ]);
         let portion = table(
             "portion",
             &[
@@ -1213,6 +1210,12 @@ mod tests {
             let l = line(src);
             assert_eq!((l.food, l.grams), (None, Err(why)), "{src}");
         };
+        let referred = report("@onion{1%medium}(cooked), then @&onion{1%medium}.").lines;
+        assert_eq!(
+            referred[1].food.as_ref().map(|f| f.state.as_str()),
+            Some("cooked"),
+            "a reference reads its definition's note"
+        );
         none("@salt{1%tsp}", NoGrams::NoIngredient);
         none("@onions{1%medium}", NoGrams::NoIngredient);
         none(
@@ -1254,6 +1257,11 @@ mod tests {
             grams("@garlic{1%tsp}"),
             Ok((one(2.8), How::Portions(texts(&["tsp"])))),
             "a volume portion in the line's unit"
+        );
+        assert_eq!(
+            grams("@garlic{1%Tsp}"),
+            Ok((one(2.8), How::Portions(texts(&["tsp"])))),
+            "a unit read lowercased, as a portion's is"
         );
         assert_eq!(
             grams("@onion{1%medium}"),
@@ -1386,7 +1394,10 @@ mod tests {
         let md =
             report("---\ntitle: Test\n---\n@salt{1%tsp} and @onion{1}(chopped).").markdown("x");
         assert!(md.starts_with("# Test\n"), "{md}");
-        assert!(md.contains("\n2 ingredient lines, 0 with grams.\n"), "{md}");
+        assert!(
+            md.contains("\nIngredient lines: 2, with grams: 0.\n"),
+            "{md}"
+        );
         assert!(
             md.contains("| nutrient | unit | total | lines it covers |\n"),
             "{md}"

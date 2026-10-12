@@ -407,7 +407,7 @@ mod tests {
 
     /// The fetch step runs the binary built by the cargo command that builds the tests, so the two
     /// share one build of DuckDB: built apart, by `cargo run` and `cargo test`, they differed in a
-    /// feature a dev-dependency turns on, and each built DuckDB. Text only: how many times DuckDB
+    /// feature a dev-dependency turned on, and each built DuckDB. Text only: how many times DuckDB
     /// builds is seen in a run's log.
     #[test]
     fn the_gate_fetches_with_the_binary_its_tests_were_built_with() {

@@ -6,11 +6,12 @@ when this file differs from what that would write. Change the recipe or the reco
 not this file.
 
 How sure each number is comes from how it was reached: each line says how its grams
-were reached, an amount the data does not pin to one number is the range of what it
-gives, and each total says how many of the recipe's lines it covers. Grams and
-amounts are rounded to 0.1, and one above 0 that rounds to 0.0 is shown as <0.1.
+were reached, or why it has none; an amount the data does not pin to one number is
+the range of what it gives; and each total says how many of the recipe's lines it
+covers. Grams and amounts are rounded to 0.1, and one above 0 that rounds to 0.0 is
+shown as <0.1.
 
-Serves 4. 8 ingredient lines, 8 with grams.
+Serves 4. Ingredient lines: 8, with grams: 8.
 
 ## Diet
 
