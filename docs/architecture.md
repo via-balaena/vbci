@@ -52,13 +52,18 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | `units/` holds `units/count.toml` and no other file: count units, each with a key no other has and the names it may be written with, lowercase with single spaces, each naming one unit. A count unit has no grams of its own. The load stops on a count unit's name that cooklang's bundled units know. | `the_units_folder_holds_count_toml_alone`, `a_count_unit_record_refuses_what_it_does_not_know`, `a_count_unit_is_found_by_its_names`, `a_count_unit_may_not_be_a_unit_cooklang_knows`, `the_load_refuses_a_count_unit_cooklang_knows` |
 | Every portion of a silver food is kept or rejected with its reason (an amount or gram weight not above 0), and each kept portion's unit is read from its text or listed in `docs/portions.md` by its leading phrase, never guessed. The text is its measure unit's name, or its modifier where its measure unit is "undetermined", as all of SR Legacy's are; its unit is the longest run of its leading phrase's first words that is a mass or volume unit cooklang's bundled units know, or a count unit. A unit later in the text is not the portion's. | `every_portion_is_read_or_listed`, `what_a_portion_s_unit_is_read_as`, `what_a_portion_s_unit_is_not_read_as`, `the_longest_run_that_names_a_unit_wins`, `fluid_ounce_portions_are_read_as_volume`, and on rows written for the purpose, `each_portion_s_unit_is_read_or_listed` |
 | A portion in a mass unit whose grams differ from what the unit defines by more than 2% is kept as USDA gives it and listed in `docs/portions.md`. | on rows written for the purpose, `each_portion_s_unit_is_read_or_listed` |
+| `export/datapackage.json` is what the warehouse writes: a Frictionless Data Package, version 2, of the gold views `EXPORTED` lists in `crates/warehouse/src/export.rs`, each a table resource with every column of its view, the view's and its columns' comments as descriptions, its rows inline as arrays, its columns' names first, then a row per line in primary-key order; and `_lineage`, the sha256 of each zip and record file the warehouse loaded. `crates/core` reads every value back equal to gold's. | `the_export_is_current`, `the_export_reads_back_as_gold`, and on views written for the purpose, `a_view_is_written_as_its_columns_names_then_a_row_per_line_in_key_order` and `a_column_of_a_type_the_export_does_not_write_is_refused`. That the file conforms to the version 2 profile was seen on 2026-10-12 with the profile's JSON Schema and with frictionless-py 5.20.0, which checked its rows, keys and foreign keys; that check is not in the repo. |
+| The export is licensed CC0-1.0 whole, and is not written while a publisher in `sources.toml` licenses its data otherwise. | `the_export_is_written_only_while_every_publisher_s_license_is_cc0` |
+| `crates/core` reads the export into typed tables, and refuses one that is not a version 2 Data Package with the keys it knows, a resource that is not a table or is listed twice, or rows that break what the descriptor says: a first row that is not the fields' names, a value that is neither of its field's type nor null, a primary key repeated or null, a foreign key whose values are not all present and found in the table it names, or one that refers to fields other than that table's primary key. | `an_export_is_a_v2_data_package_with_keys_it_knows`, `each_row_has_a_value_of_its_field_s_type_in_each_field`, `a_primary_key_is_unique_and_never_null`, `a_foreign_key_finds_its_row`, `the_export_loads` |
 | Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
+| Reading the export needs no database: `crates/core` depends on serde and serde_json alone. | `reading_the_export_needs_no_database` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`. The
 records' schemas are in `crates/records`, and the warehouse is `crates/warehouse`, with its layers
 in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fill it once with
-`cargo run -p balaena-warehouse -- fetch`, as the Quality Gate does before its tests.
+`cargo run -p balaena-warehouse -- fetch`, as the Quality Gate does before its tests. Readers share
+`crates/core`, which reads `export/datapackage.json`.
 
 ## Plan
 
@@ -91,7 +96,7 @@ in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fil
 | upstream | USDA's zips, fetched by `cargo run -p balaena-warehouse -- fetch` into the user's cache, never committed | Pinned in `sources.toml` by sha256 and length, with URL and release, and the publisher's license, quoted terms and citation. |
 | schemas and loaders | `crates/records` | Typed schemas that refuse a key they don't know. cooklang parses recipes here. |
 | warehouse | `crates/warehouse`, DuckDB, described in a generated `docs/data-catalogue.md` | Bronze holds every file as read, with its sha256; silver holds typed rows with keys; gold holds views that answer questions. It can be deleted at any time. |
-| export | one file generated from gold | What runtime readers load, stamped with the sha256s it came from. |
+| export | `export/datapackage.json`, generated from gold by `cargo run -p balaena-warehouse -- export` | What runtime readers load, stamped with the sha256s it came from. |
 | readers | `crates/core` (analysis), `crates/balaena` (the CLI), later the app | They read the export: a recipe a user writes is not a record, so it does not pass through the warehouse, and DuckDB never ships in the CLI. |
 
 ### Steps
@@ -180,8 +185,17 @@ Each step is one pull request, done when its check passes.
    silver food is kept or rejected, every kept portion's unit is read or listed in
    `docs/portions.md`, which counts them, and the report is current.
 8. **The export.** Gold written to one file that `crates/core` reads, with the sha256s it came from.
-   Done when a test holds it to what the warehouse writes. What it reuses for the file's format is
-   searched in this step.
+   The format reused is a Frictionless Data Package, version 2 (https://datapackage.org, read
+   2026-10-12): `export/datapackage.json` holds eight gold views, foods with their diet answers,
+   nutrients, amounts per 100 g, portions, count-unit names, ingredients, aliases and forms, each a
+   table resource with its rows inline, one per line, so a diff of the file reads row by row. The
+   sha256s are in `_lineage`, as the spec marks a property software writes with `_`; its own `hash`
+   is an MD5 unless prefixed with another algorithm's name, and names none for sha256. Passed over:
+   SQLite (binary diffs, and a C library in every reader), Parquet (binary, and the parquet crate in
+   every reader), and CSV files with a descriptor (several files where this step says one).
+   `crates/core` reads it with serde_json, which `Cargo.lock` already held. On 2026-10-12 the file
+   was about 9.0 MB, and 0.87 MB under gzip -9. Done, with the tests in the rules above: a test holds
+   it to what the warehouse writes, and `crates/core` reads every value back equal to gold's.
 9. **Analysis and recipe reports.** `crates/core` turns a recipe and the export into grams,
    nutrients and diet status. How sure each number is comes from how it was reached, never typed,
    and a total says how many lines had data. Done when the reports for `recipes/<name>.cook` are

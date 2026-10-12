@@ -22,3 +22,4 @@ at your option.
 
 The project's own data records, in the paths [DATA-LICENSE.md](DATA-LICENSE.md) lists, are
 dedicated to the public domain under CC0 1.0 Universal ([LICENSE-CC0](LICENSE-CC0)).
+So is the export, `export/datapackage.json`, generated from them and USDA's data.
