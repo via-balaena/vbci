@@ -8,7 +8,7 @@
 //! - `diet`: writes `docs/diet.md`, how many foods take each vegan and vegetarian answer, and why.
 //! - `ingredients`: writes `docs/ingredients.md`, each ingredient's aliases, forms and candidates.
 //! - `portions`: writes `docs/portions.md`, how USDA's portions' units are read.
-//! - `export`: writes `export/datapackage.json`, the gold views readers need, for crates/core.
+//! - `export`: writes `export/datapackage.json`, the gold views crates/core reads.
 
 use balaena_records::Sources;
 use balaena_warehouse::export::{EXPORT_PATH, export};

@@ -2236,6 +2236,8 @@ codes = ["269", "269.3"]
         use duckdb::types::Value as Cell;
         let w = warehouse();
         let (sources, _) = Sources::load(&repo_root()).unwrap();
+        assert_eq!(export::EXPORT_PATH, balaena_core::EXPORT_PATH);
+        assert_eq!(export::PROFILE, balaena_core::PROFILE);
         let read = Export::parse(&export::export(&w, &sources).unwrap()).unwrap();
         let names: Vec<&str> = read.tables.iter().map(|t| t.name.as_str()).collect();
         let views: Vec<&str> = export::EXPORTED.iter().map(|e| e.view).collect();

@@ -397,7 +397,7 @@ JOIN silver.usda_food f ON f.fdc_id = p.fdc_id
 WHERE p.kind = 'mass' AND abs(p.mass_ratio - 1) > 0.02;
 COMMENT ON VIEW gold.portion_mass_disagreement IS 'Portions in a mass unit whose gram weight differs from what the unit defines by more than 2%: a finding about USDA''s data, kept, not refused.';
 
--- The views below carry what readers need from the records, so the export reads gold alone.
+-- The views below bring the records' tables the export carries into gold, so it reads gold alone.
 
 CREATE VIEW gold.nutrient AS
 SELECT nutrient, position, name, unit FROM silver.nutrient;
