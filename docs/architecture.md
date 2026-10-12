@@ -31,7 +31,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | The Quality Gate's build cache (`target` and cargo's downloads) is saved and restored only under its exact key, a hash of `rust-toolchain.toml`, every `Cargo.toml`, `Cargo.lock` and the gate's workflow. | `the_build_cache_is_restored_only_by_its_exact_key`, on the workflow's text. What GitHub restores is seen in a run's log, not tested here. |
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
-| The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in `diet/`, `ingredients/` and `units/` is a record is held by each folder's load (`the_diet_folder_holds_its_four_records_and_no_other_file`, `an_ingredient_is_named_by_its_file`, `the_units_folder_holds_count_toml_alone`); that no record lies outside the listed paths is held by nothing (`unknown`). |
+| The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in `diet/`, `ingredients/`, `units/` and `recipes/` is a record is held by each folder's load (`the_diet_folder_holds_its_four_records_and_no_other_file`, `an_ingredient_is_named_by_its_file`, `the_units_folder_holds_count_toml_alone`, `a_recipe_record_parses_without_warnings`); that no record lies outside the listed paths is held by nothing (`unknown`). |
 | Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know`, `a_nutrient_record_refuses_a_key_it_does_not_know`, `a_diet_record_refuses_a_key_or_value_it_does_not_know`, `an_ingredient_file_refuses_a_key_or_value_it_does_not_know` and `a_count_unit_record_refuses_what_it_does_not_know`, for `sources.toml`, `nutrients.toml`, the four files of `diet/`, each file of `ingredients/` and `units/count.toml`, the records so far; and `an_export_is_a_v2_data_package_with_keys_it_knows`, for `export/datapackage.json` as `crates/core` reads it |
 | `sources.toml` pins each dataset by its zip's sha256, as 64 lowercase hex digits, and its length; a dataset has an id no other has, names a publisher the record lists, and is fetched over https; a publisher gives its terms, the https page they come from, and the day they were read. | `a_dataset_is_pinned_by_a_lowercase_sha256_and_a_length`, `dataset_ids_are_unique_and_plain`, `a_dataset_names_a_publisher_the_record_lists`, `a_dataset_and_its_terms_are_fetched_over_https`, `a_publisher_says_when_its_terms_were_read`, `the_sources_record_loads` |
 | A zip is used only as pinned: fetching refuses a download whose length or sha256 differs and writes nothing, refuses a cached zip that differs and leaves it as it is, and keeps a good zip in the cache under its sha256; loading refuses a cached zip that differs; extraction refuses a file whose path would climb out of its folder. | `bytes_that_differ_from_the_pin_are_refused`, `a_cached_zip_that_differs_from_its_pin_is_refused`, `a_good_download_is_cached_under_its_sha256`, `loading_refuses_a_cached_zip_that_differs`, `a_member_that_would_extract_outside_its_folder_is_refused`. A download is abandoned after 300 s (`DOWNLOAD_TIMEOUT`); nothing tests that, as it needs the network. The cache is `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `$HOME/.cache/vbci`: `the_cache_follows_the_environment`. |
@@ -57,8 +57,13 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | `export/datapackage.json` is what the warehouse writes: a Frictionless Data Package, version 2, of the gold views `EXPORTED` lists in `crates/warehouse/src/export.rs`, each a table resource with every column of its view, the view's and its columns' comments as descriptions, its rows inline as arrays, its columns' names first, then a row per line in primary-key order; and `_lineage`, the sha256 of each zip and record file the warehouse loaded. `crates/core` reads every value back equal to gold's. | `the_export_is_current`, `the_export_reads_back_as_gold`, and on views and text written for the purpose, `a_view_is_written_as_its_columns_names_then_a_row_per_line_in_key_order`, `the_rows_take_their_placeholder_s_place_a_step_past_its_line`, `a_column_of_a_type_the_export_does_not_write_is_refused` and `what_json_cannot_hold_or_gold_lacks_is_refused`. That the file conforms to the version 2 profile was seen on 2026-10-12 with the profile's JSON Schema and with frictionless-py 5.20.0, which checked its rows, keys and foreign keys; that check is not in the repo. |
 | The export is licensed CC0-1.0 whole, and is not written while a publisher in `sources.toml` licenses its data otherwise. | `the_export_is_written_only_while_every_publisher_s_license_is_cc0` |
 | `crates/core` reads the export into typed tables, and refuses one that is not a version 2 Data Package with the keys it knows, each once, a resource that is not a table or is listed twice, a field whose name another field of its resource has, or rows that break what the descriptor says: a first row that is not the fields' names, a value that is neither of its field's type nor null, a primary key repeated or null, a foreign key whose values are not all present and found in the table it names, or one that refers to fields other than that table's primary key. | `an_export_is_a_v2_data_package_with_keys_it_knows`, `each_row_has_a_value_of_its_field_s_type_in_each_field`, `a_primary_key_is_unique_and_never_null`, `a_foreign_key_finds_its_row`, `the_export_loads` |
+| A recipe line's food is the ingredient one of whose aliases is its name, lowercased with single spaces, in the form whose state its note names in whole words ("as sold" for `as_sold`), else in its default form. A name that is no alias, or a note naming a state the ingredient has no form in, or naming two, gives the line no food. The states a note can name are the records' own. | `a_line_s_food_is_its_alias_s_ingredient_in_the_note_s_state`, `a_note_names_the_states_the_records_have` |
+| A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units. A range amount gives a range. A line with no amount, an amount in text, no unit, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why` |
+| A nutrient's total is the sum, over the lines with grams whose food has a value for it, of the grams times the food's amount per 100 g, and says how many lines those are. | `a_total_says_how_many_lines_it_covers` |
+| A recipe's vegan and vegetarian answers are the weakest of its lines': no if one is, else unknown if one is or a line has no food, else yes; a recipe with no line is unknown. Each answer names the lines that decided it. | `a_recipe_s_diet_is_its_weakest_line_s` |
+| `recipes/` holds only `.cook` files, each parsing with no cooklang error or warning, with a title and a whole number of servings, 1 or more. Each has its report, `docs/recipes/<name>.md`, which is what `crates/core` writes from it and the export, and no report lacks its recipe. A report shows amounts to 0.1, a range by both its ends, and lists the lines without grams. | `a_recipe_record_parses_without_warnings`, `the_recipe_reports_are_current`, `amounts_are_shown_to_a_tenth_and_a_range_by_both_ends`, `a_report_lists_the_lines_without_grams` |
 | Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
-| Reading the export needs no database: `crates/core` depends on serde and serde_json alone. | `reading_the_export_needs_no_database` |
+| Reading the export and a recipe needs no database: `crates/core` depends on cooklang, serde and serde_json alone. | `reading_the_export_needs_no_database` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`. The
@@ -66,7 +71,7 @@ records' schemas are in `crates/records`, and the warehouse is `crates/warehouse
 in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fill it once with
 `cargo run -p balaena-warehouse -- fetch`. The Quality Gate fetches with the warehouse's binary
 from the build its tests use, before them. Readers share `crates/core`, which reads
-`export/datapackage.json`.
+`export/datapackage.json` and analyses a recipe against it.
 
 ## Plan
 
@@ -91,16 +96,24 @@ from the build its tests use, before them. Readers share `crates/core`, which re
    does not give is vegetarian: unknown. The cost: fewer answers are yes than under "no meat or
    fish".
 
+### Decided with Jon, 2026-10-12
+
+1. **A recipe line the data gives more than one weight shows the range.** When a food's USDA
+   portions in a line's unit disagree and its note does not choose among them (a cup of raw onion
+   is 160 g chopped and 115 g sliced), or its amount is a range (2-3 cloves), the report gives the
+   least and the greatest and carries both into the totals; it never picks one. The cost: totals
+   can be ranges.
+
 ### Layers
 
 | layer | where | what it is |
 |---|---|---|
 | records | `sources.toml`, `nutrients.toml`, `ingredients/`, `diet/`, `units/`, `recipes/<name>.cook` | The system of record, reviewed by pull request. |
 | upstream | USDA's zips, fetched by `cargo run -p balaena-warehouse -- fetch` into the user's cache, never committed | Pinned in `sources.toml` by sha256 and length, with URL and release, and the publisher's license, quoted terms and citation. |
-| schemas and loaders | `crates/records` | Typed schemas that refuse a key they don't know. cooklang parses recipes here. |
+| schemas and loaders | `crates/records` | Typed schemas that refuse a key they don't know. |
 | warehouse | `crates/warehouse`, DuckDB, described in a generated `docs/data-catalogue.md` | Bronze holds every file as read, with its sha256; silver holds typed rows with keys; gold holds views that answer questions. It can be deleted at any time. |
 | export | `export/datapackage.json`, generated from gold by `cargo run -p balaena-warehouse -- export` | What runtime readers load, stamped with the sha256s it came from. |
-| readers | `crates/core` (analysis), `crates/balaena` (the CLI), later the app | They read the export: a recipe a user writes is not a record, so it does not pass through the warehouse, and DuckDB never ships in the CLI. |
+| readers | `crates/core` (analysis), `crates/balaena` (the CLI), later the app | They read the export, and `crates/core` parses a recipe with cooklang: a recipe a user writes is not a record, so it does not pass through the warehouse, and VBCI's own recipes are analysed as a user's is. DuckDB never ships in the CLI. |
 
 ### Steps
 
@@ -200,10 +213,21 @@ Each step is one pull request, done when its check passes.
    the file was about 9.0 MB, and 0.87 MB under gzip -9. Done, with the tests in the rules above: a
    test holds it to what the warehouse writes, and `crates/core` reads every value back equal to
    gold's.
-9. **Analysis and recipe reports.** `crates/core` turns a recipe and the export into grams,
-   nutrients and diet status. How sure each number is comes from how it was reached, never typed,
-   and a total says how many lines had data. Done when the reports for `recipes/<name>.cook` are
-   generated and held current; the red lentil soup is the first. Reuses cooklang's parser.
+9. **Analysis and recipe reports.** `crates/core` analyses a recipe, a record's or a user's,
+   against the export (`src/recipe.rs`), with cooklang 0.19.0's parser and bundled units: each
+   ingredient line finds its ingredient by alias and its form by the state its note names; its
+   grams come from its unit's definition, from the food's USDA portions in its unit, or from grams
+   per millilitre in the food's other volume portions; and its nutrients and diet answers come
+   from the food. How sure each number is comes from how it was reached, never typed: each line
+   says how, an amount the data does not pin to one number is a range (decided above), and each
+   total says how many lines it covers. A line with no unit (`@onion{1}`) has no grams: weighing
+   one would need a record of which count units mean one whole item.
+   `cargo run -p balaena-warehouse -- recipes` writes `docs/recipes/<name>.md` for each
+   `recipes/<name>.cook`; the first is the red lentil soup of the 2026-10-11 draft, with its onion
+   as `{1%medium}`. Done, with the tests in the rules above: the soup's report is current. On
+   2026-10-12 it answered vegan no (parmesan) and vegetarian unknown (parmesan, by its naming
+   rule; vegetable broth, by its category), found the lentils dry and weighed the garlic by its
+   clove portions, as the draft expected.
 10. **The CLI:** `balaena analyze`, `balaena search` and `balaena info`, reading only the export.
     What it reuses for parsing arguments is searched in this step.
 
@@ -219,7 +243,9 @@ fish are ever an in-app product is decided then.
 Tentzhen's grades, where they apply: a USDA value is `trusted`, an entry per pinned dataset in a
 trusted base; a farm's own lab result is `measured`; a fuzzy match or a portion borrowed from
 another food is `unknown` until someone reviews it; a derived number takes the weakest grade of
-what it rests on. The exact mapping is settled in steps 6 and 9.
+what it rests on. Step 9's numbers rest only on USDA's values and the records, so each would be
+`trusted`: a report says how each was reached instead, and a grade column waits for a number that
+can rest on something else.
 
 ### Open
 

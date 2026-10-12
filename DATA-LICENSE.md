@@ -7,7 +7,7 @@ documentation are licensed under MIT OR Apache-2.0 (README, "License"). Decided 
 
 ## What is CC0
 
-The records, in these paths. `recipes/` arrives with step 9 of the plan.
+The records, in these paths.
 
 - `sources.toml`
 - `nutrients.toml`
