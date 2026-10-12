@@ -23,7 +23,9 @@ jobs:
   gate:
     name: Quality Gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # DuckDB builds from source on a cold cache. tentzhen's gate, which builds the same crate, says
+    # that takes about 17 minutes there, and allows 40.
+    timeout-minutes: 40
     # The rules the gate's checks hold are listed in docs/architecture.md, "Rules".
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,4 +44,13 @@ jobs:
           restore-keys: cargo-${{ runner.os }}-
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # The warehouse's tests read USDA's zips from the cache; fetching refuses bytes that differ
+      # from the sha256 sources.toml pins, so a cached zip is checked again on every run.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/vbci
+          key: usda-${{ hashFiles('sources.toml') }}
+          restore-keys: usda-
+      - name: Fetch the zips sources.toml pins
+        run: cargo run -q -p balaena-warehouse --locked -- fetch
       - run: cargo test --workspace --locked

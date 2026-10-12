@@ -1,0 +1,15 @@
+[package]
+name = "balaena-warehouse"
+version = "0.0.0"
+description = "VBCI's warehouse in DuckDB, rebuilt from the records and USDA's pinned zips on every load"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+balaena-records = { path = "../records" }
+duckdb = { version = "=1.10506.0", features = ["bundled"] }
+sha2 = "=0.11.0"
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
+zip = { version = "=9.0.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }

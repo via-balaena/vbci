@@ -6,3 +6,10 @@ members = ["crates/*"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/via-balaena/vbci"
+
+# ring is the TLS crypto under ureq, which downloads USDA's zips. Measured on 2026-10-11: a debug
+# build failed the download with "unexpected end of file" (after 258 s, and after 8 min 48 s), where
+# a release build took 3-4 s; with ring alone optimized in debug builds, three downloads took 9-20 s.
+# Why the optimization level matters here has not been isolated.
+[profile.dev.package.ring]
+opt-level = 3
