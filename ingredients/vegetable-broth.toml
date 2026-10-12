@@ -1,0 +1,7 @@
+name = "Vegetable broth"
+aliases = ["vegetable broth", "vegetable stock", "veggie broth", "veg stock"]
+
+[[form]]
+state = "as_sold"
+fdc_id = 171583
+description = "Soup, vegetable broth, ready to serve"

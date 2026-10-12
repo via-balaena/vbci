@@ -1,0 +1,22 @@
+name = "Spinach"
+aliases = ["spinach", "baby spinach"]
+
+[[form]]
+state = "raw"
+fdc_id = 168462
+description = "Spinach, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 168463
+description = "Spinach, cooked, boiled, drained, without salt"
+
+[[form]]
+state = "frozen"
+fdc_id = 169287
+description = "Spinach, frozen, chopped or leaf, unprepared (Includes foods for USDA's Food Distribution Program)"
+
+[[form]]
+state = "canned"
+fdc_id = 169286
+description = "Spinach, canned, regular pack, drained solids"

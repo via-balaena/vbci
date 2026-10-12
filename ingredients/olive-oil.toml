@@ -1,0 +1,7 @@
+name = "Olive oil"
+aliases = ["olive oil", "extra virgin olive oil", "evoo"]
+
+[[form]]
+state = "as_sold"
+fdc_id = 171413
+description = "Oil, olive, salad or cooking"

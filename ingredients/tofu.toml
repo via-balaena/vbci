@@ -1,0 +1,7 @@
+name = "Tofu"
+aliases = ["tofu", "firm tofu", "bean curd"]
+
+[[form]]
+state = "raw"
+fdc_id = 172475
+description = "Tofu, raw, firm, prepared with calcium sulfate"

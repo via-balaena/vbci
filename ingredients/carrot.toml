@@ -1,0 +1,22 @@
+name = "Carrot"
+aliases = ["carrot", "carrots"]
+
+[[form]]
+state = "raw"
+fdc_id = 170393
+description = "Carrots, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 170394
+description = "Carrots, cooked, boiled, drained, without salt"
+
+[[form]]
+state = "frozen"
+fdc_id = 169983
+description = "Carrots, frozen, unprepared (Includes foods for USDA's Food Distribution Program)"
+
+[[form]]
+state = "canned"
+fdc_id = 170396
+description = "Carrots, canned, regular pack, drained solids"

@@ -1,0 +1,7 @@
+name = "Parmesan"
+aliases = ["parmesan", "parmesan cheese", "parmigiano reggiano", "parmigiano-reggiano"]
+
+[[form]]
+state = "as_sold"
+fdc_id = 171247
+description = "Cheese, parmesan, grated"

@@ -1,0 +1,7 @@
+name = "Red lentils"
+aliases = ["red lentils", "red lentil", "pink lentils", "split red lentils", "masoor dal"]
+
+[[form]]
+state = "dry"
+fdc_id = 174284
+description = "Lentils, pink or red, raw"
