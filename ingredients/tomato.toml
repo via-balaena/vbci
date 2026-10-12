@@ -1,0 +1,17 @@
+name = "Tomato"
+aliases = ["tomato", "tomatoes"]
+
+[[form]]
+state = "raw"
+fdc_id = 170457
+description = "Tomatoes, red, ripe, raw, year round average"
+
+[[form]]
+state = "cooked"
+fdc_id = 170050
+description = "Tomatoes, red, ripe, cooked"
+
+[[form]]
+state = "canned"
+fdc_id = 170051
+description = "Tomatoes, red, ripe, canned, packed in tomato juice"

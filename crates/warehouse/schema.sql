@@ -173,6 +173,47 @@ CREATE TABLE silver.diet_exception (
 );
 COMMENT ON TABLE silver.diet_exception IS 'Each exception for one food, from diet/exceptions.toml, with the reason.';
 
+CREATE TABLE silver.usda_food_foodon (
+    fdc_id  INTEGER NOT NULL REFERENCES silver.usda_food (fdc_id),
+    dataset TEXT NOT NULL,
+    foodon  TEXT NOT NULL CHECK (regexp_full_match(foodon, 'FOODON_[0-9]+')),
+    PRIMARY KEY (fdc_id, foodon)
+);
+COMMENT ON TABLE silver.usda_food_foodon IS 'Each FoodOn id a food carries, from food_attribute.csv''s "FoodOn Ontology ID For FDC Item"; Foundation foods carry them, SR Legacy''s bulk files do not.';
+
+CREATE TABLE silver.usda_food_common_name (
+    fdc_id      INTEGER NOT NULL REFERENCES silver.usda_food (fdc_id),
+    dataset     TEXT NOT NULL,
+    common_name TEXT NOT NULL CHECK (trim(common_name) <> ''),
+    PRIMARY KEY (fdc_id, common_name)
+);
+COMMENT ON TABLE silver.usda_food_common_name IS 'Each "Common Name" attribute (type 1000) a food carries, as written: often several names, comma-separated, and sometimes a tag rather than a name.';
+
+CREATE TABLE silver.ingredient (
+    ingredient TEXT PRIMARY KEY CHECK (regexp_full_match(ingredient, '[a-z0-9]+(-[a-z0-9]+)*')),
+    name       TEXT NOT NULL CHECK (trim(name) <> ''),
+    wikidata   TEXT CHECK (wikidata IS NULL OR regexp_full_match(wikidata, 'Q[0-9]+')),
+    record     TEXT NOT NULL
+);
+COMMENT ON TABLE silver.ingredient IS 'Each of VBCI''s own ingredients, from ingredients/<id>.toml.';
+
+CREATE TABLE silver.ingredient_alias (
+    alias      TEXT PRIMARY KEY CHECK (alias <> '' AND alias = lower(alias) AND alias = trim(alias)),
+    ingredient TEXT NOT NULL REFERENCES silver.ingredient (ingredient)
+);
+COMMENT ON TABLE silver.ingredient_alias IS 'Each name a recipe may call an ingredient by; an alias names one ingredient.';
+
+CREATE TABLE silver.ingredient_form (
+    ingredient  TEXT NOT NULL REFERENCES silver.ingredient (ingredient),
+    state       TEXT NOT NULL CHECK (state IN ('raw', 'dry', 'cooked', 'canned', 'frozen', 'as_sold')),
+    position    INTEGER NOT NULL CHECK (position >= 1),
+    fdc_id      INTEGER NOT NULL REFERENCES silver.usda_food (fdc_id),
+    description TEXT NOT NULL,
+    PRIMARY KEY (ingredient, state),
+    UNIQUE (ingredient, position)
+);
+COMMENT ON TABLE silver.ingredient_form IS 'Each form of an ingredient: a state linked to one USDA food in the pinned release, with USDA''s name for it. Position 1 is the default.';
+
 -- ---------------------------------------------------------------- gold
 
 CREATE SCHEMA gold;
@@ -248,3 +289,32 @@ FROM layers;
 COMMENT ON VIEW gold.food_diet IS 'Each food''s vegan and vegetarian answers, yes, no or unknown, and what decided each: an exception, a naming rule, an animal organism, or the category''s class, the first that applies.';
 COMMENT ON COLUMN gold.food_diet.vegan IS 'By The Vegan Society''s definition: no product derived wholly or partly from animals.';
 COMMENT ON COLUMN gold.food_diet.vegetarian IS 'By the Vegetarian Society''s criteria: no meat or fish, and no slaughter by-product such as animal rennet, gelatine or carcass fat.';
+
+CREATE VIEW gold.ingredient_form AS
+SELECT f.ingredient, f.state, f.position = 1 AS is_default, f.fdc_id, u.dataset, u.description,
+       (SELECT string_agg(o.foodon, ', ' ORDER BY o.foodon)
+        FROM silver.usda_food_foodon o WHERE o.fdc_id = f.fdc_id) AS foodon,
+       (SELECT count(*) FROM gold.food_nutrient n WHERE n.fdc_id = f.fdc_id) AS nutrients
+FROM silver.ingredient_form f
+JOIN silver.usda_food u ON u.fdc_id = f.fdc_id;
+COMMENT ON VIEW gold.ingredient_form IS 'Each form of each ingredient, with its USDA food, whether it is the default, the FoodOn ids that food carries, and how many of the nutrients VBCI reports it has a value for.';
+COMMENT ON COLUMN gold.ingredient_form.foodon IS 'Derived, never typed: the FoodOn ids USDA''s data gives the linked food.';
+
+CREATE VIEW gold.alias_candidate AS
+WITH named AS (
+    SELECT f.ingredient, f.fdc_id, 'SR Legacy common name' AS source,
+           trim(lower(unnest(string_split(c.common_name, ',')))) AS candidate
+    FROM silver.ingredient_form f
+    JOIN silver.usda_food_common_name c ON c.fdc_id = f.fdc_id
+    UNION ALL
+    SELECT f.ingredient, f.fdc_id, 'USDA''s name, in parentheses',
+           trim(lower(unnest(string_split(p.part, ','))))
+    FROM silver.ingredient_form f
+    JOIN silver.usda_food u ON u.fdc_id = f.fdc_id,
+         unnest(regexp_extract_all(u.description, '\(([^)]*)\)', 1)) AS p(part)
+)
+SELECT DISTINCT ingredient, candidate, source, fdc_id
+FROM named
+WHERE candidate <> '' AND NOT starts_with(candidate, 'includes')
+  AND candidate NOT IN (SELECT alias FROM silver.ingredient_alias);
+COMMENT ON VIEW gold.alias_candidate IS 'Names USDA''s data gives a linked food that no ingredient lists as an alias yet: unknown until a person reviews one into an ingredient''s aliases. From SR Legacy''s common names and from the parentheses in USDA''s names, less notes such as "Includes foods for ...".';

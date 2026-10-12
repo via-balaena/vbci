@@ -1,0 +1,17 @@
+name = "Chickpeas"
+aliases = ["chickpeas", "chickpea", "garbanzo beans", "garbanzos"]
+
+[[form]]
+state = "dry"
+fdc_id = 173756
+description = "Chickpeas (garbanzo beans, bengal gram), mature seeds, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 173757
+description = "Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt"
+
+[[form]]
+state = "canned"
+fdc_id = 173800
+description = "Chickpeas (garbanzo beans, bengal gram), mature seeds, canned, drained solids"

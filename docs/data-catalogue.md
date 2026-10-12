@@ -360,6 +360,24 @@ A table. The group of each organism a Foundation food records, from diet/taxa.to
 
 Columns: `taxon` VARCHAR, `name` VARCHAR, `organism` VARCHAR, `record` VARCHAR.
 
+### silver.ingredient
+
+A table. Each of VBCI's own ingredients, from ingredients/<id>.toml.
+
+Columns: `ingredient` VARCHAR, `name` VARCHAR, `wikidata` VARCHAR, `record` VARCHAR.
+
+### silver.ingredient_alias
+
+A table. Each name a recipe may call an ingredient by; an alias names one ingredient.
+
+Columns: `alias` VARCHAR, `ingredient` VARCHAR.
+
+### silver.ingredient_form
+
+A table. Each form of an ingredient: a state linked to one USDA food in the pinned release, with USDA's name for it. Position 1 is the default.
+
+Columns: `ingredient` VARCHAR, `state` VARCHAR, `position` INTEGER, `fdc_id` INTEGER, `description` VARCHAR.
+
 ### silver.nutrient
 
 A table. Each nutrient VBCI reports, from nutrients.toml, in the record's order.
@@ -387,6 +405,18 @@ A table. Every SR Legacy and Foundation food, meat included, from food.csv. The 
 | fdc_id | INTEGER | USDA's FoodData Central id, unique across both datasets. |
 
 Other columns: `dataset` VARCHAR, `data_type` VARCHAR, `description` VARCHAR, `category_id` INTEGER.
+
+### silver.usda_food_common_name
+
+A table. Each "Common Name" attribute (type 1000) a food carries, as written: often several names, comma-separated, and sometimes a tag rather than a name.
+
+Columns: `fdc_id` INTEGER, `dataset` VARCHAR, `common_name` VARCHAR.
+
+### silver.usda_food_foodon
+
+A table. Each FoodOn id a food carries, from food_attribute.csv's "FoodOn Ontology ID For FDC Item"; Foundation foods carry them, SR Legacy's bulk files do not.
+
+Columns: `fdc_id` INTEGER, `dataset` VARCHAR, `foodon` VARCHAR.
 
 ### silver.usda_food_nutrient
 
@@ -427,6 +457,12 @@ Other columns: `dataset` VARCHAR, `reason` VARCHAR.
 
 ## gold
 
+### gold.alias_candidate
+
+A view. Names USDA's data gives a linked food that no ingredient lists as an alias yet: unknown until a person reviews one into an ingredient's aliases. From SR Legacy's common names and from the parentheses in USDA's names, less notes such as "Includes foods for ...".
+
+Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` INTEGER.
+
 ### gold.food_diet
 
 A view. Each food's vegan and vegetarian answers, yes, no or unknown, and what decided each: an exception, a naming rule, an animal organism, or the category's class, the first that applies.
@@ -447,6 +483,16 @@ A view. Each food's amount of each nutrient VBCI reports, per 100 g: from the fi
 | code | VARCHAR | The USDA nutrient_nbr the amount came from. |
 
 Other columns: `fdc_id` INTEGER, `dataset` VARCHAR, `nutrient` VARCHAR, `amount` DOUBLE, `unit` VARCHAR.
+
+### gold.ingredient_form
+
+A view. Each form of each ingredient, with its USDA food, whether it is the default, the FoodOn ids that food carries, and how many of the nutrients VBCI reports it has a value for.
+
+| column | type | what it is |
+|---|---|---|
+| foodon | VARCHAR | Derived, never typed: the FoodOn ids USDA's data gives the linked food. |
+
+Other columns: `ingredient` VARCHAR, `state` VARCHAR, `is_default` BOOLEAN, `fdc_id` INTEGER, `dataset` VARCHAR, `description` VARCHAR, `nutrients` BIGINT.
 
 ### gold.nutrient_coverage
 

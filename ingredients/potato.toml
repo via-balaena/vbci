@@ -1,0 +1,12 @@
+name = "Potato"
+aliases = ["potato", "potatoes"]
+
+[[form]]
+state = "raw"
+fdc_id = 170028
+description = "Potatoes, white, flesh and skin, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 170440
+description = "Potatoes, boiled, cooked without skin, flesh, without salt"

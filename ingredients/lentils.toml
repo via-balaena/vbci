@@ -1,0 +1,12 @@
+name = "Lentils"
+aliases = ["lentils", "lentil", "brown lentils", "green lentils"]
+
+[[form]]
+state = "dry"
+fdc_id = 172420
+description = "Lentils, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 172421
+description = "Lentils, mature seeds, cooked, boiled, without salt"

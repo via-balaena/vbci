@@ -1,0 +1,12 @@
+name = "Lemon juice"
+aliases = ["lemon juice", "fresh lemon juice"]
+
+[[form]]
+state = "raw"
+fdc_id = 167747
+description = "Lemon juice, raw"
+
+[[form]]
+state = "canned"
+fdc_id = 167748
+description = "Lemon juice from concentrate, canned or bottled"

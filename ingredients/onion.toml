@@ -1,0 +1,12 @@
+name = "Onion"
+aliases = ["onion", "onions"]
+
+[[form]]
+state = "raw"
+fdc_id = 170000
+description = "Onions, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 170001
+description = "Onions, cooked, boiled, drained, without salt"

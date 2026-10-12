@@ -1,0 +1,7 @@
+name = "Cumin"
+aliases = ["cumin", "ground cumin", "cumin seed", "cumin seeds"]
+
+[[form]]
+state = "dry"
+fdc_id = 170923
+description = "Spices, cumin seed"

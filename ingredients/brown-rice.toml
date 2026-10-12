@@ -1,0 +1,12 @@
+name = "Brown rice"
+aliases = ["brown rice"]
+
+[[form]]
+state = "dry"
+fdc_id = 169703
+description = "Rice, brown, long-grain, raw (Includes foods for USDA's Food Distribution Program)"
+
+[[form]]
+state = "cooked"
+fdc_id = 169704
+description = "Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)"

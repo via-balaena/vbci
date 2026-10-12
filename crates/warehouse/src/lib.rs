@@ -3,7 +3,7 @@
 
 pub mod usda;
 
-use balaena_records::{Diet, Nutrients, Sources};
+use balaena_records::{Diet, Ingredients, Nutrients, Sources};
 use duckdb::{Connection, params};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -103,6 +103,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (sources, sources_text) = Sources::load(root)?;
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
     let diet = Diet::load(root)?;
+    let ingredients = Ingredients::load(root)?;
     let conn = Connection::open_in_memory().map_err(sql)?;
     conn.execute_batch(SCHEMA).map_err(sql)?;
     let mut records = vec![
@@ -110,6 +111,12 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
         (Nutrients::PATH.to_string(), nutrients_text),
     ];
     records.extend(diet.files.iter().cloned());
+    records.extend(
+        ingredients
+            .ingredient
+            .iter()
+            .map(|i| (i.path.clone(), i.text.clone())),
+    );
     for (path, text) in &records {
         conn.execute(
             "INSERT INTO bronze.record VALUES (?, ?)",
@@ -165,7 +172,65 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     }
     load_silver(&conn, &nutrients)?;
     load_diet(&conn, &diet)?;
+    load_ingredients(&conn, &ingredients)?;
     Ok(conn)
+}
+
+/// Loads the FoodOn ids and common names USDA's data gives foods, and the ingredients, into
+/// silver; then refuses a form whose name is not USDA's. A form linked to a food silver lacks, or
+/// an alias two ingredients claim, the keys refuse.
+fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), String> {
+    conn.execute_batch(
+        "INSERT INTO silver.usda_food_foodon
+         SELECT DISTINCT CAST(fdc_id AS INTEGER), dataset,
+                replace(value, 'http://purl.obolibrary.org/obo/', '')
+         FROM bronze.usda_food_attribute
+         WHERE name = 'FoodOn Ontology ID For FDC Item' AND value <> 'NA'
+           AND CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);
+         INSERT INTO silver.usda_food_common_name
+         SELECT DISTINCT CAST(fdc_id AS INTEGER), dataset, value
+         FROM bronze.usda_food_attribute
+         WHERE food_attribute_type_id = '1000' AND trim(coalesce(value, '')) <> ''
+           AND CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);",
+    )
+    .map_err(|e| format!("silver.usda_food_foodon or usda_food_common_name: {e}"))?;
+    for i in &ingredients.ingredient {
+        conn.execute(
+            "INSERT INTO silver.ingredient VALUES (?, ?, ?, ?)",
+            params![i.id, i.name, i.wikidata, i.path],
+        )
+        .map_err(|e| format!("{}: {e}", i.path))?;
+        for alias in &i.aliases {
+            conn.execute(
+                "INSERT INTO silver.ingredient_alias VALUES (?, ?)",
+                params![alias, i.id],
+            )
+            .map_err(|e| format!("{} alias {alias:?}: {e}", i.path))?;
+        }
+        for (position, form) in i.forms.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO silver.ingredient_form VALUES (?, ?, ?, ?, ?)",
+                params![
+                    i.id,
+                    form.state.as_str(),
+                    position as i64 + 1,
+                    form.fdc_id,
+                    form.description
+                ],
+            )
+            .map_err(|e| format!("{} {} {}: {e}", i.path, form.state.as_str(), form.fdc_id))?;
+        }
+    }
+    refuse_any(
+        conn,
+        "SELECT i.record || ': food ' || f.fdc_id || ' is ' || u.description
+                || ' in USDA''s data, not ' || f.description
+         FROM silver.ingredient_form f
+         JOIN silver.ingredient i USING (ingredient)
+         JOIN silver.usda_food u USING (fdc_id)
+         WHERE f.description <> u.description
+         ORDER BY 1",
+    )
 }
 
 /// The first row of `query`, which names what is wrong, as an error; Ok when there is none.
@@ -625,6 +690,92 @@ pub fn diet_report(conn: &Connection, sources: &Sources) -> Result<String, Strin
     Ok(out)
 }
 
+/// Where `ingredients` writes its report, relative to the repo root.
+pub const INGREDIENTS_PATH: &str = "docs/ingredients.md";
+
+/// `docs/ingredients.md`, as the warehouse writes it: each ingredient with its aliases and forms,
+/// and the alias candidates USDA's data gives its foods.
+pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
+    let count = |query: &str| -> Result<i64, String> {
+        conn.query_row(query, [], |r| r.get(0))
+            .map_err(|e| format!("{query}: {e}"))
+    };
+    let (ingredients, forms, candidates, nutrients) = (
+        count("SELECT count(*) FROM silver.ingredient")?,
+        count("SELECT count(*) FROM silver.ingredient_form")?,
+        count("SELECT count(*) FROM gold.alias_candidate")?,
+        count("SELECT count(*) FROM silver.nutrient")?,
+    );
+    let mut out = format!(
+        "# Ingredients\n\n\
+         Generated by `cargo run -p balaena-warehouse -- ingredients` from `ingredients/` and the\n\
+         datasets `sources.toml` pins; the test `the_ingredients_report_is_current` fails when this\n\
+         file differs from what that would write. Change the records, not this file.\n\n\
+         {ingredients} ingredients, with {forms} forms. Each form is a state linked to one USDA food\n\
+         (`gold.ingredient_form`); the first is the default, used when a recipe does not say. \"Of\n\
+         {nutrients}\" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids\n\
+         come from USDA's data, which gives them for Foundation foods only. {candidates} alias\n\
+         candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no\n\
+         ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n"
+    );
+    let ids = rows(
+        conn,
+        "SELECT ingredient, name FROM silver.ingredient ORDER BY ingredient",
+        |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+    )?;
+    for (id, name) in ids {
+        let i = literal(&id);
+        let aliases = rows(
+            conn,
+            &format!(
+                "SELECT alias FROM silver.ingredient_alias WHERE ingredient = {i} ORDER BY alias"
+            ),
+            |r| r.get::<_, String>(0),
+        )?;
+        out.push_str(&format!(
+            "\n## {name} (`{id}`)\n\nAliases: {}.\n\n\
+             | state | default | fdc_id | dataset | USDA's name | of {nutrients} | FoodOn |\n|---|---|---|---|---|---|---|\n",
+            aliases.join(", ")
+        ));
+        let forms = rows(
+            conn,
+            &format!(
+                "SELECT f.state, f.is_default, f.fdc_id, f.dataset, f.description, f.nutrients, coalesce(f.foodon, '-')
+                 FROM gold.ingredient_form f JOIN silver.ingredient_form s USING (ingredient, state)
+                 WHERE f.ingredient = {i} ORDER BY s.position"
+            ),
+            |r| {
+                Ok(format!(
+                    "| {} | {} | {} | {} | {} | {} | {} |",
+                    r.get::<_, String>(0)?,
+                    if r.get::<_, bool>(1)? { "yes" } else { "" },
+                    r.get::<_, i64>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, i64>(5)?,
+                    r.get::<_, String>(6)?
+                ))
+            },
+        )?;
+        for line in forms {
+            out.push_str(&line);
+            out.push('\n');
+        }
+        let found = rows(
+            conn,
+            &format!(
+                "SELECT candidate || ' (' || source || ', ' || fdc_id || ')' FROM gold.alias_candidate
+                 WHERE ingredient = {i} ORDER BY candidate, source, fdc_id"
+            ),
+            |r| r.get::<_, String>(0),
+        )?;
+        if !found.is_empty() {
+            out.push_str(&format!("\nAlias candidates: {}.\n", found.join("; ")));
+        }
+    }
+    Ok(out)
+}
+
 /// `docs/data-catalogue.md`, as the warehouse writes it: every table and view, layer by layer, with
 /// the comment it carries and its columns.
 pub fn catalogue(conn: &Connection) -> Result<String, String> {
@@ -928,7 +1079,27 @@ codes = ["269", "269.3"]
         synthetic_with(nutrients, SYNTHETIC_DIET)
     }
 
+    /// Ingredients for the synthetic bronze, as (file name, text).
+    const SYNTHETIC_INGREDIENTS: [(&str, &str); 2] = [
+        (
+            "a-food.toml",
+            "name = \"A\"\naliases = [\"a-food\", \"ay\"]\n\n[[form]]\nstate = \"raw\"\nfdc_id = 1\ndescription = \"A\"\n",
+        ),
+        (
+            "olive-oil.toml",
+            "name = \"Olive oil\"\naliases = [\"olive oil\"]\n\n[[form]]\nstate = \"as_sold\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n",
+        ),
+    ];
+
     fn synthetic_with(nutrients: &str, diet: [&str; 4]) -> Result<Connection, String> {
+        synthetic_full(nutrients, diet, &SYNTHETIC_INGREDIENTS)
+    }
+
+    fn synthetic_full(
+        nutrients: &str,
+        diet: [&str; 4],
+        ingredients: &[(&str, &str)],
+    ) -> Result<Connection, String> {
         let conn = Connection::open_in_memory().map_err(sql)?;
         conn.execute_batch(SCHEMA).map_err(sql)?;
         conn.execute_batch(&format!(
@@ -944,13 +1115,16 @@ codes = ["269", "269.3"]
                ('d', '5', 'sr_legacy_food', 'Chicken, raw', '3'), ('d', '6', 'foundation_food', 'Oil, olive', '4'),
                ('d', '7', 'sr_legacy_food', 'Lard', '4'), ('d', '8', 'sr_legacy_food', 'Potatoes, mashed, with milk', '1'),
                ('d', '9', 'sr_legacy_food', 'Cheese sauce', '4'), ('d', '10', 'foundation_food', 'D', '1');
-             CREATE TABLE bronze.usda_food_attribute (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, name VARCHAR, value VARCHAR);
+             CREATE TABLE bronze.usda_food_attribute (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, food_attribute_type_id VARCHAR, name VARCHAR, value VARCHAR);
              INSERT INTO bronze.usda_food_attribute VALUES
-               ('d', '1', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
-               ('d', '2', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
-               ('d', '3', '6', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_35493'),
-               ('d', '6', '10', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
-               ('d', '4', '1', 'NCBI Taxon Parent', 'NA'), ('d', '5', '1', 'Common Name', 'a');
+               ('d', '1', '2', NULL, 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '2', '2', NULL, 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '3', '6', NULL, 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_35493'),
+               ('d', '6', '10', NULL, 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '4', '1', NULL, 'NCBI Taxon Parent', 'NA'),
+               ('d', '5', '1', '1000', NULL, 'Ay, a-food, plain a'),
+               ('d', '7', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826'),
+               ('d', '8', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826');
              CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
              INSERT INTO bronze.usda_nutrient VALUES
                ('d', '1008', 'Energy', 'KCAL', '208'), ('d', '2048', 'Energy (Atwater)', 'KCAL', '958'),
@@ -967,6 +1141,11 @@ codes = ["269", "269.3"]
         .map_err(sql)?;
         load_silver(&conn, &Nutrients::parse(nutrients)?)?;
         load_diet(&conn, &Diet::parse(diet[0], diet[1], diet[2], diet[3])?)?;
+        let files: Vec<(String, String)> = ingredients
+            .iter()
+            .map(|(f, t)| (f.to_string(), t.to_string()))
+            .collect();
+        load_ingredients(&conn, &Ingredients::parse(&files)?)?;
         Ok(conn)
     }
 
@@ -1274,6 +1453,70 @@ codes = ["269", "269.3"]
         }
     }
 
+    /// A form's FoodOn id comes from USDA's data for its food, once however often USDA repeats it;
+    /// a food USDA gives none has none. Candidates are the names a linked food's common name gives,
+    /// less those an ingredient already lists ("a-food" and "ay" are aliases; "plain a" is not).
+    #[test]
+    fn foodon_ids_are_derived_and_candidates_are_names_not_yet_aliases() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ' ' || state || ' ' || coalesce(foodon, '-') || ' ' || is_default FROM gold.ingredient_form ORDER BY ingredient"
+            ),
+            [
+                "a-food raw - true",
+                "olive-oil as_sold FOODON_03301826 true"
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ': ' || candidate || ' (' || source || ')' FROM gold.alias_candidate ORDER BY 1"
+            ),
+            ["a-food: plain a (SR Legacy common name)"]
+        );
+    }
+
+    /// The report counts the nutrients `nutrients.toml` lists rather than naming a number: the
+    /// synthetic warehouse lists two.
+    #[test]
+    fn the_ingredients_report_counts_the_nutrients_listed() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        let report = ingredients_report(&w).unwrap();
+        assert!(
+            report.contains("| of 2 |") && report.contains("\"Of\n2\" is how many"),
+            "{report}"
+        );
+    }
+
+    #[test]
+    fn the_load_refuses_a_form_that_is_not_usda_s() {
+        let unknown_food = SYNTHETIC_INGREDIENTS[0]
+            .1
+            .replace("fdc_id = 1", "fdc_id = 3");
+        let renamed = SYNTHETIC_INGREDIENTS[0]
+            .1
+            .replace("description = \"A\"", "description = \"Ay\"");
+        let cases = [
+            (
+                unknown_food,
+                "ingredients/a-food.toml raw 3: Constraint Error: Violates foreign key",
+            ),
+            (
+                renamed,
+                "ingredients/a-food.toml: food 1 is A in USDA's data, not Ay",
+            ),
+        ];
+        for (text, why) in cases {
+            let files = [("a-food.toml", text.as_str()), SYNTHETIC_INGREDIENTS[1]];
+            let Err(err) = synthetic_full(SYNTHETIC_NUTRIENTS, SYNTHETIC_DIET, &files) else {
+                panic!("loaded, though it should refuse: {why}");
+            };
+            assert!(err.contains(why), "{err:?} does not say {why:?}");
+        }
+    }
+
     /// The warehouse, loaded once from the repo's records and the cached zips.
     fn warehouse() -> MutexGuard<'static, Connection> {
         static WAREHOUSE: OnceLock<Mutex<Connection>> = OnceLock::new();
@@ -1518,7 +1761,13 @@ codes = ["269", "269.3"]
             0
         );
         assert!(count(&w, "SELECT count(*) FROM silver.nutrient") >= 16);
-        for table in ["diet_category", "diet_taxon", "diet_rule", "diet_exception"] {
+        for table in [
+            "diet_category",
+            "diet_taxon",
+            "diet_rule",
+            "diet_exception",
+            "ingredient",
+        ] {
             let untraced = count(
                 &w,
                 &format!(
@@ -1527,13 +1776,19 @@ codes = ["269", "269.3"]
             );
             assert_eq!(untraced, 0, "silver.{table}");
         }
-        assert_eq!(
-            count(
+        for table in [
+            "usda_food_taxon",
+            "usda_food_foodon",
+            "usda_food_common_name",
+        ] {
+            let untraced = count(
                 &w,
-                "SELECT count(*) FROM silver.usda_food_taxon WHERE dataset NOT IN (SELECT dataset FROM bronze.usda_zip)"
-            ),
-            0
-        );
+                &format!(
+                    "SELECT count(*) FROM silver.{table} WHERE dataset NOT IN (SELECT dataset FROM bronze.usda_zip)"
+                ),
+            );
+            assert_eq!(untraced, 0, "silver.{table}");
+        }
     }
 
     #[test]
@@ -1659,6 +1914,85 @@ codes = ["269", "269.3"]
         assert!(
             written == diet_report(&w, &sources).unwrap(),
             "{DIET_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- diet`"
+        );
+    }
+
+    /// Every form names a silver food, and the load has held its name to USDA's.
+    #[test]
+    fn every_ingredient_form_names_a_food_in_the_pinned_release() {
+        let w = warehouse();
+        let forms = count(&w, "SELECT count(*) FROM silver.ingredient_form");
+        assert!(forms >= 31, "{forms}");
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM gold.ingredient_form WHERE dataset IS NOT NULL"
+            ),
+            forms
+        );
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.ingredient i WHERE NOT EXISTS (SELECT 1 FROM silver.ingredient_form f WHERE f.ingredient = i.ingredient AND f.position = 1)"
+            ),
+            0,
+            "every ingredient has a default form"
+        );
+    }
+
+    /// The red lentil soup's ingredients, by the names its recipe uses, resolve to an ingredient
+    /// and a default form.
+    #[test]
+    fn the_red_lentil_soup_s_ingredients_resolve() {
+        let w = warehouse();
+        for (alias, ingredient, state) in [
+            ("red lentils", "red-lentils", "dry"),
+            ("onion", "onion", "raw"),
+            ("garlic", "garlic", "raw"),
+            ("olive oil", "olive-oil", "as_sold"),
+            ("vegetable broth", "vegetable-broth", "as_sold"),
+            ("cumin", "cumin", "dry"),
+            ("lemon juice", "lemon-juice", "raw"),
+            ("parmesan", "parmesan", "as_sold"),
+        ] {
+            let got = strings(
+                &w,
+                &format!(
+                    "SELECT a.ingredient || ' ' || f.state FROM silver.ingredient_alias a \
+                     JOIN gold.ingredient_form f ON f.ingredient = a.ingredient AND f.is_default \
+                     WHERE a.alias = {}",
+                    literal(alias)
+                ),
+            );
+            assert_eq!(got, [format!("{ingredient} {state}")], "{alias}");
+        }
+    }
+
+    #[test]
+    fn alias_candidates_come_from_usda_s_names() {
+        let w = warehouse();
+        assert!(
+            count(
+                &w,
+                "SELECT count(*) FROM gold.alias_candidate WHERE ingredient = 'chickpeas' AND candidate = 'bengal gram'"
+            ) >= 1
+        );
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM gold.alias_candidate WHERE starts_with(candidate, 'includes') OR candidate IN (SELECT alias FROM silver.ingredient_alias)"
+            ),
+            0
+        );
+    }
+
+    #[test]
+    fn the_ingredients_report_is_current() {
+        let w = warehouse();
+        let written = fs::read_to_string(repo_root().join(INGREDIENTS_PATH)).unwrap_or_default();
+        assert!(
+            written == ingredients_report(&w).unwrap(),
+            "{INGREDIENTS_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- ingredients`"
         );
     }
 
