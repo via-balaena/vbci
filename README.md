@@ -10,9 +10,12 @@ clippy, and the tests, including the repo's own checks in `crates/repo`.
 
 ## License
 
-Licensed under either of
+The code, and everything in this repo but the data records, is licensed under either of
 
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
 - MIT license ([LICENSE-MIT](LICENSE-MIT))
 
 at your option.
+
+The project's own data records, in the paths [DATA-LICENSE.md](DATA-LICENSE.md) lists, are
+dedicated to the public domain under CC0 1.0 Universal ([LICENSE-CC0](LICENSE-CC0)).
