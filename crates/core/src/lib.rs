@@ -531,9 +531,13 @@ mod tests {
 
     #[test]
     fn a_primary_key_is_unique_and_never_null() {
+        // A third row repeats the first's key; every foreign key still finds its row.
         refused(
-            &with("[2,\"Cheese", "[1,\"Cheese"),
-            "row 2 repeats the primary key",
+            &with(
+                "[2,\"Cheese, parmesan, grated\",null]",
+                "[2,\"Cheese, parmesan, grated\",null],\n        [1,\"Garlic\",false]",
+            ),
+            "resource food: row 3 repeats the primary key",
         );
         refused(
             &with("[\"b\",2,0.1]", "[null,2,0.1]"),
