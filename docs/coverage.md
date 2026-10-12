@@ -13,12 +13,12 @@ first choice first (`gold.nutrient_source`). Every food counts, meat included.
 
 | nutrient | unit | foods with a value | share | from codes |
 |---|---|---|---|---|
-| energy | KCAL | 7793 | 100.0% | 208: 7793 |
+| energy | KCAL | 7793 | 100.0% | 208: 7793, 958: 0, 957: 0 |
 | protein | G | 7793 | 100.0% | 203: 7793 |
 | fat | G | 7793 | 100.0% | 204: 7793 |
 | carbohydrate | G | 7793 | 100.0% | 205: 7793 |
 | fiber | G | 7231 | 92.8% | 291: 7231 |
-| sugars | G | 6007 | 77.1% | 269: 6007 |
+| sugars | G | 6007 | 77.1% | 269: 6007, 269.3: 0 |
 | calcium | MG | 7708 | 98.9% | 301: 7708 |
 | iron | MG | 7713 | 99.0% | 303: 7713 |
 | magnesium | MG | 7421 | 95.2% | 304: 7421 |
@@ -53,7 +53,7 @@ first choice first (`gold.nutrient_source`). Every food counts, meat included.
 
 ## Rows silver rejected
 
-Bronze rows in silver's scope that silver could not type (`silver.usda_rejected`).
+Nutrient rows of silver foods that silver did not keep (`silver.usda_rejected`).
 
 | dataset | bronze table | reason | rows |
 |---|---|---|---|

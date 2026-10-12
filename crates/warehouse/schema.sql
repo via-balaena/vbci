@@ -2,7 +2,8 @@
 --
 --   bronze  every file exactly as read: the records, and every CSV in USDA's pinned zips, as text
 --   silver  typed rows with keys, foreign keys and checks; each names the dataset or record it came
---           from, and a USDA row silver cannot type is kept in silver.usda_rejected with its reason
+--           from. A nutrient row of a silver food that silver does not keep is in
+--           silver.usda_rejected with its reason; any other value that does not cast stops the load
 --   gold    views that answer questions; never stored, always derived
 --
 -- The warehouse is rebuilt from the records and the pinned zips on every load, so it can be deleted
@@ -105,7 +106,7 @@ CREATE TABLE silver.usda_rejected (
     reason  TEXT NOT NULL CHECK (trim(reason) <> ''),
     PRIMARY KEY (source, dataset, id)
 );
-COMMENT ON TABLE silver.usda_rejected IS 'Each bronze row in silver''s scope that silver could not type, and why.';
+COMMENT ON TABLE silver.usda_rejected IS 'Each nutrient row of a silver food that silver did not keep, and why: no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another.';
 COMMENT ON COLUMN silver.usda_rejected.source IS 'The bronze table the row is in.';
 COMMENT ON COLUMN silver.usda_rejected.id IS 'The row''s id in that table, as written.';
 

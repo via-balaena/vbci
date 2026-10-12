@@ -108,8 +108,9 @@ Each step is one pull request, done when its check passes.
    `docs/data-catalogue.md` are generated. Found on loading: Foundation 2026-04-30 has 33 nutrient
    rows with no amount, for a nutrient its `nutrient.csv` lacks, and one row repeated; both are in
    `docs/coverage.md`'s rejected rows. Reuses no FDC reader, as the search found none;
-   usda_fooddata's `schema.sql` (Apache-2.0, FDC's 2020-10 release) types the same columns the same
-   way, except `nutrient_nbr`, which it reads as REAL and silver keeps as text. Done:
+   usda_fooddata's `schema.sql` (Apache-2.0, FDC's 2020-10 release) types these columns as silver
+   does, as integers and text with a floating-point amount (REAL there, DOUBLE here), except
+   `nutrient_nbr`, which it reads as REAL and silver keeps as text. Done:
    `codes_are_matched_exactly_not_rounded`, `a_nutrient_whose_unit_differs_is_refused`,
    `the_database_refuses_what_silver_s_keys_refuse`, `the_coverage_report_is_current`, and the rules
    above. USDA's portions and measure units come with step 7.

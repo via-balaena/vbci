@@ -386,7 +386,7 @@ Other columns: `dataset` VARCHAR, `id` INTEGER, `name` VARCHAR, `unit` VARCHAR.
 
 ### silver.usda_rejected
 
-A table. Each bronze row in silver's scope that silver could not type, and why.
+A table. Each nutrient row of a silver food that silver did not keep, and why: no amount, a nutrient its dataset lacks, a repeat of an earlier row, or a disagreement with another.
 
 | column | type | what it is |
 |---|---|---|

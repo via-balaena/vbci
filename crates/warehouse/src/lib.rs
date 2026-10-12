@@ -1,5 +1,5 @@
 //! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
-//! can be deleted at any time. `schema.sql` describes its layers; bronze is the only one so far.
+//! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
 pub mod usda;
 
@@ -97,8 +97,8 @@ fn sql(e: duckdb::Error) -> String {
 }
 
 /// Builds the warehouse in memory from the records under `root` and the pinned zips in `cache`.
-/// Bronze takes `sources.toml` as read, each dataset's zip as pinned, every file in each zip with
-/// its sha256, and every CSV row for row, as text.
+/// Bronze takes `sources.toml` and `nutrients.toml` as read, each dataset's zip as pinned, every
+/// file in each zip with its sha256, and every CSV row for row, as text; then silver and gold.
 pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (sources, sources_text) = Sources::load(root)?;
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
@@ -164,8 +164,8 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     Ok(conn)
 }
 
-/// Types bronze's USDA rows into silver, rejecting with a reason each row in scope that cannot be
-/// typed, and loads `nutrients.toml`. Then refuses a nutrient code that some dataset lacks, or has
+/// Types bronze's USDA rows into silver, keeping each nutrient row of a silver food or rejecting it
+/// with its reason (`SILVER` says which), and loads `nutrients.toml`. Then refuses a nutrient code that some dataset lacks, or has
 /// with another unit: a code is matched exactly, so a misspelt or rounded code would silently find
 /// nothing, or another nutrient.
 fn load_silver(conn: &Connection, nutrients: &Nutrients) -> Result<(), String> {
@@ -340,9 +340,10 @@ pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, S
             let sources = rows(
                 conn,
                 &format!(
-                    "SELECT s.code, s.foods FROM gold.nutrient_source s \
-                     JOIN silver.nutrient_code c ON c.nutrient = s.nutrient AND c.code = s.code \
-                     WHERE s.dataset = {} AND s.nutrient = {} ORDER BY c.priority",
+                    "SELECT c.code, coalesce(s.foods, 0) FROM silver.nutrient_code c \
+                     LEFT JOIN gold.nutrient_source s ON s.nutrient = c.nutrient \
+                     AND s.code = c.code AND s.dataset = {} \
+                     WHERE c.nutrient = {} ORDER BY c.priority",
                     literal(&d.id),
                     literal(&nutrient)
                 ),
@@ -359,11 +360,7 @@ pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, S
             } else {
                 100.0 * with_value as f64 / foods as f64
             };
-            let from = if sources.is_empty() {
-                "none".to_string()
-            } else {
-                sources.join(", ")
-            };
+            let from = sources.join(", ");
             out.push_str(&format!(
                 "| {nutrient} | {unit} | {with_value} | {share:.1}% | {from} |\n"
             ));
@@ -385,7 +382,7 @@ pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, S
     )?;
     out.push_str(
         "\n## Rows silver rejected\n\n\
-         Bronze rows in silver's scope that silver could not type (`silver.usda_rejected`).\n\n",
+         Nutrient rows of silver foods that silver did not keep (`silver.usda_rejected`).\n\n",
     );
     if rejected.is_empty() {
         out.push_str("None.\n");
