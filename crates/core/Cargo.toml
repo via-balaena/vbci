@@ -9,4 +9,6 @@ repository.workspace = true
 
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
+# Without float_roundtrip, serde_json read a portion's grams per millilitre written as
+# 0.9848334132725011 as 0.9848334132725012 (2026-10-12): the_export_reads_back_as_gold fails.
 serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
