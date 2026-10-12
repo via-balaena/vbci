@@ -1,0 +1,11 @@
+[package]
+name = "balaena-repo"
+version = "0.0.0"
+description = "Checks on the VBCI repo itself: the rules in docs/architecture.md that span crates"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dev-dependencies]
+toml = "=1.1.8"
