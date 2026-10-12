@@ -207,10 +207,11 @@ impl Export {
         Self::parse(&text).map_err(|e| format!("{EXPORT_PATH}: {e}"))
     }
 
-    /// Parses an export's text and checks its tables: every resource is a table whose first row is
-    /// its fields' names, every other row has a value of its field's type, or null, in each field;
-    /// a primary key's values are never null and never repeated; a foreign key's values are all
-    /// present, and found in the table it names.
+    /// Parses an export's text and checks its tables: every resource is a table, listed once, whose
+    /// fields' names are each listed once and make its first row; every other row has a value of
+    /// its field's type, or null, in each field; a primary key's values are never null and never
+    /// repeated; a foreign key refers to its table's primary key, and its values are all present
+    /// and found there.
     pub fn parse(text: &str) -> Result<Export, String> {
         let p: Package = serde_json::from_str(text).map_err(|e| e.to_string())?;
         if p.schema != PROFILE {
@@ -230,6 +231,12 @@ impl Export {
                 return Err(at(format!("type is {:?}, not \"table\"", r.kind)));
             }
             let fields = r.schema.fields;
+            let mut field_names = BTreeSet::new();
+            for f in &fields {
+                if !field_names.insert(f.name.as_str()) {
+                    return Err(at(format!("field {:?} is listed twice", f.name)));
+                }
+            }
             let mut data = r.data.into_iter();
             let header: Vec<Json> = data.next().unwrap_or_default();
             let names: Vec<Json> = fields.iter().map(|f| f.name.clone().into()).collect();
@@ -476,6 +483,13 @@ mod tests {
             "unknown field `missingValues`",
         );
         refused(
+            &with(
+                "\"title\": \"Small\",",
+                "\"title\": \"Small\",\n  \"title\": \"Other\",",
+            ),
+            "duplicate field `title`",
+        );
+        refused(
             &with("\"records\": []}", "\"records\": [], \"commit\": \"x\"}"),
             "unknown field `commit`",
         );
@@ -493,6 +507,21 @@ mod tests {
 
     #[test]
     fn each_row_has_a_value_of_its_field_s_type_in_each_field() {
+        // A second field named description, its header and rows to match.
+        let twice = with(
+            "{\"name\": \"vegan\", \"type\": \"boolean\"}",
+            "{\"name\": \"description\", \"type\": \"string\"}",
+        )
+        .replace(
+            "[\"fdc_id\",\"description\",\"vegan\"]",
+            "[\"fdc_id\",\"description\",\"description\"]",
+        )
+        .replace("\",true]", "\",\"x\"]")
+        .replace("\",null]", "\",\"y\"]");
+        refused(
+            &twice,
+            "resource food: field \"description\" is listed twice",
+        );
         refused(
             &with(
                 "[\"fdc_id\",\"description\",\"vegan\"]",
