@@ -1,0 +1,33 @@
+# The datasets the warehouse loads, and whose they are. Each dataset is pinned by its zip's sha256
+# and length: `cargo run -p balaena-warehouse -- fetch` downloads it into the cache under that
+# sha256, and the warehouse refuses bytes that differ, so a URL that starts serving other bytes
+# stops the load instead of changing what is loaded. Read by crates/records (src/sources.rs).
+
+[publisher.usda]
+name = "U.S. Department of Agriculture, Agricultural Research Service: FoodData Central"
+license = "CC0-1.0"
+terms_url = "https://fdc.nal.usda.gov/api-guide.html"
+terms_read = "2026-10-11"
+# Quoted from terms_url, as read on terms_read.
+terms = "USDA FoodData Central data are in the public domain and they are not copyrighted. They are published under CC0 1.0 Universal (CC0 1.0) No permission is needed for their use, but we request that users list FoodData Central as the source of the data, and when possible, notify us of the product that uses the data so we may better track how FDC is being used in the public domain."
+# USDA's suggested citation, as the same page gives it; the page adds that release numbers and
+# years change as new versions are released.
+citation = "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, 2019. fdc.nal.usda.gov."
+
+[[dataset]]
+id = "sr-legacy"
+publisher = "usda"
+name = "SR Legacy"
+release = "2018-04"
+url = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip"
+sha256 = "b80817294b8850530aaedf2e515c02593b1824f763a0ff356e5c2081643e6fd0"
+bytes = 6074592
+
+[[dataset]]
+id = "foundation"
+publisher = "usda"
+name = "Foundation Foods"
+release = "2026-04-30"
+url = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip"
+sha256 = "70457ee9d9342f43bda2010318c85f04210c689fdeb9cd2da4c513b0e8dbc655"
+bytes = 3825741

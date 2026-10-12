@@ -6,7 +6,10 @@ How it is built, the rules that keep it honest, and the plan: `docs/architecture
 
 `main` changes only through a pull request, with signed commits and linear history.
 A pull request must pass the Quality Gate (`.github/workflows/quality-gate.yml`): formatting,
-clippy, and the tests, including the repo's own checks in `crates/repo`.
+clippy, and the tests, including the repo's own checks in `crates/repo`. The warehouse's tests read
+USDA's data from a cache: fill it once with `cargo run -p balaena-warehouse -- fetch` (into
+`$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `~/.cache/vbci`), which downloads the zips
+`sources.toml` pins and refuses any whose sha256 differs.
 
 ## License
 

@@ -120,8 +120,9 @@ mod tests {
                     source.contains(&format!("fn {token}()")),
                     "docs/architecture.md names the test {token}, which does not exist"
                 );
-            } else if token.contains('<') {
-                // A pattern such as `recipes/<name>.cook`, not a file.
+            } else if token.contains('<') || token.starts_with('$') || token.starts_with('~') {
+                // A pattern such as `recipes/<name>.cook`, or a path under an environment
+                // variable or a home directory such as `$HOME/.cache/vbci`: not a file in the repo.
             } else if token.contains('/') || token.ends_with(".toml") || token.ends_with(".md") {
                 paths += 1;
                 let path = root().join(token);
@@ -238,6 +239,29 @@ mod tests {
                     "{at}: {name} is not pinned to one version: {spec}"
                 );
             }
+        }
+    }
+
+    /// The names the crate in `dir` lists under [dependencies], sorted.
+    fn runtime_dependencies(dir: &str) -> Vec<String> {
+        let m = manifest(&root().join(dir).join("Cargo.toml"));
+        let mut names: Vec<String> = m
+            .get("dependencies")
+            .and_then(Value::as_table)
+            .map(|t| t.keys().cloned().collect())
+            .unwrap_or_default();
+        names.sort();
+        names
+    }
+
+    /// Reading the records is parsing and checking; the database and the network come after, in
+    /// the warehouse, which fetches USDA's zips and loads them into DuckDB.
+    #[test]
+    fn parsing_records_needs_no_database_or_network() {
+        assert_eq!(runtime_dependencies("crates/records"), ["serde", "toml"]);
+        let warehouse = runtime_dependencies("crates/warehouse");
+        for needed in ["balaena-records", "duckdb", "ureq"] {
+            assert!(warehouse.iter().any(|d| d == needed), "{warehouse:?}");
         }
     }
 
