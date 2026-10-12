@@ -8,8 +8,10 @@
 //! - `diet`: writes `docs/diet.md`, how many foods take each vegan and vegetarian answer, and why.
 //! - `ingredients`: writes `docs/ingredients.md`, each ingredient's aliases, forms and candidates.
 //! - `portions`: writes `docs/portions.md`, how USDA's portions' units are read.
+//! - `export`: writes `export/datapackage.json`, the gold views readers need, for crates/core.
 
 use balaena_records::Sources;
+use balaena_warehouse::export::{EXPORT_PATH, export};
 use balaena_warehouse::{
     CATALOGUE_PATH, COVERAGE_PATH, DIET_PATH, INGREDIENTS_PATH, PORTIONS_PATH, cache_dir,
     catalogue, coverage_report, diet_report, ingredients_report, load, portions_report, repo_root,
@@ -69,6 +71,16 @@ fn run(command: &str) -> Result<(), String> {
             std::fs::write(root.join(PORTIONS_PATH), report).map_err(|e| e.to_string())?;
             println!("wrote {PORTIONS_PATH}");
         }
+        "export" => {
+            let (sources, _) = Sources::load(&root)?;
+            let text = export(&load(&root, &cache)?, &sources)?;
+            let path = root.join(EXPORT_PATH);
+            if let Some(dir) = path.parent() {
+                std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(path, text).map_err(|e| e.to_string())?;
+            println!("wrote {EXPORT_PATH}");
+        }
         "catalogue" => {
             let text = catalogue(&load(&root, &cache)?)?;
             std::fs::write(root.join(CATALOGUE_PATH), text).map_err(|e| e.to_string())?;
@@ -76,7 +88,7 @@ fn run(command: &str) -> Result<(), String> {
         }
         other => {
             return Err(format!(
-                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, portions or catalogue"
+                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, portions, catalogue or export"
             ));
         }
     }
