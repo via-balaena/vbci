@@ -1,6 +1,7 @@
 //! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
 //! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
+pub mod export;
 pub mod portions;
 pub mod usda;
 
@@ -2211,6 +2212,132 @@ codes = ["269", "269.3"]
         assert!(
             written == catalogue(&w).unwrap(),
             "{CATALOGUE_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- catalogue`"
+        );
+    }
+
+    #[test]
+    fn the_export_is_current() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let written = fs::read_to_string(repo_root().join(export::EXPORT_PATH)).unwrap_or_default();
+        assert!(
+            written == export::export(&w, &sources).unwrap(),
+            "{} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- export`",
+            export::EXPORT_PATH
+        );
+    }
+
+    /// crates/core reads back each view the export carries as gold holds it: the same columns,
+    /// each of the type its DuckDB type is written as, and the same rows in key order, every value
+    /// equal; and the sha256s of the zips and records the warehouse loaded.
+    #[test]
+    fn the_export_reads_back_as_gold() {
+        use balaena_core::{Export, Type, Value};
+        use duckdb::types::Value as Cell;
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        assert_eq!(export::EXPORT_PATH, balaena_core::EXPORT_PATH);
+        assert_eq!(export::PROFILE, balaena_core::PROFILE);
+        let read = Export::parse(&export::export(&w, &sources).unwrap()).unwrap();
+        let names: Vec<&str> = read.tables.iter().map(|t| t.name.as_str()).collect();
+        let views: Vec<&str> = export::EXPORTED.iter().map(|e| e.view).collect();
+        assert_eq!(names, views);
+        for e in export::EXPORTED {
+            let t = read.table(e.view).unwrap();
+            let columns = rows(
+                &w,
+                &format!(
+                    "SELECT column_name, data_type FROM duckdb_columns() \
+                     WHERE schema_name = 'gold' AND table_name = '{}' ORDER BY column_index",
+                    e.view
+                ),
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+            )
+            .unwrap();
+            let expected: Vec<(String, Type)> = columns
+                .into_iter()
+                .map(|(name, data_type)| {
+                    let kind = match data_type.as_str() {
+                        "INTEGER" | "BIGINT" => Type::Integer,
+                        "DOUBLE" => Type::Number,
+                        "VARCHAR" => Type::String,
+                        "BOOLEAN" => Type::Boolean,
+                        other => panic!("gold.{}.{name} is {other}", e.view),
+                    };
+                    (name, kind)
+                })
+                .collect();
+            let fields: Vec<(String, Type)> =
+                t.fields.iter().map(|f| (f.name.clone(), f.kind)).collect();
+            assert_eq!(fields, expected, "gold.{}", e.view);
+            let gold = rows(
+                &w,
+                &format!(
+                    "SELECT * FROM gold.{} ORDER BY {}",
+                    e.view,
+                    e.key.join(", ")
+                ),
+                |r| {
+                    (0..expected.len())
+                        .map(|i| {
+                            Ok(match r.get::<_, Cell>(i)? {
+                                Cell::Null => Value::Null,
+                                Cell::Int(n) => Value::Integer(n.into()),
+                                Cell::BigInt(n) => Value::Integer(n),
+                                Cell::Double(x) => Value::Number(x),
+                                Cell::Text(s) => Value::String(s),
+                                Cell::Boolean(b) => Value::Boolean(b),
+                                other => panic!("gold.{}: {other:?}", e.view),
+                            })
+                        })
+                        .collect::<duckdb::Result<Vec<Value>>>()
+                },
+            )
+            .unwrap();
+            assert!(!gold.is_empty(), "gold.{} has no rows", e.view);
+            assert_eq!(t.rows.len(), gold.len(), "gold.{}", e.view);
+            for (n, (got, want)) in t.rows.iter().zip(&gold).enumerate() {
+                assert_eq!(got, want, "gold.{}, row {}", e.view, n + 1);
+            }
+        }
+        let zips: Vec<String> = read
+            .lineage
+            .zips
+            .iter()
+            .map(|z| format!("{} {} {} {}", z.dataset, z.url, z.sha256, z.bytes))
+            .collect();
+        assert_eq!(
+            zips,
+            strings(
+                &w,
+                "SELECT concat_ws(' ', dataset, url, sha256, bytes) FROM bronze.usda_zip ORDER BY dataset"
+            )
+        );
+        let records: Vec<String> = read
+            .lineage
+            .records
+            .iter()
+            .map(|r| format!("{} {}", r.path, r.sha256))
+            .collect();
+        assert_eq!(
+            records,
+            strings(
+                &w,
+                "SELECT concat_ws(' ', path, sha256) FROM bronze.record_hash ORDER BY path"
+            )
+        );
+        assert!(records.len() >= 20, "{records:?}");
+    }
+
+    #[test]
+    fn the_export_is_written_only_while_every_publisher_s_license_is_cc0() {
+        let w = warehouse();
+        let (mut sources, _) = Sources::load(&repo_root()).unwrap();
+        sources.publisher.get_mut("usda").unwrap().license = "CC-BY-4.0".into();
+        let err = export::export(&w, &sources).unwrap_err();
+        assert!(
+            err.contains("publisher usda licenses its data as CC-BY-4.0"),
+            "{err}"
         );
     }
 

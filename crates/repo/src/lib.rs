@@ -265,6 +265,13 @@ mod tests {
         }
     }
 
+    /// Readers read the export, not the warehouse: crates/core parses its JSON, so DuckDB is not in
+    /// what reads it.
+    #[test]
+    fn reading_the_export_needs_no_database() {
+        assert_eq!(runtime_dependencies("crates/core"), ["serde", "serde_json"]);
+    }
+
     /// rust-toolchain.toml names one release, such as `1.96.0`: a channel like `stable` or
     /// `1.96` would move under every machine and CI without a commit.
     #[test]

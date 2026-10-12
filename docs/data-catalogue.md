@@ -502,6 +502,12 @@ A view. Names USDA's data gives a linked food that no ingredient lists as an ali
 
 Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` INTEGER.
 
+### gold.count_unit_name
+
+A view. Each name a count unit may be written with, and the count unit it names: the unit gold.portion gives a portion counted in it.
+
+Columns: `name` VARCHAR, `unit` VARCHAR.
+
 ### gold.food_diet
 
 A view. Each food's vegan and vegetarian answers, yes, no or unknown, and what decided each: an exception, a naming rule, an animal organism, or the category's class, the first that applies.
@@ -523,6 +529,18 @@ A view. Each food's amount of each nutrient VBCI reports, per 100 g: from the fi
 
 Other columns: `fdc_id` INTEGER, `dataset` VARCHAR, `nutrient` VARCHAR, `amount` DOUBLE, `unit` VARCHAR.
 
+### gold.ingredient
+
+A view. Each of VBCI's own ingredients, by id, with its name and Wikidata item.
+
+Columns: `ingredient` VARCHAR, `name` VARCHAR, `wikidata` VARCHAR.
+
+### gold.ingredient_alias
+
+A view. Each name a recipe may call an ingredient by, and the ingredient it names.
+
+Columns: `alias` VARCHAR, `ingredient` VARCHAR.
+
 ### gold.ingredient_form
 
 A view. Each form of each ingredient, with its USDA food, whether it is the default, the FoodOn ids that food carries, and how many of the nutrients VBCI reports it has a value for.
@@ -532,6 +550,12 @@ A view. Each form of each ingredient, with its USDA food, whether it is the defa
 | foodon | VARCHAR | Derived, never typed: the FoodOn ids USDA's data gives the linked food. |
 
 Other columns: `ingredient` VARCHAR, `state` VARCHAR, `is_default` BOOLEAN, `fdc_id` INTEGER, `dataset` VARCHAR, `description` VARCHAR, `nutrients` BIGINT.
+
+### gold.nutrient
+
+A view. Each nutrient VBCI reports, from nutrients.toml, with its position in the record, its name and the unit its amounts are in.
+
+Columns: `nutrient` VARCHAR, `position` INTEGER, `name` VARCHAR, `unit` VARCHAR.
 
 ### gold.nutrient_coverage
 

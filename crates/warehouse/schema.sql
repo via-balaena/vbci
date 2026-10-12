@@ -396,3 +396,21 @@ FROM gold.portion p
 JOIN silver.usda_food f ON f.fdc_id = p.fdc_id
 WHERE p.kind = 'mass' AND abs(p.mass_ratio - 1) > 0.02;
 COMMENT ON VIEW gold.portion_mass_disagreement IS 'Portions in a mass unit whose gram weight differs from what the unit defines by more than 2%: a finding about USDA''s data, kept, not refused.';
+
+-- The views below bring the records' tables the export carries into gold, so it reads gold alone.
+
+CREATE VIEW gold.nutrient AS
+SELECT nutrient, position, name, unit FROM silver.nutrient;
+COMMENT ON VIEW gold.nutrient IS 'Each nutrient VBCI reports, from nutrients.toml, with its position in the record, its name and the unit its amounts are in.';
+
+CREATE VIEW gold.ingredient AS
+SELECT ingredient, name, wikidata FROM silver.ingredient;
+COMMENT ON VIEW gold.ingredient IS 'Each of VBCI''s own ingredients, by id, with its name and Wikidata item.';
+
+CREATE VIEW gold.ingredient_alias AS
+SELECT alias, ingredient FROM silver.ingredient_alias;
+COMMENT ON VIEW gold.ingredient_alias IS 'Each name a recipe may call an ingredient by, and the ingredient it names.';
+
+CREATE VIEW gold.count_unit_name AS
+SELECT name, unit FROM silver.count_unit_name;
+COMMENT ON VIEW gold.count_unit_name IS 'Each name a count unit may be written with, and the count unit it names: the unit gold.portion gives a portion counted in it.';

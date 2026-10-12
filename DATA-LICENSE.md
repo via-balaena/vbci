@@ -7,7 +7,7 @@ documentation are licensed under MIT OR Apache-2.0 (README, "License"). Decided 
 
 ## What is CC0
 
-The records, in these paths. None exists yet; each arrives with the plan step that builds it.
+The records, in these paths. `recipes/` arrives with step 9 of the plan.
 
 - `sources.toml`
 - `nutrients.toml`
@@ -18,6 +18,13 @@ The records, in these paths. None exists yet; each arrives with the plan step th
 
 A test in `crates/repo` holds this list to the records layer that `docs/architecture.md` describes.
 
+## The export
+
+`export/datapackage.json` is generated from the records above and USDA's data, both CC0, and is
+CC0 too: its descriptor says so, and the warehouse does not write it while a publisher in
+`sources.toml` licenses its data otherwise. It lists FoodData Central's datasets as its sources,
+with USDA's suggested citation.
+
 ## Contributions
 
 GitHub's Terms of Service, section D.6, "Contributions Under Repository License" (read on
@@ -27,9 +34,10 @@ under those terms." This file is the notice for the paths above.
 
 ## What is not ours
 
-- **USDA FoodData Central** is not in the repo: `cargo run -p balaena-warehouse -- fetch`
-  downloads it into a cache. USDA publishes it under CC0 1.0 and asks to be listed as the source;
-  `sources.toml` quotes its terms and its suggested citation from
+- **USDA FoodData Central**: its zips are not in the repo, as
+  `cargo run -p balaena-warehouse -- fetch` downloads them into a cache, but the export holds values
+  taken from them. USDA publishes FoodData Central under CC0 1.0 and asks to be listed as the
+  source; `sources.toml` quotes its terms and its suggested citation from
   https://fdc.nal.usda.gov/api-guide.html (read 2026-10-11). data.gov's record for FoodData Central
   gives the U.S. Public Domain label (record modified 2025-11-21; read 2026-10-11).
 - **Data under another license** (ODbL, CC BY, MIT, AGPL) comes into a CC0 record only with its
