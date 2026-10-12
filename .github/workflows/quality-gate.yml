@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 # A newer push to a pull request cancels the gate's older run on it. Every other run is a
-# group of its own, so none is cancelled or held back.
+# concurrency group of its own, so no other run cancels it or holds it back.
 concurrency:
   group: quality-gate-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -24,7 +24,7 @@ jobs:
     name: Quality Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    # The rules each step and test holds are listed in docs/architecture.md, "Rules".
+    # The rules the gate's checks hold are listed in docs/architecture.md, "Rules".
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
