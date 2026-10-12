@@ -192,7 +192,7 @@ pub fn check_record(text: &str) -> Result<(), String> {
 }
 
 /// A cell's text; none for null or another type, as for `number` and `integer`.
-fn text(v: &Value) -> Option<&str> {
+pub(crate) fn text(v: &Value) -> Option<&str> {
     match v {
         Value::String(s) => Some(s),
         _ => None,
@@ -207,7 +207,7 @@ fn number(v: &Value) -> Option<f64> {
     }
 }
 
-fn integer(v: &Value) -> Option<i64> {
+pub(crate) fn integer(v: &Value) -> Option<i64> {
     match v {
         Value::Integer(x) => Some(*x),
         _ => None,
@@ -215,7 +215,7 @@ fn integer(v: &Value) -> Option<i64> {
 }
 
 /// A table of the export and the positions of the fields named.
-fn columns<'a, const N: usize>(
+pub(crate) fn columns<'a, const N: usize>(
     export: &'a Export,
     table: &str,
     names: [&str; N],

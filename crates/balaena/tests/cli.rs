@@ -1,0 +1,135 @@
+//! The command line, run as built: `balaena` with the export built into it.
+
+use balaena_core::Export;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+fn root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// Runs `balaena` in the repo root: its exit code, stdout and stderr.
+fn balaena(args: &[&str]) -> (i32, String, String) {
+    let out = Command::new(env!("CARGO_BIN_EXE_balaena"))
+        .args(args)
+        .current_dir(root())
+        .output()
+        .unwrap();
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8(out.stdout).unwrap(),
+        String::from_utf8(out.stderr).unwrap(),
+    )
+}
+
+/// The rows of the Markdown table under the heading that starts with `heading`.
+fn rows<'a>(out: &'a str, heading: &str) -> Vec<&'a str> {
+    let (_, after) = out
+        .split_once(&format!("\n## {heading}"))
+        .unwrap_or_else(|| panic!("no heading {heading:?} in {out}"));
+    after
+        .lines()
+        .skip_while(|l| !l.starts_with("|---"))
+        .skip(1)
+        .take_while(|l| l.starts_with('|'))
+        .collect()
+}
+
+#[test]
+fn analyze_prints_the_report_crates_core_writes() {
+    let path = "recipes/red-lentil-soup.cook";
+    let (code, out, err) = balaena(&["analyze", path]);
+    assert_eq!((code, err.as_str()), (0, ""));
+    let written = fs::read_to_string(root().join("docs/recipes/red-lentil-soup.md")).unwrap();
+    assert!(
+        out == written,
+        "balaena analyze {path} differs from its report"
+    );
+}
+
+#[test]
+fn search_finds_aliases_and_foods_simplest_first() {
+    let (code, out, _) = balaena(&["search", "lentil"]);
+    assert_eq!(code, 0);
+    let ingredients = rows(&out, "Ingredients");
+    assert!(
+        ingredients[0].starts_with("| lentils | ")
+            && ingredients[1].starts_with("| red-lentils | "),
+        "{out}"
+    );
+    let foods = rows(&out, "USDA foods");
+    assert_eq!(
+        foods[0], "| 172420 | sr-legacy | Lentils, raw | yes | yes | lentils, dry |",
+        "the simplest name first, with the form that links it"
+    );
+    let (_, out, _) = balaena(&["search", "red", "lentil"]);
+    assert_eq!(
+        rows(&out, "USDA foods"),
+        ["| 174284 | sr-legacy | Lentils, pink or red, raw | yes | yes | red-lentils, dry |"],
+        "every word starts a word of the name"
+    );
+    let (_, out, _) = balaena(&["search", "-n", "2", "onion"]);
+    assert_eq!(rows(&out, "USDA foods").len(), 2, "{out}");
+    assert!(out.contains(", the 2 simplest shown\n"), "{out}");
+    let (_, out, _) = balaena(&["search", "tempeh"]);
+    assert!(out.contains("## Ingredients: 0\n\nNone.\n"), "{out}");
+}
+
+#[test]
+fn info_names_the_zips_the_export_came_from() {
+    let (code, out, _) = balaena(&["info"]);
+    assert_eq!(code, 0);
+    let export = Export::load(&root()).unwrap();
+    let zips = rows(&out, "USDA's zips");
+    assert_eq!(zips.len(), export.lineage.zips.len());
+    for z in &export.lineage.zips {
+        let row = format!("| {} | {} | {} |", z.dataset, z.sha256, z.bytes);
+        assert!(
+            zips.contains(&row.as_str()),
+            "the export built in differs from {}: run `cargo build -p balaena`",
+            "export/datapackage.json"
+        );
+    }
+    assert!(out.contains("- CC0 1.0 Universal (CC0-1.0): "), "{out}");
+    let tables: Vec<String> = export
+        .tables
+        .iter()
+        .map(|t| format!("| {} | {} |", t.name, t.rows.len()))
+        .collect();
+    assert_eq!(rows(&out, "Tables"), tables);
+}
+
+#[test]
+fn the_cli_refuses_what_it_does_not_know() {
+    let refused = |args: &[&str], code: i32, why: &str| {
+        let (got, _, err) = balaena(args);
+        assert_eq!(got, code, "balaena {args:?}: {err}");
+        assert!(
+            err.contains(why),
+            "balaena {args:?}: {err:?} does not say {why:?}"
+        );
+    };
+    refused(&[], 2, "Usage: balaena <COMMAND>");
+    refused(&["frobnicate"], 2, "unrecognized subcommand 'frobnicate'");
+    refused(&["search"], 2, "required arguments were not provided");
+    refused(
+        &["search", "-n", "some", "onion"],
+        2,
+        "invalid value 'some'",
+    );
+    refused(
+        &["search", ","],
+        1,
+        "a search needs a word of letters or digits",
+    );
+    refused(&["analyze", "no-such.cook"], 1, "no-such.cook: ");
+    let dir = std::env::temp_dir().join(format!("vbci-cli-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let bad = dir.join("bad.cook");
+    fs::write(&bad, "@onion{1}(a) and @&onion{1}(b).\n").unwrap();
+    let (code, _, err) = balaena(&["analyze", bad.to_str().unwrap()]);
+    fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(code, 1, "{err}");
+    assert!(err.contains("Note not allowed in reference"), "{err}");
+}

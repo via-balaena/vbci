@@ -275,6 +275,16 @@ mod tests {
         );
     }
 
+    /// The command line reads the export through crates/core, and parses its arguments with clap:
+    /// DuckDB is not in what it ships.
+    #[test]
+    fn the_cli_needs_no_database() {
+        assert_eq!(
+            runtime_dependencies("crates/balaena"),
+            ["balaena-core", "clap"]
+        );
+    }
+
     /// rust-toolchain.toml names one release, such as `1.96.0`: a channel like `stable` or
     /// `1.96` would move under every machine and CI without a commit.
     #[test]
