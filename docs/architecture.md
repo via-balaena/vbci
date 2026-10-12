@@ -29,6 +29,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | Code is formatted, clippy finds nothing at `-D warnings`, and the tests pass. | the Quality Gate's steps, in `.github/workflows/quality-gate.yml` |
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
+| The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and everything else is MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`.
@@ -68,7 +69,8 @@ Each step is one pull request, done when its check passes.
    `every_action_is_pinned_by_commit`, `the_architecture_doc_names_real_tests_and_files`.
 2. **Prior art and the data license.** `docs/prior-art.md`, dated, from the 2026-10-11 searches
    (identifiers for foods and nutrients; tools that already link recipes to USDA data; farm
-   software), and `DATA-LICENSE.md`. Done when each step below names what it reuses.
+   software), and `DATA-LICENSE.md` with CC0's legal code in `LICENSE-CC0`. Done: each step below
+   names what it reuses, and `the_data_license_covers_every_records_path`.
 3. **USDA data, pinned.** `sources.toml` names SR Legacy (2018-04) and Foundation (2026-04-30, the
    newest release USDA lists) by sha256. `balaena fetch` refuses bytes whose sha256 differs: a URL
    is not an identity (scratch check: the "2018-04" SR Legacy zip is served with a Last-Modified of
@@ -76,7 +78,7 @@ Each step is one pull request, done when its check passes.
    a cache keyed by the sha256s. Done when mismatched bytes are refused, and SR Legacy's row counts
    equal USDA's own `all_downloaded_table_record_counts.csv`. Whether GitHub's runners reach
    fdc.nal.usda.gov is `unknown` until this step's first run; the fallback, a mirror on a GitHub
-   release, is a step on Jon's account.
+   release, is a step on Jon's account. Reuses DuckDB's `read_csv`.
 4. **USDA's tables in silver, and our nutrients.** Every SR Legacy and Foundation food (data types
    `sr_legacy_food` and `foundation_food`; the Foundation zip's sample and acquisition rows stay in
    bronze), meat included: choosing what a reader sees is gold's job, and "chicken stock" should
@@ -87,31 +89,37 @@ Each step is one pull request, done when its check passes.
    exactly and in priority order (sugars: 269, then 269.3), and the unit each must have. Gold gives
    each food's nutrients per 100 g, and `docs/coverage.md` is generated from it. Done when a code
    rounded or changed, a wrong unit or a duplicate key is refused, and `docs/coverage.md` is
-   current.
+   current. Reuses no FDC reader, as the search found none; usda_fooddata's `schema.sql`
+   (Apache-2.0) is a check on column types.
 5. **Diet status per food,** vegan and vegetarian, derived and never typed: for Foundation foods
    from the source organism USDA records (NCBI taxon: plants, fungi or animals) and the category;
    for SR Legacy from the category; a category with mixed foods gives `unknown`. A reviewed
    exception in `diet/`, keyed by fdc_id, overrides. Done when the fixtures hold: oyster
    mushrooms, salsify and scallop squash are vegan; duck and turkey eggs vegetarian, not vegan;
-   fish oils not vegetarian.
+   fish oils not vegetarian. Reuses USDA's organism attributes; cook.md's diet-badges (MIT) and Open
+   Food Facts' flags are references only.
 6. **Ingredient identity and aliases.** Our own ingredient ids in `ingredients/`, each linked per
    state (raw, cooked, canned, dry) to an fdc_id in the pinned release, with FoodOn ids and Wikidata
    ids as cross-references (scratch check: USDA's Foundation 2026-04-30 files give a FoodOn id for
-   365 of its 469 foods). Alias candidates come from CC0 sources (SR Legacy's common names,
-   Wikidata, OpenCookbook), each `unknown` until reviewed. Done when an alias naming no ingredient,
-   or a link to a food outside the pinned release, is refused.
+   365 of its 469 foods). Alias candidates come from sources free to reuse: SR Legacy's common names
+   (public domain, by data.gov's record), Wikidata and OpenCookbook (CC0); each is `unknown` until
+   reviewed. capycook's and open-tandoor-data's mappings come in only with their holders'
+   permission. Done when an alias naming no ingredient, or a link to a food outside the pinned
+   release, is refused.
 7. **Units and portions.** cooklang's bundled units for mass and volume, their spellings and
    `fl oz`, and count units (clove, bunch, head) as records in `units/`. cooklang 0.19.0 builds only
    with its `aisle` feature on (its `ingredient_list.rs` imports `aisle` whatever the features), so
    that is on too. USDA's portion text is read by the same converter as recipes. Done when every
    portion converts or is listed in a generated report.
 8. **The export.** Gold written to one file that `crates/core` reads, with the sha256s it came from.
-   Done when a test holds it to what the warehouse writes.
+   Done when a test holds it to what the warehouse writes. What it reuses for the file's format is
+   searched in this step.
 9. **Analysis and recipe reports.** `crates/core` turns a recipe and the export into grams,
    nutrients and diet status. How sure each number is comes from how it was reached, never typed,
    and a total says how many lines had data. Done when the reports for `recipes/<name>.cook` are
-   generated and held current; the red lentil soup is the first.
+   generated and held current; the red lentil soup is the first. Reuses cooklang's parser.
 10. **The CLI:** `balaena analyze`, `balaena search` and `balaena info`, reading only the export.
+    What it reuses for parsing arguments is searched in this step.
 
 **Later:** farm reference data. Crops link to ingredients through the organism, as Growstuff does
 with GBIF and Wikidata ids and AGROVOC with GBIF. A grower's weight per bunch or head comes from
