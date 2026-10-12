@@ -7,6 +7,7 @@ use balaena_records::Sources;
 use duckdb::{Connection, params};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs, process};
 
@@ -60,16 +61,21 @@ fn literal(s: &str) -> String {
     format!("'{}'", s.replace('\'', "''"))
 }
 
-/// A directory this process made under the system's temp dir, removed when dropped.
+/// A directory this process made under the system's temp dir, removed when dropped. Its name
+/// carries a count kept by the process as well as the time: on macOS the clock advances by whole
+/// microseconds, and two tests that made one in the same microsecond collided ("File exists",
+/// 2026-10-11).
 struct Scratch(PathBuf);
 
 impl Scratch {
     fn new() -> Result<Self, String> {
+        static MADE: AtomicU64 = AtomicU64::new(0);
+        let n = MADE.fetch_add(1, Ordering::Relaxed);
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or_default();
-        let dir = env::temp_dir().join(format!("balaena-warehouse-{}-{nanos}", process::id()));
+        let dir = env::temp_dir().join(format!("balaena-warehouse-{}-{nanos}-{n}", process::id()));
         fs::create_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         Ok(Scratch(dir))
     }
@@ -163,6 +169,13 @@ mod tests {
             sha256: usda::sha256_hex(bytes),
             bytes: bytes.len() as u64,
         }
+    }
+
+    #[test]
+    fn scratch_dirs_made_together_are_distinct() {
+        let dirs: Vec<Scratch> = (0..256).map(|_| Scratch::new().unwrap()).collect();
+        let names: std::collections::BTreeSet<_> = dirs.iter().map(|d| d.0.clone()).collect();
+        assert_eq!(names.len(), dirs.len());
     }
 
     #[test]
@@ -283,6 +296,43 @@ mod tests {
         let second = usda::fetch(std::slice::from_ref(&d), &cache.0, get).unwrap();
         assert_eq!(second, [("d".to_string(), usda::Fetched::Cached)]);
         assert_eq!(calls.get(), 1);
+    }
+
+    /// `load` checks each cached zip against its pin too: a file of the pinned length with other
+    /// bytes, sitting where the zip should be, stops the load.
+    #[test]
+    fn loading_refuses_a_cached_zip_that_differs() {
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let cache = Scratch::new().unwrap();
+        for d in &sources.dataset {
+            fs::write(usda::zip_path(&cache.0, d), vec![0u8; d.bytes as usize]).unwrap();
+        }
+        let Err(err) = load(&repo_root(), &cache.0) else {
+            panic!("a cached zip that differs from its pin was loaded");
+        };
+        assert!(err.contains("sha256") && err.contains("cached at"), "{err}");
+    }
+
+    /// A file in a zip whose path climbs out of its folder (`../`) is refused, and nothing is
+    /// written outside the folder.
+    #[test]
+    fn a_member_that_would_extract_outside_its_folder_is_refused() {
+        use std::io::Write;
+        use zip::write::{SimpleFileOptions, ZipWriter};
+        let mut writer = ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        let stored =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        writer.start_file("../outside.csv", stored).unwrap();
+        writer.write_all(b"a,b\n1,2\n").unwrap();
+        let bytes = writer.finish().unwrap().into_inner();
+        let d = dataset(&bytes);
+        let cache = Scratch::new().unwrap();
+        fs::write(usda::zip_path(&cache.0, &d), &bytes).unwrap();
+        let out = Scratch::new().unwrap();
+        let dir = out.0.join("into");
+        let err = usda::extract(&cache.0, &d, &dir).unwrap_err();
+        assert!(err.contains("outside its folder"), "{err}");
+        assert!(!dir.join("outside.csv").exists() && !out.0.join("outside.csv").exists());
     }
 
     /// The warehouse, loaded once from the repo's records and the cached zips.
@@ -413,6 +463,45 @@ mod tests {
             }
         }
         assert!(csvs >= 30, "found {csvs} CSVs");
+    }
+
+    /// bronze.usda_member gives each file the length and sha256 of the bytes extracted from the
+    /// pinned zip, not some other file's.
+    #[test]
+    fn every_file_in_the_pinned_zips_is_in_bronze_with_its_sha256() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let cache = cache_dir().unwrap();
+        let scratch = Scratch::new().unwrap();
+        let mut files = 0;
+        for d in &sources.dataset {
+            for m in usda::extract(&cache, d, &scratch.0).unwrap() {
+                let (bytes, sha256): (i64, String) = w
+                    .query_row(
+                        "SELECT bytes, sha256 FROM bronze.usda_member WHERE dataset = ? AND member = ?",
+                        params![d.id, m.name],
+                        |r| Ok((r.get(0)?, r.get(1)?)),
+                    )
+                    .unwrap_or_else(|e| panic!("{} {}: {e}", d.id, m.name));
+                let content = fs::read(&m.file).unwrap();
+                assert_eq!(bytes as usize, content.len(), "{} {}", d.id, m.name);
+                assert_eq!(sha256, usda::sha256_hex(&content), "{} {}", d.id, m.name);
+                files += 1;
+            }
+            let listed = count(
+                &w,
+                &format!(
+                    "SELECT count(*) FROM bronze.usda_member WHERE dataset = {}",
+                    literal(&d.id)
+                ),
+            );
+            assert_eq!(
+                listed as usize, files,
+                "{}: files listed but not in its zip",
+                d.id
+            );
+            files = 0;
+        }
     }
 
     #[test]

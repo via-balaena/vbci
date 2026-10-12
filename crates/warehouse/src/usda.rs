@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// The sha256 of `bytes`, as 64 lowercase hex digits.
 pub fn sha256_hex(bytes: &[u8]) -> String {
@@ -77,11 +78,19 @@ pub fn fetch(
     Ok(out)
 }
 
-/// Downloads `url`, refusing a body longer than `limit` bytes. ureq refuses a body that reaches its
-/// own limit (measured on 2026-10-11: a limit of 6074592 refused a 6074592-byte body), so it is
-/// given one byte more.
+/// How long one download may take, from the first lookup to the last byte, before it is abandoned.
+/// ureq sets no limit of its own. On 2026-10-11, fetch downloaded both zips in 37.6 s.
+pub const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Downloads `url`, refusing a body longer than `limit` bytes, and abandoning a download that takes
+/// longer than `DOWNLOAD_TIMEOUT`. ureq refuses a body that reaches its own limit (measured on
+/// 2026-10-11: a limit of 6074592 refused a 6074592-byte body), so it is given one byte more.
 pub fn http_get(url: &str, limit: u64) -> Result<Vec<u8>, String> {
-    let mut response = ureq::get(url).call().map_err(|e| format!("{url}: {e}"))?;
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(DOWNLOAD_TIMEOUT))
+        .build()
+        .new_agent();
+    let mut response = agent.get(url).call().map_err(|e| format!("{url}: {e}"))?;
     response
         .body_mut()
         .with_config()
