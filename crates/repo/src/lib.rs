@@ -265,11 +265,14 @@ mod tests {
         }
     }
 
-    /// Readers read the export, not the warehouse: crates/core parses its JSON, so DuckDB is not in
-    /// what reads it.
+    /// Readers read the export, not the warehouse: crates/core parses its JSON, and a recipe with
+    /// cooklang, so DuckDB is not in what reads them.
     #[test]
     fn reading_the_export_needs_no_database() {
-        assert_eq!(runtime_dependencies("crates/core"), ["serde", "serde_json"]);
+        assert_eq!(
+            runtime_dependencies("crates/core"),
+            ["cooklang", "serde", "serde_json"]
+        );
     }
 
     /// rust-toolchain.toml names one release, such as `1.96.0`: a channel like `stable` or

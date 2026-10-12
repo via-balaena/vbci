@@ -1,13 +1,16 @@
 [package]
 name = "balaena-core"
 version = "0.0.0"
-description = "What VBCI's readers share: the export, read without a database"
+description = "What VBCI's readers share: the export, read without a database, and a recipe analysed against it"
 publish = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# Parses a recipe, a record's or a user's, with the bundled units the warehouse reads USDA's portions
+# with; 0.19.0 builds only with its `aisle` feature on (docs/architecture.md, step 7).
+cooklang = { version = "=0.19.0", default-features = false, features = ["aisle", "bundled_units"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 # Without float_roundtrip, serde_json read 450 of the export's values, in 444 of its portions,
 # other than as written, such as a grams per millilitre written as 0.9848334132725011 and read as
