@@ -1415,7 +1415,7 @@ mod tests {
         let head = "---\ntitle: Soup\nservings: 2\n---\n";
         assert_eq!(check_record(&format!("{head}@a{{1%cup}}.")), Ok(()));
         let refused = |text: &str, why: &str| {
-            let err = check_record(text).unwrap_err();
+            let err = check_record(text).expect_err(why);
             assert!(err.contains(why), "{err:?} does not say {why:?}");
         };
         refused("---\nservings: 2\n---\n@a{1%cup}.", "no title");
