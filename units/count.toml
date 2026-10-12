@@ -1,0 +1,74 @@
+# Count units: units a recipe counts in, which no mass or volume unit converts. cooklang's bundled
+# units give the mass and volume units (gram, ounce, cup, tablespoon, fluid ounce, ...); these are
+# the rest a recipe or USDA's portion text may name. A count unit's grams come from USDA's portion
+# for the food, never from here. Each name is lowercase, names one unit, and is not a name of a
+# mass or volume unit cooklang knows, or the warehouse refuses to load. Read by crates/records
+# (src/units.rs).
+
+[[unit]]
+key = "clove"
+names = ["clove", "cloves"]
+
+[[unit]]
+key = "bunch"
+names = ["bunch", "bunches"]
+
+[[unit]]
+key = "head"
+names = ["head", "heads"]
+
+[[unit]]
+key = "leaf"
+names = ["leaf", "leaves"]
+
+[[unit]]
+key = "sprig"
+names = ["sprig", "sprigs"]
+
+[[unit]]
+key = "stalk"
+names = ["stalk", "stalks"]
+
+[[unit]]
+key = "slice"
+names = ["slice", "slices"]
+
+[[unit]]
+key = "piece"
+names = ["piece", "pieces"]
+
+[[unit]]
+key = "each"
+names = ["each"]
+
+[[unit]]
+key = "small"
+names = ["small"]
+
+[[unit]]
+key = "medium"
+names = ["medium"]
+
+[[unit]]
+key = "large"
+names = ["large"]
+
+[[unit]]
+key = "can"
+names = ["can", "cans"]
+
+[[unit]]
+key = "package"
+names = ["package", "packages"]
+
+[[unit]]
+key = "jar"
+names = ["jar", "jars"]
+
+[[unit]]
+key = "pinch"
+names = ["pinch", "pinches"]
+
+[[unit]]
+key = "dash"
+names = ["dash", "dashes"]

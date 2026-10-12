@@ -5,8 +5,10 @@ pub mod diet;
 pub mod ingredients;
 pub mod nutrients;
 pub mod sources;
+pub mod units;
 
 pub use diet::{Answer, Class, Diet, DietCategory, Exception, Organism, Rule, Taxon};
 pub use ingredients::{Form, Ingredient, Ingredients, State};
 pub use nutrients::{Nutrient, Nutrients};
 pub use sources::{Dataset, Publisher, Sources};
+pub use units::{CountUnit, CountUnits};
