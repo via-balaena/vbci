@@ -23,28 +23,29 @@ them, as tentzhen does. A proposal for a new piece starts here, and searches aga
 
 ## The short answer
 
-- **No open tool links Cooklang recipes to USDA data.** Cooklang's own discussion of nutrition
+- **No open tool found links Cooklang recipes to USDA data.** Cooklang's own discussion of nutrition
   (spec #52, opened 2021-10-26) is open, and its maintainers say it waits on units and density.
   cook.md, a commercial Cooklang company, runs a hosted nutrition service.
-- **The closest designs** are capycook (Go, MIT), which maps 243 names to FDC ids and pins the same
-  Foundation release by the sha256 we measured, and recipya-rs (Rust, AGPL-3.0).
+- **Two tools share most of our design.** capycook (Go, MIT) has a hand-picked mapping of 243 names
+  to FDC ids, gram weights from `food_portion`, and USDA's zips pinned by sha256, the Foundation one
+  by the sha256 we measured. recipya-rs (Rust, AGPL-3.0) loads FDC into Postgres and takes grams
+  from `food_portion`.
 - **Curated mappings from ingredient names to foods exist,** but mostly under licenses a CC0 record
   cannot take in without permission: open-tandoor-data (ODbL), capycook (MIT), Open Food Facts'
   taxonomy (no license stated). OpenCookbook's 55 (CC0) and Wikidata (CC0) can come in as they are.
-- **No crate on crates.io reads FDC data, and no maintained loader puts it in DuckDB,** so plan
-  steps 3 and 4 are new work.
-- **Identifiers:** FoodOn is the strongest open food id, and USDA's own Foundation files carry it.
-  INFOODS tagnames, the nutrient standard, are licensed for non-commercial use and the newest file
-  dates from 2012. Wikidata is CC0 but thin.
-- **Farm software** (farmOS, Open Food Network, LiteFarm, FarmBot, Growstuff) records harvests in
-  count or weight units, and none stores a fixed weight per bunch or head. Growstuff records both a
-  count and a weight for each harvest.
+- **The searches found no crate on crates.io that reads FDC data, and no maintained loader that puts
+  it in DuckDB,** so plan steps 3 and 4 are new work.
+- **Identifiers:** USDA's own Foundation files carry FoodOn ids, from an open food ontology (CC BY
+  4.0). INFOODS tagnames, the nutrient standard, are licensed for non-commercial use and the newest
+  file dates from 2012. Wikidata is CC0 but thin.
+- **Farm software:** none of farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff stores a
+  fixed weight per bunch or head. Growstuff records both a count and a weight for each harvest.
 
 ## Linking recipes to USDA data
 
 | project | what it is | license, activity | what we take | source |
 |---|---|---|---|---|
-| capycook | Go: maps 243 ingredient names to FDC ids (about 190 picked by hand), with 714 gram weights from `food_portion`; vendors a subset of SR Legacy and Foundation 2026-04-30 | MIT, pushed 2026-07-31 | the design closest to ours; its mapping only with its author's permission, since our records are CC0. Its `data/usda/PROVENANCE.md` pins the Foundation zip by the sha256 we measured (`70457ee9…`) | github.com/ogngnaoh/capycook, **re-read** (license, push, sha256) |
+| capycook | Go: maps 243 ingredient names to FDC ids (about 190 picked by hand), with 714 gram weights from `food_portion`; vendors a subset of SR Legacy and Foundation 2026-04-30 | MIT, pushed 2026-07-31 | its design, which has the same three parts as ours (a hand-picked mapping, gram weights from `food_portion`, zips pinned by sha256); its mapping only with its author's permission, since our records are CC0. Its `data/usda/PROVENANCE.md` pins the Foundation zip by the sha256 we measured (`70457ee9…`) | github.com/ogngnaoh/capycook, **re-read** (license, push, sha256) |
 | open-tandoor-data | Tandoor's food data: 391 foods, 390 with an fdc_id (237 of those in SR Legacy or Foundation), names in many languages, 163 unit conversions | ODbL schema, DbCL contents (its README), pushed 2026-10-03 | nothing without permission: ODbL is share-alike | github.com/TandoorRecipes/open-tandoor-data, **re-read** (license, push) |
 | OpenCookbook `nutrition-db.json` | 55 ingredients with aliases and an fdc_id | CC0-1.0, pushed 2026-04-18 | seed alias candidates (step 6) | github.com/JPEGtheDev/OpenCookbook, **re-read** (license, push) |
 | ingredient-parser | Python: parses ingredient lines, and matches them offline against bundled Foundation, SR Legacy and FNDDS foods by fusing BM25, embedding and fuzzy rankings | MIT, pushed 2026-10-11 | a reference for matching, if matching past reviewed aliases is ever needed | github.com/strangetom/ingredient-parser, **re-read** (license, push) |
@@ -81,7 +82,7 @@ no paper from 2023 to 2026 released a set of ingredients matched to FDC foods.
 | source | what it is | license | what we take | source of this row |
 |---|---|---|---|---|
 | cooklang's bundled units | `units.toml`: mass and volume with their spellings, `fl oz` among them; no count units | MIT | step 7 | cooklang 0.19.0's source, scratch check |
-| USDA's organism attributes | Foundation's `food_attribute.csv` gives each food's source organism and its group: plants (NCBITaxon 35493), fungi (4751), animals (33208), or NA for mixed foods | public domain, by data.gov's record | step 5 | scratch check |
+| USDA's organism attributes | Foundation's `food_attribute.csv` gives a food's source organism and its group, for 365 of the 2026-04-30 release's 469 foods: plants (NCBITaxon 35493), fungi (4751), animals (33208), or NA for mixed foods | public domain, by data.gov's record | step 5 | scratch check |
 | diet-badges | a cook.md plugin: vegan, vegetarian and pescatarian badges from word lists, with look-alike exceptions such as "beef tomatoes" and "chicken of the woods" | MIT (its own `LICENSE`) | a reference for step 5's fixtures; its lists only with its notice | github.com/cook-md/plugins, **re-read** (license) |
 
 ## Farm and farm-to-table software
