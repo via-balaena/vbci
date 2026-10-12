@@ -1127,10 +1127,11 @@ mod tests {
                 ("is_default", Boolean),
                 ("fdc_id", Integer),
             ],
+            // Onion's default listed second: the default is the form marked so, not the first.
             [
                 ("garlic", "raw", true, 1),
-                ("onion", "raw", true, 2),
                 ("onion", "cooked", false, 3),
+                ("onion", "raw", true, 2),
                 ("lemon-juice", "raw", true, 4),
                 ("parmesan", "as_sold", true, 5),
                 ("red-lentils", "dry", true, 6),
