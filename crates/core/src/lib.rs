@@ -479,8 +479,14 @@ mod tests {
             &with("\"records\": []}", "\"records\": [], \"commit\": \"x\"}"),
             "unknown field `commit`",
         );
+        // Without its foreign key, so that the second "food" breaks nothing else.
+        let no_fk = with(
+            "\"primaryKey\": [\"id\"],\n        \"foreignKeys\": [{\"fields\": [\"fdc_id\"], \"reference\": {\"resource\": \"food\", \"fields\": [\"fdc_id\"]}}]",
+            "\"primaryKey\": [\"id\"]",
+        );
+        assert_eq!(no_fk.matches("\"name\": \"portion\"").count(), 1);
         refused(
-            &with("\"name\": \"portion\"", "\"name\": \"food\""),
+            &no_fk.replace("\"name\": \"portion\"", "\"name\": \"food\""),
             "resource food: listed twice",
         );
     }
