@@ -402,6 +402,63 @@ mod tests {
         );
     }
 
+    /// The fetch step runs the binary built by the cargo command that builds the tests, so the two
+    /// share one build of DuckDB: built apart, by `cargo run` and `cargo test`, they differed in a
+    /// feature a dev-dependency turns on, and each built DuckDB. Text only: how many times DuckDB
+    /// builds is seen in a run's log.
+    #[test]
+    fn the_gate_fetches_with_the_binary_its_tests_were_built_with() {
+        let gate = quality_gate();
+        let at = |step: &str| {
+            let found = gate.find(step);
+            assert!(found.is_some(), "the Quality Gate lacks {step:?}");
+            found.unwrap()
+        };
+        let build = at("      - run: cargo build --workspace --bins --tests --locked\n");
+        let fetch = at("        run: target/debug/balaena-warehouse fetch\n");
+        let test = at("      - run: cargo test --workspace --locked\n");
+        assert!(
+            build < fetch && fetch < test,
+            "build, then fetch, then test"
+        );
+        let subs: Vec<String> = cargo_commands(&gate).into_iter().map(|(s, _)| s).collect();
+        assert!(
+            !subs.iter().any(|s| s == "run"),
+            "cargo run builds without the tests' dev-dependencies: {subs:?}"
+        );
+    }
+
+    /// The build cache is restored only under its exact key, which hashes the toolchain, every
+    /// manifest, the lockfile and the workflow: with a fallback to an older key, the caches saved
+    /// grew, by the sizes the workflow's comment gives. Text only: what GitHub restores is seen in
+    /// a run's log.
+    #[test]
+    fn the_build_cache_is_restored_only_by_its_exact_key() {
+        let gate = quality_gate();
+        let caching: Vec<&str> = gate
+            .split("\n      - ")
+            .filter(|step| step.contains("\n            target\n"))
+            .collect();
+        assert_eq!(caching.len(), 1, "steps that cache target: {caching:?}");
+        let key = [
+            "          key: >-",
+            concat!(
+                "            cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', ",
+                "'**/Cargo.toml',"
+            ),
+            "            'Cargo.lock', '.github/workflows/quality-gate.yml') }}",
+        ];
+        let lines: Vec<&str> = caching[0].lines().collect();
+        assert!(
+            lines.windows(3).any(|w| w == key),
+            "the build cache's key is not {key:?}"
+        );
+        assert!(
+            !caching[0].contains("restore-keys"),
+            "the build cache falls back to an older key"
+        );
+    }
+
     /// A newer push to a pull request cancels the Quality Gate's older run on it; a run on main, or
     /// one started by hand, is a concurrency group of its own, so nothing cancels it or holds it
     /// back. Text only: that GitHub does so is seen on a pull request, not here.
