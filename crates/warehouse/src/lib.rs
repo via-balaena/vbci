@@ -3,7 +3,7 @@
 
 pub mod usda;
 
-use balaena_records::{Nutrients, Sources};
+use balaena_records::{Diet, Nutrients, Sources};
 use duckdb::{Connection, params};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -102,12 +102,15 @@ fn sql(e: duckdb::Error) -> String {
 pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (sources, sources_text) = Sources::load(root)?;
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
+    let diet = Diet::load(root)?;
     let conn = Connection::open_in_memory().map_err(sql)?;
     conn.execute_batch(SCHEMA).map_err(sql)?;
-    for (path, text) in [
-        (Sources::PATH, &sources_text),
-        (Nutrients::PATH, &nutrients_text),
-    ] {
+    let mut records = vec![
+        (Sources::PATH.to_string(), sources_text),
+        (Nutrients::PATH.to_string(), nutrients_text),
+    ];
+    records.extend(diet.files.iter().cloned());
+    for (path, text) in &records {
         conn.execute(
             "INSERT INTO bronze.record VALUES (?, ?)",
             params![path, text],
@@ -161,7 +164,140 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
         .map_err(|e| format!("bronze.{table}: {e}"))?;
     }
     load_silver(&conn, &nutrients)?;
+    load_diet(&conn, &diet)?;
     Ok(conn)
+}
+
+/// The first row of `query`, which names what is wrong, as an error; Ok when there is none.
+fn refuse_any(conn: &Connection, query: &str) -> Result<(), String> {
+    match rows(conn, query, |r| r.get::<_, String>(0))?
+        .into_iter()
+        .next()
+    {
+        Some(wrong) => Err(wrong),
+        None => Ok(()),
+    }
+}
+
+/// Loads each Foundation food's organism group and the four diet records into silver, then refuses
+/// what the records' comments rule out: a category with no class, a class for a category no
+/// dataset has, an organism the records lack, a rule that matches no food, a food two rules match,
+/// and an exception whose name is not USDA's.
+fn load_diet(conn: &Connection, diet: &Diet) -> Result<(), String> {
+    conn.execute_batch(
+        "INSERT INTO silver.usda_food_taxon
+         SELECT DISTINCT CAST(fdc_id AS INTEGER), dataset,
+                replace(value, 'http://purl.obolibrary.org/obo/', '')
+         FROM bronze.usda_food_attribute
+         WHERE name = 'NCBI Taxon Parent' AND value <> 'NA'
+           AND CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);",
+    )
+    .map_err(|e| format!("silver.usda_food_taxon: {e}"))?;
+    let [categories, taxa, rules, exceptions] = Diet::FILES.map(|f| format!("{}/{f}", Diet::DIR));
+    let answer = |a: Option<balaena_records::Answer>| a.map(|a| a.as_str());
+    for c in &diet.categories {
+        conn.execute(
+            "INSERT INTO silver.diet_category VALUES (?, ?, ?)",
+            params![c.description, c.class.as_str(), categories],
+        )
+        .map_err(|e| format!("{categories} {:?}: {e}", c.description))?;
+    }
+    for t in &diet.taxa {
+        conn.execute(
+            "INSERT INTO silver.diet_taxon VALUES (?, ?, ?, ?)",
+            params![t.id, t.name, t.group.as_str(), taxa],
+        )
+        .map_err(|e| format!("{taxa} {}: {e}", t.id))?;
+    }
+    for r in &diet.rules {
+        conn.execute(
+            "INSERT INTO silver.diet_rule VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                r.category,
+                r.starts_with,
+                answer(r.vegan),
+                answer(r.vegetarian),
+                r.why,
+                rules
+            ],
+        )
+        .map_err(|e| format!("{rules} {} / {:?}: {e}", r.category, r.starts_with))?;
+    }
+    for x in &diet.exceptions {
+        conn.execute(
+            "INSERT INTO silver.diet_exception VALUES (?, ?, ?, ?, ?, ?)",
+            params![
+                x.fdc_id,
+                x.description,
+                answer(x.vegan),
+                answer(x.vegetarian),
+                x.why,
+                exceptions
+            ],
+        )
+        .map_err(|e| format!("{exceptions} {}: {e}", x.fdc_id))?;
+    }
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{categories} has no class for category ' || c.description
+             FROM silver.usda_category c
+             WHERE c.description NOT IN (SELECT description FROM silver.diet_category)
+             ORDER BY 1"
+        ),
+    )?;
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{categories}: category ' || description || ' is in no dataset'
+             FROM silver.diet_category
+             WHERE description NOT IN (SELECT description FROM silver.usda_category)
+             ORDER BY 1"
+        ),
+    )?;
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{taxa} lacks ' || taxon || ', which food ' || fdc_id || ' records'
+             FROM silver.usda_food_taxon
+             WHERE taxon NOT IN (SELECT taxon FROM silver.diet_taxon)
+             ORDER BY 1"
+        ),
+    )?;
+    let matches = "SELECT r.category, r.starts_with, f.fdc_id
+                   FROM silver.diet_rule r
+                   JOIN silver.usda_category c ON c.description = r.category
+                   JOIN silver.usda_food f ON f.dataset = c.dataset AND f.category_id = c.id
+                   WHERE starts_with(f.description, r.starts_with)";
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{rules}: no food in ' || r.category || ' starts with ' || r.starts_with
+             FROM silver.diet_rule r
+             WHERE NOT EXISTS (SELECT 1 FROM ({matches}) m
+                               WHERE m.category = r.category AND m.starts_with = r.starts_with)
+             ORDER BY 1"
+        ),
+    )?;
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{rules}: food ' || fdc_id || ' matches two rules: '
+                    || string_agg(starts_with, ' and ' ORDER BY starts_with)
+             FROM ({matches}) GROUP BY fdc_id HAVING count(*) > 1 ORDER BY 1"
+        ),
+    )?;
+    refuse_any(
+        conn,
+        &format!(
+            "SELECT '{exceptions}: food ' || x.fdc_id || ' is ' || f.description
+                    || ' in USDA''s data, not ' || x.description
+             FROM silver.diet_exception x JOIN silver.usda_food f USING (fdc_id)
+             WHERE x.description <> f.description
+             ORDER BY 1"
+        ),
+    )?;
+    Ok(())
 }
 
 /// Types bronze's USDA rows into silver, keeping each nutrient row of a silver food or rejecting it
@@ -393,6 +529,99 @@ pub fn coverage_report(conn: &Connection, sources: &Sources) -> Result<String, S
             out.push('\n');
         }
     }
+    Ok(out)
+}
+
+/// Where `diet` writes its report, relative to the repo root.
+pub const DIET_PATH: &str = "docs/diet.md";
+
+/// `docs/diet.md`, as the warehouse writes it: for each dataset, how many foods take each answer for
+/// each diet, and what decided them; then how many foods each naming rule decides.
+pub fn diet_report(conn: &Connection, sources: &Sources) -> Result<String, String> {
+    let mut out = String::from(
+        "# Diet status\n\n\
+         Generated by `cargo run -p balaena-warehouse -- diet` from the datasets `sources.toml` pins\n\
+         and the records in `diet/`; the test `the_diet_report_is_current` fails when this file\n\
+         differs from what that would write. Change the records, not this file.\n\n\
+         Each food's answer for each diet, yes, no or unknown (`gold.food_diet`), and what decided\n\
+         it, the first that applies: an exception for the food (`diet/exceptions.toml`), a naming\n\
+         rule within its category (`diet/rules.toml`), the animal organism a Foundation food\n\
+         records (`diet/taxa.toml`), or its category's class (`diet/categories.toml`). Vegan is The\n\
+         Vegan Society's definition and vegetarian the Vegetarian Society's criteria\n\
+         (`docs/architecture.md`, \"Decided\"). An answer that came from a category holds for a\n\
+         food only as far as its USDA name shows what is in it.\n",
+    );
+    let count = |query: String| -> Result<i64, String> {
+        conn.query_row(&query, [], |r| r.get(0))
+            .map_err(|e| format!("{query}: {e}"))
+    };
+    for d in &sources.dataset {
+        let ds = literal(&d.id);
+        let foods = count(format!(
+            "SELECT count(*) FROM gold.food_diet WHERE dataset = {ds}"
+        ))?;
+        out.push_str(&format!(
+            "\n## {} {} (`{}`): {foods} foods\n\n| answer | vegan | vegetarian |\n|---|---|---|\n",
+            d.name, d.release, d.id
+        ));
+        for answer in ["yes", "no", "unknown"] {
+            let a = literal(answer);
+            let vegan = count(format!(
+                "SELECT count(*) FROM gold.food_diet WHERE dataset = {ds} AND vegan = {a}"
+            ))?;
+            let vegetarian = count(format!(
+                "SELECT count(*) FROM gold.food_diet WHERE dataset = {ds} AND vegetarian = {a}"
+            ))?;
+            out.push_str(&format!("| {answer} | {vegan} | {vegetarian} |\n"));
+        }
+        out.push_str("\n| decided by | vegan | vegetarian |\n|---|---|---|\n");
+        for (label, pattern) in [
+            ("an exception", "exception"),
+            ("a naming rule", "rule: %"),
+            ("an animal organism", "organism: %"),
+            ("the category", "category: %"),
+        ] {
+            let p = literal(pattern);
+            let vegan = count(format!(
+                "SELECT count(*) FROM gold.food_diet WHERE dataset = {ds} AND vegan_basis LIKE {p}"
+            ))?;
+            let vegetarian = count(format!(
+                "SELECT count(*) FROM gold.food_diet WHERE dataset = {ds} AND vegetarian_basis LIKE {p}"
+            ))?;
+            out.push_str(&format!("| {label} | {vegan} | {vegetarian} |\n"));
+        }
+    }
+    out.push_str(
+        "\n## Naming rules\n\n\
+         How many foods, in all datasets, each rule matches (`diet/rules.toml`); an exception\n\
+         for a matched food still overrides the rule.\n\n\
+         | category | name starts with | vegan | vegetarian | foods |\n|---|---|---|---|---|\n",
+    );
+    let lines = rows(
+        conn,
+        "SELECT r.category, r.starts_with, coalesce(r.vegan, '-'), coalesce(r.vegetarian, '-'),
+                (SELECT count(*) FROM gold.food_diet f
+                 WHERE f.category = r.category AND starts_with(f.description, r.starts_with))
+         FROM silver.diet_rule r ORDER BY r.category, r.starts_with",
+        |r| {
+            Ok(format!(
+                "| {} | {} | {} | {} | {} |",
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, i64>(4)?
+            ))
+        },
+    )?;
+    for line in lines {
+        out.push_str(&line);
+        out.push('\n');
+    }
+    let exceptions = count("SELECT count(*) FROM silver.diet_exception".to_string())?;
+    out.push_str(&format!(
+        "\n{exceptions} foods have an exception, each with its reason, in `diet/exceptions.toml`.\n"
+    ));
     Ok(out)
 }
 
@@ -670,23 +899,58 @@ unit = "G"
 codes = ["269", "269.3"]
 "#;
 
+    /// Diet records for the synthetic bronze below, in the order of `Diet::FILES`.
+    const SYNTHETIC_DIET: [&str; 4] = [
+        "[[category]]\ndescription = \"Vegetables\"\nclass = \"plant\"\n
+[[category]]\ndescription = \"Dairy\"\nclass = \"dairy_and_egg\"\n
+[[category]]\ndescription = \"Poultry\"\nclass = \"flesh\"\n
+[[category]]\ndescription = \"Fats\"\nclass = \"mixed\"\n",
+        "[[taxon]]\nid = \"NCBITaxon_33208\"\nname = \"Metazoa\"\ngroup = \"animal\"\n
+[[taxon]]\nid = \"NCBITaxon_35493\"\nname = \"Streptophyta\"\ngroup = \"plant\"\n",
+        "[[rule]]\ncategory = \"Dairy\"\nstarts_with = \"Cheese\"\nvegetarian = \"unknown\"\nwhy = \"Rennet.\"\n
+[[rule]]\ncategory = \"Fats\"\nstarts_with = \"Oil,\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Plant oils.\"\n
+[[rule]]\ncategory = \"Vegetables\"\nstarts_with = \"B\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Over the organism.\"\n",
+        "[[food]]\nfdc_id = 7\ndescription = \"Lard\"\nvegan = \"no\"\nvegetarian = \"no\"\nwhy = \"Carcass fat.\"\n
+[[food]]\nfdc_id = 8\ndescription = \"Potatoes, mashed, with milk\"\nvegan = \"no\"\nwhy = \"Milk.\"\n
+[[food]]\nfdc_id = 6\ndescription = \"Oil, olive\"\nvegan = \"unknown\"\nwhy = \"Over the rule.\"\n
+[[food]]\nfdc_id = 4\ndescription = \"Cheese, parmesan\"\nvegetarian = \"yes\"\nwhy = \"Vegetarian rennet, over the rule.\"\n",
+    ];
+
     /// A warehouse whose bronze is a few rows written here, with silver loaded from them by
-    /// `nutrients`. Food 3 is a sample food, out of silver's scope. Rows: 1-2 give food 1 energy by
-    /// 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food 2 sugars by 269.3 only; 5 gives
-    /// food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2 different sugars by 269; 9 names a
-    /// nutrient nutrient.csv lacks; 10 has no amount; 11 is the sample food's.
+    /// `nutrients` and `SYNTHETIC_DIET`. Food 3 is a sample food, out of silver's scope. Nutrient
+    /// rows: 1-2 give food 1 energy by 208 and 958; 3 gives food 2 energy by 958 only; 4 gives food
+    /// 2 sugars by 269.3 only; 5 gives food 1 sugars by 269, and 6 repeats it; 7 and 8 give food 2
+    /// different sugars by 269; 9 names a nutrient nutrient.csv lacks; 10 has no amount; 11 is the
+    /// sample food's. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
+    /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2, and exceptions
+    /// override the rules matching foods 4 and 6, so each layer is seen over the one below it.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
+        synthetic_with(nutrients, SYNTHETIC_DIET)
+    }
+
+    fn synthetic_with(nutrients: &str, diet: [&str; 4]) -> Result<Connection, String> {
         let conn = Connection::open_in_memory().map_err(sql)?;
         conn.execute_batch(SCHEMA).map_err(sql)?;
         conn.execute_batch(&format!(
             "INSERT INTO bronze.usda_zip VALUES ('d', 'https://example.org/d.zip', '{}', 1);
              INSERT INTO bronze.record VALUES ('nutrients.toml', 'synthetic');
              CREATE TABLE bronze.usda_food_category (dataset VARCHAR, id VARCHAR, code VARCHAR, description VARCHAR);
-             INSERT INTO bronze.usda_food_category VALUES ('d', '1', '0100', 'Vegetables');
+             INSERT INTO bronze.usda_food_category VALUES ('d', '1', '0100', 'Vegetables'),
+               ('d', '2', '0200', 'Dairy'), ('d', '3', '0300', 'Poultry'), ('d', '4', '0400', 'Fats');
              CREATE TABLE bronze.usda_food (dataset VARCHAR, fdc_id VARCHAR, data_type VARCHAR, description VARCHAR, food_category_id VARCHAR);
              INSERT INTO bronze.usda_food VALUES
                ('d', '1', 'sr_legacy_food', 'A', '1'), ('d', '2', 'foundation_food', 'B', '1'),
-               ('d', '3', 'sample_food', 'C', '1');
+               ('d', '3', 'sample_food', 'C', '1'), ('d', '4', 'sr_legacy_food', 'Cheese, parmesan', '2'),
+               ('d', '5', 'sr_legacy_food', 'Chicken, raw', '3'), ('d', '6', 'foundation_food', 'Oil, olive', '4'),
+               ('d', '7', 'sr_legacy_food', 'Lard', '4'), ('d', '8', 'sr_legacy_food', 'Potatoes, mashed, with milk', '1'),
+               ('d', '9', 'sr_legacy_food', 'Cheese sauce', '4'), ('d', '10', 'foundation_food', 'D', '1');
+             CREATE TABLE bronze.usda_food_attribute (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, name VARCHAR, value VARCHAR);
+             INSERT INTO bronze.usda_food_attribute VALUES
+               ('d', '1', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '2', '2', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '3', '6', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_35493'),
+               ('d', '6', '10', 'NCBI Taxon Parent', 'http://purl.obolibrary.org/obo/NCBITaxon_33208'),
+               ('d', '4', '1', 'NCBI Taxon Parent', 'NA'), ('d', '5', '1', 'Common Name', 'a');
              CREATE TABLE bronze.usda_nutrient (dataset VARCHAR, id VARCHAR, name VARCHAR, unit_name VARCHAR, nutrient_nbr VARCHAR);
              INSERT INTO bronze.usda_nutrient VALUES
                ('d', '1008', 'Energy', 'KCAL', '208'), ('d', '2048', 'Energy (Atwater)', 'KCAL', '958'),
@@ -702,6 +966,7 @@ codes = ["269", "269.3"]
         ))
         .map_err(sql)?;
         load_silver(&conn, &Nutrients::parse(nutrients)?)?;
+        load_diet(&conn, &Diet::parse(diet[0], diet[1], diet[2], diet[3])?)?;
         Ok(conn)
     }
 
@@ -735,9 +1000,9 @@ codes = ["269", "269.3"]
         assert_eq!(
             strings(
                 &w,
-                "SELECT description FROM silver.usda_food ORDER BY fdc_id"
+                "SELECT CAST(fdc_id AS VARCHAR) FROM silver.usda_food ORDER BY fdc_id"
             ),
-            ["A", "B"]
+            ["1", "2", "4", "5", "6", "7", "8", "9", "10"]
         );
     }
 
@@ -814,7 +1079,7 @@ codes = ["269", "269.3"]
         };
         let cases = [
             (
-                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sr_legacy_food', 'X', 1)",
+                "INSERT INTO silver.usda_food VALUES (99, 'd', 'sr_legacy_food', 'X', 1)",
                 true,
             ),
             (
@@ -822,11 +1087,11 @@ codes = ["269", "269.3"]
                 false,
             ),
             (
-                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sr_legacy_food', 'X', 7)",
+                "INSERT INTO silver.usda_food VALUES (99, 'd', 'sr_legacy_food', 'X', 7)",
                 false,
             ),
             (
-                "INSERT INTO silver.usda_food VALUES (9, 'd', 'sample_food', 'X', 1)",
+                "INSERT INTO silver.usda_food VALUES (99, 'd', 'sample_food', 'X', 1)",
                 false,
             ),
             (
@@ -856,6 +1121,156 @@ codes = ["269", "269.3"]
         ];
         for (sql, ok) in cases {
             assert_eq!(accepted(sql).is_ok(), ok, "{sql}: {:?}", accepted(sql));
+        }
+    }
+
+    fn diet_of(w: &Connection) -> Vec<String> {
+        strings(
+            w,
+            "SELECT fdc_id || ' ' || vegan || ' (' || vegan_basis || ') ' || vegetarian || ' (' || vegetarian_basis || ')' \
+             FROM gold.food_diet ORDER BY fdc_id",
+        )
+    }
+
+    /// Each food's answers come from the first that applies: an exception, a naming rule, an
+    /// animal organism, the category, each for the diets it gives. An exception overrides a rule
+    /// (food 6's vegan, food 4's vegetarian) and a rule an organism (food 2); a rule applies within
+    /// its category only
+    /// (food 9, "Cheese sauce", is in Fats, not Dairy); an animal organism makes a food not vegan,
+    /// and a plant category's food vegetarian: unknown (food 10); a plant organism changes nothing.
+    #[test]
+    fn each_food_s_answers_come_from_the_first_layer_that_applies() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            diet_of(&w),
+            [
+                "1 yes (category: plant) yes (category: plant)",
+                "2 yes (rule: B) yes (rule: B)",
+                "4 no (category: dairy_and_egg) yes (exception)",
+                "5 no (category: flesh) no (category: flesh)",
+                "6 unknown (exception) yes (rule: Oil,)",
+                "7 no (exception) no (exception)",
+                "8 no (exception) yes (category: plant)",
+                "9 unknown (category: mixed) unknown (category: mixed)",
+                "10 no (organism: animal) unknown (organism: animal)",
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT CAST(fdc_id AS VARCHAR) || ' ' || taxon FROM silver.usda_food_taxon ORDER BY fdc_id"
+            ),
+            [
+                "2 NCBITaxon_33208",
+                "6 NCBITaxon_35493",
+                "10 NCBITaxon_33208"
+            ]
+        );
+    }
+
+    /// The diet records' comments rule these out, and the load stops on each, naming it.
+    #[test]
+    fn the_load_refuses_what_the_diet_records_rule_out() {
+        let [categories, taxa, rules, exceptions] = SYNTHETIC_DIET;
+        let fats = "[[category]]\ndescription = \"Fats\"\nclass = \"mixed\"\n";
+        let animal =
+            "[[taxon]]\nid = \"NCBITaxon_33208\"\nname = \"Metazoa\"\ngroup = \"animal\"\n";
+        let oil = "[[rule]]\ncategory = \"Fats\"\nstarts_with = \"Oil,\"\nvegan = \"yes\"\nvegetarian = \"yes\"\nwhy = \"Plant oils.\"\n";
+        assert!(rules.contains(oil));
+        let cases: [([String; 4], &str); 8] = [
+            (
+                [
+                    categories.replace(fats, ""),
+                    taxa.into(),
+                    rules.replace(oil, ""),
+                    exceptions.into(),
+                ],
+                "diet/categories.toml has no class for category Fats",
+            ),
+            (
+                [
+                    categories.replace(fats, ""),
+                    taxa.into(),
+                    rules.into(),
+                    exceptions.into(),
+                ],
+                "diet/rules.toml Fats / \"Oil,\": Constraint Error: Violates foreign key",
+            ),
+            (
+                [
+                    format!(
+                        "{categories}[[category]]\ndescription = \"Seafood\"\nclass = \"flesh\"\n"
+                    ),
+                    taxa.into(),
+                    rules.into(),
+                    exceptions.into(),
+                ],
+                "diet/categories.toml: category Seafood is in no dataset",
+            ),
+            (
+                [
+                    categories.into(),
+                    taxa.replace(animal, ""),
+                    rules.into(),
+                    exceptions.into(),
+                ],
+                "diet/taxa.toml lacks NCBITaxon_33208, which food",
+            ),
+            (
+                [
+                    categories.into(),
+                    taxa.into(),
+                    format!(
+                        "{rules}[[rule]]\ncategory = \"Dairy\"\nstarts_with = \"Butter\"\nvegan = \"no\"\nwhy = \"x\"\n"
+                    ),
+                    exceptions.into(),
+                ],
+                "diet/rules.toml: no food in Dairy starts with Butter",
+            ),
+            (
+                [
+                    categories.into(),
+                    taxa.into(),
+                    format!(
+                        "{rules}[[rule]]\ncategory = \"Dairy\"\nstarts_with = \"Cheese, parm\"\nvegan = \"no\"\nwhy = \"x\"\n"
+                    ),
+                    exceptions.into(),
+                ],
+                "diet/rules.toml: food 4 matches two rules: Cheese and Cheese, parm",
+            ),
+            (
+                [
+                    categories.into(),
+                    taxa.into(),
+                    rules.into(),
+                    exceptions
+                        .replace("description = \"Lard\"", "description = \"Lard, rendered\""),
+                ],
+                "diet/exceptions.toml: food 7 is Lard in USDA's data, not Lard, rendered",
+            ),
+            (
+                [
+                    categories.into(),
+                    taxa.into(),
+                    rules.into(),
+                    format!(
+                        "{exceptions}[[food]]\nfdc_id = 3\ndescription = \"C\"\nvegan = \"no\"\nwhy = \"x\"\n"
+                    ),
+                ],
+                "diet/exceptions.toml 3:",
+            ),
+        ];
+        for (diet, why) in cases {
+            let texts = [
+                diet[0].as_str(),
+                diet[1].as_str(),
+                diet[2].as_str(),
+                diet[3].as_str(),
+            ];
+            let Err(err) = synthetic_with(SYNTHETIC_NUTRIENTS, texts) else {
+                panic!("loaded, though it should refuse: {why}");
+            };
+            assert!(err.contains(why), "{err:?} does not say {why:?}");
         }
     }
 
@@ -1103,6 +1518,22 @@ codes = ["269", "269.3"]
             0
         );
         assert!(count(&w, "SELECT count(*) FROM silver.nutrient") >= 16);
+        for table in ["diet_category", "diet_taxon", "diet_rule", "diet_exception"] {
+            let untraced = count(
+                &w,
+                &format!(
+                    "SELECT count(*) FROM silver.{table} WHERE record NOT IN (SELECT path FROM bronze.record)"
+                ),
+            );
+            assert_eq!(untraced, 0, "silver.{table}");
+        }
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.usda_food_taxon WHERE dataset NOT IN (SELECT dataset FROM bronze.usda_zip)"
+            ),
+            0
+        );
     }
 
     #[test]
@@ -1143,6 +1574,92 @@ codes = ["269", "269.3"]
             "SELECT count(*) FROM duckdb_tables() WHERE schema_name IN ('bronze', 'silver', 'gold')",
         );
         assert!(described >= 35, "{described}");
+    }
+
+    #[test]
+    fn every_food_has_an_answer_for_each_diet() {
+        let w = warehouse();
+        let foods = count(&w, "SELECT count(*) FROM silver.usda_food");
+        assert_eq!(count(&w, "SELECT count(*) FROM gold.food_diet"), foods);
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM gold.food_diet WHERE vegan NOT IN ('yes', 'no', 'unknown') \
+                 OR vegetarian NOT IN ('yes', 'no', 'unknown') OR vegan IS NULL OR vegetarian IS NULL"
+            ),
+            0
+        );
+    }
+
+    /// The fixtures plan step 5 names, by USDA's names for the foods: each name must match a
+    /// food, and every food it matches must take the answers given.
+    #[test]
+    fn the_diet_fixtures_hold() {
+        let w = warehouse();
+        let fixtures: [(&str, &str, &str); 18] = [
+            ("Mushrooms, oyster, raw", "yes", "yes"),
+            ("Mushroom, oyster", "yes", "yes"),
+            ("Mushroom, king oyster", "yes", "yes"),
+            ("Salsify, (vegetable oyster), raw", "yes", "yes"),
+            ("Squash, summer, scallop, raw", "yes", "yes"),
+            (
+                "Squash, summer, scallop, cooked, boiled, drained, without salt",
+                "yes",
+                "yes",
+            ),
+            (
+                "Squash, summer, scallop, cooked, boiled, drained, with salt",
+                "yes",
+                "yes",
+            ),
+            ("Egg, duck, whole, fresh, raw", "no", "yes"),
+            ("Egg, turkey, whole, fresh, raw", "no", "yes"),
+            ("Fish oil, cod liver", "no", "no"),
+            ("Fish oil, herring", "no", "no"),
+            ("Fish oil, menhaden", "no", "no"),
+            ("Fish oil, menhaden, fully hydrogenated", "no", "no"),
+            ("Fish oil, salmon", "no", "no"),
+            ("Fish oil, sardine", "no", "no"),
+            (
+                "Margarine-like spread, SMART BALANCE Omega Plus Spread (with plant sterols & fish oil)",
+                "no",
+                "no",
+            ),
+            ("Cheese, parmesan, grated", "no", "unknown"),
+            ("Beans, baked, canned, with franks", "no", "no"),
+        ];
+        for (name, vegan, vegetarian) in fixtures {
+            let got = strings(
+                &w,
+                &format!(
+                    "SELECT vegan || ' ' || vegetarian FROM gold.food_diet WHERE description = {}",
+                    literal(name)
+                ),
+            );
+            assert!(!got.is_empty(), "no food is named {name:?}");
+            for answers in got {
+                assert_eq!(answers, format!("{vegan} {vegetarian}"), "{name}");
+            }
+        }
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(DISTINCT dataset) FROM gold.food_diet WHERE description = 'Cheese, parmesan, grated'"
+            ),
+            2,
+            "Parmesan is a fixture in both datasets"
+        );
+    }
+
+    #[test]
+    fn the_diet_report_is_current() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let written = fs::read_to_string(repo_root().join(DIET_PATH)).unwrap_or_default();
+        assert!(
+            written == diet_report(&w, &sources).unwrap(),
+            "{DIET_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- diet`"
+        );
     }
 
     #[test]

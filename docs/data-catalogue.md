@@ -336,6 +336,30 @@ Other columns: `url` VARCHAR, `sha256` VARCHAR, `bytes` BIGINT.
 
 ## silver
 
+### silver.diet_category
+
+A table. The class of each USDA category, from diet/categories.toml: plant, dairy_and_egg, flesh or mixed.
+
+Columns: `description` VARCHAR, `class` VARCHAR, `record` VARCHAR.
+
+### silver.diet_exception
+
+A table. Each exception for one food, from diet/exceptions.toml, with the reason.
+
+Columns: `fdc_id` INTEGER, `description` VARCHAR, `vegan` VARCHAR, `vegetarian` VARCHAR, `why` VARCHAR, `record` VARCHAR.
+
+### silver.diet_rule
+
+A table. Each naming rule, from diet/rules.toml: within its category, a food whose USDA name starts with starts_with takes the answers the rule gives.
+
+Columns: `category` VARCHAR, `starts_with` VARCHAR, `vegan` VARCHAR, `vegetarian` VARCHAR, `why` VARCHAR, `record` VARCHAR.
+
+### silver.diet_taxon
+
+A table. The group of each organism a Foundation food records, from diet/taxa.toml.
+
+Columns: `taxon` VARCHAR, `name` VARCHAR, `organism` VARCHAR, `record` VARCHAR.
+
 ### silver.nutrient
 
 A table. Each nutrient VBCI reports, from nutrients.toml, in the record's order.
@@ -374,6 +398,12 @@ A table. Each amount of a nutrient in 100 g of a silver food, from food_nutrient
 
 Other columns: `fdc_id` INTEGER, `dataset` VARCHAR, `nutrient_id` INTEGER, `amount` DOUBLE.
 
+### silver.usda_food_taxon
+
+A table. The source organism's group each Foundation food records, from food_attribute.csv's "NCBI Taxon Parent", once per food; a food recorded as NA has none.
+
+Columns: `fdc_id` INTEGER, `dataset` VARCHAR, `taxon` VARCHAR.
+
 ### silver.usda_nutrient
 
 A table. Each nutrient of each dataset, from nutrient.csv. Keyed by dataset: the same id can name a nutrient differently in two releases.
@@ -396,6 +426,17 @@ A table. Each nutrient row of a silver food that silver did not keep, and why: n
 Other columns: `dataset` VARCHAR, `reason` VARCHAR.
 
 ## gold
+
+### gold.food_diet
+
+A view. Each food's vegan and vegetarian answers, yes, no or unknown, and what decided each: an exception, a naming rule, an animal organism, or the category's class, the first that applies.
+
+| column | type | what it is |
+|---|---|---|
+| vegan | VARCHAR | By The Vegan Society's definition: no product derived wholly or partly from animals. |
+| vegetarian | VARCHAR | By the Vegetarian Society's criteria: no meat or fish, and no slaughter by-product such as animal rennet, gelatine or carcass fat. |
+
+Other columns: `fdc_id` INTEGER, `dataset` VARCHAR, `description` VARCHAR, `category` VARCHAR, `vegan_basis` VARCHAR, `vegetarian_basis` VARCHAR.
 
 ### gold.food_nutrient
 

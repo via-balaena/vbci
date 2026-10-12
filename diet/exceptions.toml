@@ -1,0 +1,453 @@
+# Exceptions: foods whose answer is not their category's, organism's or naming rule's, keyed by
+# fdc_id, each with the reason. An exception sets only the diets its food's name gives evidence for;
+# the other diet keeps its answer from below. A food whose name names an animal ingredient takes
+# "no"; a dish usually made with one, whose name does not say, takes "unknown". `description` is
+# USDA's name for the food, word for word, or the warehouse refuses to load. Vegan is The Vegan
+# Society's and vegetarian the Vegetarian Society's (docs/architecture.md, "Decided"). Read by
+# crates/records (src/diet.rs).
+
+[[food]]
+fdc_id = 170448
+description = "Potatoes, au gratin, dry mix, prepared with water, whole milk and butter"
+vegan = "no"
+why = "Its name lists whole milk and butter, which are dairy."
+
+[[food]]
+fdc_id = 170442
+description = "Potatoes, au gratin, home-prepared from recipe using butter"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 170046
+description = "Potatoes, hash brown, frozen, with butter sauce, prepared"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 170045
+description = "Potatoes, hash brown, frozen, with butter sauce, unprepared"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 170041
+description = "Potatoes, mashed, dehydrated, granules with milk, dry form"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170446
+description = "Potatoes, mashed, dehydrated, prepared from flakes without milk, whole milk and butter added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 169372
+description = "Potatoes, mashed, dehydrated, prepared from flakes without milk, whole milk and margarine added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170042
+description = "Potatoes, mashed, dehydrated, prepared from granules with milk, water and margarine added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170040
+description = "Potatoes, mashed, dehydrated, prepared from granules without milk, whole milk and butter added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170493
+description = "Potatoes, mashed, home-prepared, whole milk added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 168555
+description = "Potatoes, mashed, home-prepared, whole milk and butter added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170037
+description = "Potatoes, mashed, home-prepared, whole milk and margarine added"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 168554
+description = "Potatoes, mashed, prepared from granules, without milk, whole milk and margarine"
+vegan = "no"
+why = "Its name lists milk or butter, which are dairy."
+
+[[food]]
+fdc_id = 170450
+description = "Potatoes, scalloped, dry mix, prepared with water, whole milk and butter"
+vegan = "no"
+why = "Its name lists whole milk and butter, which are dairy."
+
+[[food]]
+fdc_id = 170038
+description = "Potatoes, scalloped, home-prepared with butter"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 170057
+description = "Tomato products, canned, sauce, with herbs and cheese"
+vegan = "no"
+vegetarian = "unknown"
+why = "Its name lists cheese, which is dairy and may be made with animal rennet."
+
+[[food]]
+fdc_id = 170494
+description = "Spinach souffle"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "A souffle is made with egg, and often milk or cheese; the name does not say."
+
+[[food]]
+fdc_id = 170492
+description = "Corn pudding, home prepared"
+vegan = "unknown"
+why = "Corn pudding is usually made with milk and egg; the name does not say."
+
+[[food]]
+fdc_id = 170092
+description = "Potato pancakes"
+vegan = "unknown"
+why = "Potato pancakes are often made with egg; the name does not say."
+
+[[food]]
+fdc_id = 169269
+description = "Potato salad, home-prepared"
+vegan = "unknown"
+why = "Potato salad is often dressed with mayonnaise, made with egg; the name does not say."
+
+[[food]]
+fdc_id = 170088
+description = "Sweet potato, cooked, candied, home-prepared"
+vegan = "unknown"
+why = "Candied sweet potatoes are often made with butter; the name does not say."
+
+[[food]]
+fdc_id = 169101
+description = "Orange juice, chilled, includes from concentrate, with added calcium and vitamin D"
+vegan = "unknown"
+why = "Added vitamin D may be D3 made from lanolin, from sheep's wool; the name does not say which."
+
+[[food]]
+fdc_id = 2758982
+description = "Baked beans, Original, canned, with pork"
+vegan = "no"
+vegetarian = "no"
+why = "Made with pork."
+
+[[food]]
+fdc_id = 175183
+description = "Beans, baked, canned, with beef"
+vegan = "no"
+vegetarian = "no"
+why = "Made with beef."
+
+[[food]]
+fdc_id = 173761
+description = "Cowpeas, common (blackeyes, crowder, southern), mature seeds, canned with pork"
+vegan = "no"
+vegetarian = "no"
+why = "Canned with pork."
+
+[[food]]
+fdc_id = 169893
+description = "Bacon bits, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 172439
+description = "Bacon, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 169886
+description = "Chicken, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 167719
+description = "Chicken, meatless, breaded, fried"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 169887
+description = "Frankfurter, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 169066
+description = "Luncheon slices, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 169067
+description = "Meatballs, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 169069
+description = "Sandwich spread, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 174269
+description = "Sausage, meatless"
+vegan = "unknown"
+why = "A meat substitute may be made with egg or dairy; its name says only that it is meatless."
+
+[[food]]
+fdc_id = 2758984
+description = "Refried beans, canned (pinto)"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Refried beans are often made with lard, an animal carcass fat; the name does not say."
+
+[[food]]
+fdc_id = 172466
+description = "Frijoles rojos volteados (Refried beans, red, canned)"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Refried beans are often made with lard, an animal carcass fat; the name does not say."
+
+[[food]]
+fdc_id = 175184
+description = "Beans, baked, canned, with franks"
+vegan = "no"
+vegetarian = "no"
+why = "Made with franks, which are meat sausages."
+
+[[food]]
+fdc_id = 175207
+description = "Chili with beans, canned"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Canned chili with beans is usually chili con carne, made with meat; the name does not say."
+
+[[food]]
+fdc_id = 172471
+description = "Peanut butter with omega-3, creamy"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Its omega-3 may come from fish oil; the name does not say."
+
+[[food]]
+fdc_id = 175220
+description = "SILK Plus Omega-3 DHA, soymilk"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Its DHA may come from fish oil or from algae; the name does not say."
+
+[[food]]
+fdc_id = 168592
+description = "Nuts, almonds, honey roasted, unblanched"
+vegan = "no"
+why = "Roasted with honey, which The Vegan Society's definition excludes."
+
+[[food]]
+fdc_id = 168901
+description = "Pasta, homemade, made with egg, cooked"
+vegan = "no"
+why = "Made with egg."
+
+[[food]]
+fdc_id = 172345
+description = "Animal fat, bacon grease"
+vegan = "no"
+vegetarian = "no"
+why = "Bacon grease: an animal carcass fat."
+
+[[food]]
+fdc_id = 171401
+description = "Lard"
+vegan = "no"
+vegetarian = "no"
+why = "Lard: an animal carcass fat, which the Vegetarian Society's criteria exclude."
+
+[[food]]
+fdc_id = 173581
+description = "Butter, light, stick, with salt"
+vegan = "no"
+vegetarian = "yes"
+why = "Butter: dairy."
+
+[[food]]
+fdc_id = 172344
+description = "Butter, light, stick, without salt"
+vegan = "no"
+vegetarian = "yes"
+why = "Butter: dairy."
+
+[[food]]
+fdc_id = 171046
+description = "Dressing, honey mustard, fat-free"
+vegan = "no"
+why = "Made with honey, which The Vegan Society's definition excludes."
+
+[[food]]
+fdc_id = 171034
+description = "Salad dressing, honey mustard dressing, reduced calorie"
+vegan = "no"
+why = "Made with honey, which The Vegan Society's definition excludes."
+
+[[food]]
+fdc_id = 171043
+description = "Salad dressing, honey mustard, regular"
+vegan = "no"
+why = "Made with honey, which The Vegan Society's definition excludes."
+
+[[food]]
+fdc_id = 172352
+description = "Margarine-like spread with yogurt, 70% fat, stick, with salt"
+vegan = "no"
+why = "Made with yogurt, which is dairy."
+
+[[food]]
+fdc_id = 173586
+description = "Margarine-like spread with yogurt, approximately 40% fat, tub, with salt"
+vegan = "no"
+why = "Made with yogurt, which is dairy."
+
+[[food]]
+fdc_id = 173610
+description = "Margarine-like spread, SMART BALANCE Omega Plus Spread (with plant sterols & fish oil)"
+vegan = "no"
+vegetarian = "no"
+why = "Made with fish oil."
+
+[[food]]
+fdc_id = 169052
+description = "Margarine-like, butter-margarine blend, 80% fat, stick, without salt"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 172339
+description = "Margarine-like, margarine-butter blend, soybean oil and butter"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 169053
+description = "Margarine-like, vegetable oil-butter spread, reduced calorie, tub, with salt"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 173580
+description = "Margarine-like, vegetable oil-butter spread, tub, with salt"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 167691
+description = "Vegetable oil-butter spread, reduced calorie"
+vegan = "no"
+why = "Its name lists butter, which is dairy."
+
+[[food]]
+fdc_id = 167704
+description = "Salad dressing, bacon and tomato"
+vegan = "no"
+vegetarian = "no"
+why = "Made with bacon."
+
+[[food]]
+fdc_id = 169895
+description = "Salad dressing, buttermilk, lite"
+vegan = "no"
+why = "Made with buttermilk, which is dairy."
+
+[[food]]
+fdc_id = 171407
+description = "Salad dressing, mayonnaise, imitation, milk cream"
+vegan = "no"
+why = "Its name lists milk and cream, which are dairy."
+
+[[food]]
+fdc_id = 173567
+description = "Shortening frying (heavy duty), beef tallow and cottonseed"
+vegan = "no"
+vegetarian = "no"
+why = "Made with beef tallow, an animal carcass fat."
+
+[[food]]
+fdc_id = 173566
+description = "Shortening industrial, lard and vegetable oil"
+vegan = "no"
+vegetarian = "no"
+why = "Made with lard, an animal carcass fat."
+
+[[food]]
+fdc_id = 172327
+description = "Shortening, household, lard and vegetable oil"
+vegan = "no"
+vegetarian = "no"
+why = "Made with lard, an animal carcass fat."
+
+[[food]]
+fdc_id = 2346384
+description = "Cottage cheese, full fat, large or small curd"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 2346385
+description = "Cream cheese, full fat, block"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 173446
+description = "KRAFT CHEEZ WHIZ LIGHT Pasteurized Process Cheese Product"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 172209
+description = "KRAFT CHEEZ WHIZ Pasteurized Process Cheese Sauce"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 173447
+description = "KRAFT FREE Singles American Nonfat Pasteurized Process Cheese Product"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 173449
+description = "KRAFT VELVEETA LIGHT Reduced Fat Pasteurized Process Cheese Product"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 173448
+description = "KRAFT VELVEETA Pasteurized Process Cheese Spread"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."
+
+[[food]]
+fdc_id = 172206
+description = "Parmesan cheese topping, fat free"
+vegetarian = "unknown"
+why = "Cheese may be made with animal rennet, which the Vegetarian Society's criteria exclude; USDA's name does not say which rennet."

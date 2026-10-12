@@ -30,7 +30,7 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
 | The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
-| Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know` and `a_nutrient_record_refuses_a_key_it_does_not_know`, for `sources.toml` and `nutrients.toml`, the records so far |
+| Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know`, `a_nutrient_record_refuses_a_key_it_does_not_know` and `a_diet_record_refuses_a_key_or_value_it_does_not_know`, for `sources.toml`, `nutrients.toml` and the four files of `diet/`, the records so far |
 | `sources.toml` pins each dataset by its zip's sha256, as 64 lowercase hex digits, and its length; a dataset has an id no other has, names a publisher the record lists, and is fetched over https; a publisher gives its terms, the https page they come from, and the day they were read. | `a_dataset_is_pinned_by_a_lowercase_sha256_and_a_length`, `dataset_ids_are_unique_and_plain`, `a_dataset_names_a_publisher_the_record_lists`, `a_dataset_and_its_terms_are_fetched_over_https`, `a_publisher_says_when_its_terms_were_read`, `the_sources_record_loads` |
 | A zip is used only as pinned: fetching refuses a download whose length or sha256 differs and writes nothing, refuses a cached zip that differs and leaves it as it is, and keeps a good zip in the cache under its sha256; loading refuses a cached zip that differs; extraction refuses a file whose path would climb out of its folder. | `bytes_that_differ_from_the_pin_are_refused`, `a_cached_zip_that_differs_from_its_pin_is_refused`, `a_good_download_is_cached_under_its_sha256`, `loading_refuses_a_cached_zip_that_differs`, `a_member_that_would_extract_outside_its_folder_is_refused`. A download is abandoned after 300 s (`DOWNLOAD_TIMEOUT`); nothing tests that, as it needs the network. The cache is `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `$HOME/.cache/vbci`: `the_cache_follows_the_environment`. |
 | Bronze holds `sources.toml` as read, every file in each pinned zip with its length and sha256, and every CSV in a zip row for row, all text; each bronze USDA row names the zip and the file it came from. A CSV whose name would not make a plain table name is refused, not renamed. | `the_sources_record_is_in_bronze_as_read`; `every_file_in_the_pinned_zips_is_in_bronze_with_its_sha256`; `every_csv_in_the_pinned_zips_is_in_bronze_row_for_row`, which counts each CSV's records apart from DuckDB (`what_counts_as_a_csv_record`); `every_usda_row_traces_to_the_bytes_it_came_from`; `what_counts_as_a_csv_table` |
@@ -40,7 +40,11 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | Silver's keys refuse a second food with one fdc_id, a food in no category of its dataset or of another data type, an amount for a nutrient its dataset lacks, a second amount for one food and nutrient, a code in two nutrients, and a rejection with no reason. | `the_database_refuses_what_silver_s_keys_refuse`, with an accepted control beside each |
 | A nutrient's codes are matched exactly as written, never rounded, and a food's value comes from the first code it has a value for. A code some dataset's `nutrient.csv` lacks, or has with another unit, stops the load. | `codes_are_matched_exactly_not_rounded`, `the_first_listed_code_with_a_value_is_used`, `a_nutrient_code_usda_does_not_have_is_refused`, `a_nutrient_whose_unit_differs_is_refused` |
 | Every silver row names a dataset in `bronze.usda_zip` or a record in `bronze.record`, and each kept nutrient row the bronze row it came from. | `every_silver_row_traces_to_the_bytes_it_came_from`: DuckDB refuses foreign keys across schemas, so a test holds this link |
-| `docs/coverage.md` and `docs/data-catalogue.md` are what the warehouse writes, and every table and view says what it is. | `the_coverage_report_is_current`, `the_catalogue_is_current`, `every_table_and_view_says_what_it_is` |
+| `docs/coverage.md`, `docs/diet.md` and `docs/data-catalogue.md` are what the warehouse writes, and every table and view says what it is. | `the_coverage_report_is_current`, `the_diet_report_is_current`, `the_catalogue_is_current`, `every_table_and_view_says_what_it_is` |
+| `diet/` holds four records and no other file: each USDA category's class, the groups of the organisms Foundation foods record, naming rules within a category, and exceptions for single foods. A rule or exception gives an answer and a reason; each category, organism, rule and exception is listed once; an organism is named by its NCBI id. | `the_diet_folder_holds_its_four_records_and_no_other_file`, `a_rule_or_exception_gives_an_answer_and_a_reason`, `diet_records_list_each_thing_once`, `a_taxon_is_named_by_its_ncbi_id` |
+| Each food has a vegan and a vegetarian answer, yes, no or unknown, from the first that applies: an exception for it, a naming rule within its category, an animal organism (not vegan; and vegetarian unknown in a plant category), its category's class. Each answer names what decided it. | `every_food_has_an_answer_for_each_diet`, `the_diet_fixtures_hold`, and on rows written for the purpose, `each_food_s_answers_come_from_the_first_layer_that_applies` |
+| The load stops on a category with no class, a class for a category no dataset has, an organism `diet/taxa.toml` lacks, a rule naming a category with no class or matching no food, a food two rules match, and an exception whose name is not USDA's or whose food silver lacks. | `the_load_refuses_what_the_diet_records_rule_out` |
+| A plant category's food whose USDA name hides an animal ingredient is answered as its category says. | nothing: `unknown`. The answer's basis says it came from the category, and `docs/diet.md` says so. |
 | Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
@@ -61,6 +65,16 @@ in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fil
    2025-04-24, 2025-12-18 and 2026-04-30), cooklang 0.19.0's source, and three prior-art searches.
    Facts below marked "scratch check" were seen then with throwaway scripts that are not in the
    repo, so they are `unknown` until a test holds them.
+3. **Vegan and vegetarian, by the societies' standards.** Vegan is The Vegan Society's definition:
+   "dispensing with all products derived wholly or partly from animals", a diet "avoiding all animal
+   foods such as meat (including fish, shellfish and insects), dairy, eggs and honey"
+   (https://www.vegansociety.com/go-vegan/definition-veganism). Vegetarian is the Vegetarian
+   Society's criteria (https://vegsoc.org/trademarks/trademark-criteria), which exclude "Animal
+   rennet or any other by-product of slaughter", gelatine and isinglass, and "Animal carcass fats
+   (including suet, lard or dripping)", and accept "Vegetarian rennet used in cheese-making". Both
+   read on 2026-10-11. So honey is vegetarian and not vegan, and a cheese whose rennet USDA's name
+   does not give is vegetarian: unknown. The cost: fewer answers are yes than under "no meat or
+   fish".
 
 ### Layers
 
@@ -114,13 +128,20 @@ Each step is one pull request, done when its check passes.
    `codes_are_matched_exactly_not_rounded`, `a_nutrient_whose_unit_differs_is_refused`,
    `the_database_refuses_what_silver_s_keys_refuse`, `the_coverage_report_is_current`, and the rules
    above. USDA's portions and measure units come with step 7.
-5. **Diet status per food,** vegan and vegetarian, derived and never typed: for Foundation foods
-   from the source organism USDA records (NCBI taxon: plants, fungi or animals) and the category;
-   for SR Legacy from the category; a category with mixed foods gives `unknown`. A reviewed
-   exception in `diet/`, keyed by fdc_id, overrides. Done when the fixtures hold: oyster
-   mushrooms, salsify and scallop squash are vegan; duck and turkey eggs vegetarian, not vegan;
-   fish oils not vegetarian. Reuses USDA's organism attributes; cook.md's diet-badges (MIT) and Open
-   Food Facts' flags are references only.
+5. **Diet status per food,** vegan and vegetarian, by the definitions decided above, each answer
+   yes, no or unknown, from records reviewed by pull request: the first that applies of an exception
+   for it (`diet/exceptions.toml`, 71 foods, each with its reason), a naming rule within its
+   category (`diet/rules.toml`, 14 rules, such as names starting "Cheese" in Dairy and Egg Products:
+   vegetarian unknown), the animal organism a Foundation food records (`diet/taxa.toml`, from USDA's
+   NCBI taxon attribute), and its category's class (`diet/categories.toml`, all 28 categories). An
+   exception sets only the diet its food's name gives evidence for: a name that names an animal
+   ingredient gives "no", and a dish usually made with one, whose name does not say, gives
+   "unknown". `docs/diet.md` counts the answers and what decided them. Reuses USDA's organism
+   attributes; cook.md's diet-badges (MIT) and Open Food Facts' flags are references only. Done: the
+   fixtures hold (oyster mushrooms, salsify and scallop squash vegan; duck and turkey eggs
+   vegetarian, not vegan; fish oils not vegetarian; Parmesan vegetarian unknown),
+   `the_diet_fixtures_hold`, `each_food_s_answers_come_from_the_first_layer_that_applies`,
+   `the_load_refuses_what_the_diet_records_rule_out`, `the_diet_report_is_current`.
 6. **Ingredient identity and aliases.** Our own ingredient ids in `ingredients/`, each linked per
    state (raw, cooked, canned, dry) to an fdc_id in the pinned release, with FoodOn ids and Wikidata
    ids as cross-references (scratch check: USDA's Foundation 2026-04-30 files give a FoodOn id for

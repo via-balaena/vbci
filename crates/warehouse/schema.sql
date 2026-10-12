@@ -127,6 +127,52 @@ CREATE TABLE silver.nutrient_code (
 );
 COMMENT ON TABLE silver.nutrient_code IS 'Each USDA nutrient_nbr a nutrient is found by, first choice first.';
 
+CREATE TABLE silver.usda_food_taxon (
+    fdc_id  INTEGER NOT NULL REFERENCES silver.usda_food (fdc_id),
+    dataset TEXT NOT NULL,
+    taxon   TEXT NOT NULL CHECK (regexp_full_match(taxon, 'NCBITaxon_[0-9]+')),
+    PRIMARY KEY (fdc_id, taxon)
+);
+COMMENT ON TABLE silver.usda_food_taxon IS 'The source organism''s group each Foundation food records, from food_attribute.csv''s "NCBI Taxon Parent", once per food; a food recorded as NA has none.';
+
+CREATE TABLE silver.diet_category (
+    description TEXT PRIMARY KEY,
+    class       TEXT NOT NULL CHECK (class IN ('plant', 'dairy_and_egg', 'flesh', 'mixed')),
+    record      TEXT NOT NULL
+);
+COMMENT ON TABLE silver.diet_category IS 'The class of each USDA category, from diet/categories.toml: plant, dairy_and_egg, flesh or mixed.';
+
+CREATE TABLE silver.diet_taxon (
+    taxon    TEXT PRIMARY KEY,
+    name     TEXT NOT NULL,
+    organism TEXT NOT NULL CHECK (organism IN ('animal', 'plant', 'fungus')),
+    record   TEXT NOT NULL
+);
+COMMENT ON TABLE silver.diet_taxon IS 'The group of each organism a Foundation food records, from diet/taxa.toml.';
+
+CREATE TABLE silver.diet_rule (
+    category    TEXT NOT NULL REFERENCES silver.diet_category (description),
+    starts_with TEXT NOT NULL CHECK (starts_with <> ''),
+    vegan       TEXT CHECK (vegan IN ('yes', 'no', 'unknown')),
+    vegetarian  TEXT CHECK (vegetarian IN ('yes', 'no', 'unknown')),
+    why         TEXT NOT NULL CHECK (trim(why) <> ''),
+    record      TEXT NOT NULL,
+    PRIMARY KEY (category, starts_with),
+    CHECK (vegan IS NOT NULL OR vegetarian IS NOT NULL)
+);
+COMMENT ON TABLE silver.diet_rule IS 'Each naming rule, from diet/rules.toml: within its category, a food whose USDA name starts with starts_with takes the answers the rule gives.';
+
+CREATE TABLE silver.diet_exception (
+    fdc_id      INTEGER PRIMARY KEY REFERENCES silver.usda_food (fdc_id),
+    description TEXT NOT NULL,
+    vegan       TEXT CHECK (vegan IN ('yes', 'no', 'unknown')),
+    vegetarian  TEXT CHECK (vegetarian IN ('yes', 'no', 'unknown')),
+    why         TEXT NOT NULL CHECK (trim(why) <> ''),
+    record      TEXT NOT NULL,
+    CHECK (vegan IS NOT NULL OR vegetarian IS NOT NULL)
+);
+COMMENT ON TABLE silver.diet_exception IS 'Each exception for one food, from diet/exceptions.toml, with the reason.';
+
 -- ---------------------------------------------------------------- gold
 
 CREATE SCHEMA gold;
@@ -156,3 +202,49 @@ SELECT dataset, nutrient, code, count(*) AS foods
 FROM gold.food_nutrient
 GROUP BY ALL;
 COMMENT ON VIEW gold.nutrient_source IS 'For each dataset and nutrient: how many foods took their value from each code.';
+
+CREATE VIEW gold.food_diet AS
+WITH food AS (
+    SELECT f.fdc_id, f.dataset, f.description, c.description AS category, d.class
+    FROM silver.usda_food f
+    JOIN silver.usda_category c ON c.dataset = f.dataset AND c.id = f.category_id
+    JOIN silver.diet_category d ON d.description = c.description
+), organism AS (
+    SELECT ft.fdc_id, bool_or(t.organism = 'animal') AS animal
+    FROM silver.usda_food_taxon ft
+    JOIN silver.diet_taxon t ON t.taxon = ft.taxon
+    GROUP BY ft.fdc_id
+), layers AS (
+    SELECT f.*, coalesce(o.animal, false) AS animal,
+           r.starts_with, r.vegan AS rule_vegan, r.vegetarian AS rule_vegetarian,
+           x.vegan AS exception_vegan, x.vegetarian AS exception_vegetarian
+    FROM food f
+    LEFT JOIN organism o ON o.fdc_id = f.fdc_id
+    LEFT JOIN silver.diet_rule r ON r.category = f.category AND starts_with(f.description, r.starts_with)
+    LEFT JOIN silver.diet_exception x ON x.fdc_id = f.fdc_id
+)
+SELECT fdc_id, dataset, description, category,
+    CASE WHEN exception_vegan IS NOT NULL THEN exception_vegan
+         WHEN rule_vegan IS NOT NULL THEN rule_vegan
+         WHEN animal THEN 'no'
+         WHEN class = 'plant' THEN 'yes'
+         WHEN class = 'mixed' THEN 'unknown'
+         ELSE 'no' END AS vegan,
+    CASE WHEN exception_vegan IS NOT NULL THEN 'exception'
+         WHEN rule_vegan IS NOT NULL THEN 'rule: ' || starts_with
+         WHEN animal THEN 'organism: animal'
+         ELSE 'category: ' || class END AS vegan_basis,
+    CASE WHEN exception_vegetarian IS NOT NULL THEN exception_vegetarian
+         WHEN rule_vegetarian IS NOT NULL THEN rule_vegetarian
+         WHEN animal AND class = 'plant' THEN 'unknown'
+         WHEN class = 'flesh' THEN 'no'
+         WHEN class = 'mixed' THEN 'unknown'
+         ELSE 'yes' END AS vegetarian,
+    CASE WHEN exception_vegetarian IS NOT NULL THEN 'exception'
+         WHEN rule_vegetarian IS NOT NULL THEN 'rule: ' || starts_with
+         WHEN animal AND class = 'plant' THEN 'organism: animal'
+         ELSE 'category: ' || class END AS vegetarian_basis
+FROM layers;
+COMMENT ON VIEW gold.food_diet IS 'Each food''s vegan and vegetarian answers, yes, no or unknown, and what decided each: an exception, a naming rule, an animal organism, or the category''s class, the first that applies.';
+COMMENT ON COLUMN gold.food_diet.vegan IS 'By The Vegan Society''s definition: no product derived wholly or partly from animals.';
+COMMENT ON COLUMN gold.food_diet.vegetarian IS 'By the Vegetarian Society''s criteria: no meat or fish, and no slaughter by-product such as animal rennet, gelatine or carcass fat.';
