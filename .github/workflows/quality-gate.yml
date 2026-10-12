@@ -24,8 +24,8 @@ jobs:
     name: Quality Gate
     runs-on: ubuntu-24.04
     # DuckDB builds from source when the cache lacks it, once for clippy and once for the build the
-    # fetch step and the tests share: main's run 38220150139, which built it a third time for the
-    # tests, took 25 min 23 s. tentzhen's gate, which builds the same crate, allows 40 minutes.
+    # fetch step and the tests share: run 38227148322, the first to build it so, took 21 min 23 s.
+    # tentzhen's gate, which builds the same crate, allows 40 minutes.
     timeout-minutes: 40
     # The rules the gate's checks hold are listed in docs/architecture.md, "Rules".
     steps:
@@ -34,12 +34,12 @@ jobs:
           persist-credentials: false
       - name: Install the toolchain rust-toolchain.toml pins
         run: rustup toolchain install && rustup show active-toolchain
-      # The build cache is saved and restored only under its exact key, a hash of what decides the
-      # build: the toolchain, every manifest, the lockfile, and this workflow's commands. With a
-      # restore-keys fallback, the three runs that restored an older cache after a lockfile change
-      # (38204306125, 38208369867, 38214448046) took as long in clippy and fetch as a run without
-      # DuckDB in its cache, and saved the older builds again with their own: 2.47, then 4.85,
-      # then 8.15 GB, where main's cold run of the last lockfile saved 3.63 GB.
+      # The build cache is saved and restored only under its exact key, a hash of the toolchain,
+      # every manifest, the lockfile and this workflow. With a restore-keys fallback, the three runs
+      # that restored an older cache after a lockfile change (38204306125, 38208369867, 38214448046)
+      # took as long in clippy and fetch as a run without DuckDB in its cache, and the caches they
+      # saved grew: 4.85 GB from the 2.47 GB the first two restored, then 8.15 GB from 4.85 GB,
+      # where main's cold run of the last lockfile saved 3.63 GB.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -47,13 +47,15 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', '**/Cargo.toml', 'Cargo.lock', '.github/workflows/quality-gate.yml') }}
+          key: >-
+            cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', '**/Cargo.toml',
+            'Cargo.lock', '.github/workflows/quality-gate.yml') }}
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # One build for the fetch step and the tests. Built apart, by `cargo run` and `cargo test`,
       # they differed in serde_json's features (balaena-core, a dev-dependency, turns on
       # float_roundtrip), and each built DuckDB: main's run 38220150139 spent 7 min 20 s of its
-      # test step on the second.
+      # test step building DuckDB again.
       - run: cargo build --workspace --bins --tests --locked
       # The warehouse's tests read USDA's zips from the cache; fetching refuses bytes that differ
       # from the sha256 sources.toml pins, so a cached zip is checked again on every run.

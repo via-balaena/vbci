@@ -64,8 +64,9 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 The tests that span crates live in `crates/repo`, a member of the workspace in `Cargo.toml`. The
 records' schemas are in `crates/records`, and the warehouse is `crates/warehouse`, with its layers
 in `crates/warehouse/schema.sql`. Its tests read USDA's zips from the cache: fill it once with
-`cargo run -p balaena-warehouse -- fetch`. The Quality Gate runs the same binary, from the build
-its tests use, before them. Readers share `crates/core`, which reads `export/datapackage.json`.
+`cargo run -p balaena-warehouse -- fetch`. The Quality Gate fetches with the warehouse's binary
+from the build its tests use, before them. Readers share `crates/core`, which reads
+`export/datapackage.json`.
 
 ## Plan
 

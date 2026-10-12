@@ -428,9 +428,11 @@ mod tests {
         );
     }
 
-    /// The build cache is restored only under its exact key, which hashes what decides the build:
-    /// a cache restored under an older key brought its builds along, and they were saved again with
-    /// the new ones. Text only: what GitHub restores is seen in a run's log.
+    /// The build cache is restored only under its exact key, which hashes the toolchain, every
+    /// manifest, the lockfile and the workflow: a cache restored under an older key kept its builds
+    /// (locally, step 8's lockfile change left five DuckDB builds in target, where a clean build
+    /// has three), and the caches saved after it grew. Text only: what GitHub restores is seen in
+    /// a run's log.
     #[test]
     fn the_build_cache_is_restored_only_by_its_exact_key() {
         let gate = quality_gate();
@@ -439,12 +441,17 @@ mod tests {
             .filter(|step| step.contains("\n            target\n"))
             .collect();
         assert_eq!(caching.len(), 1, "steps that cache target: {caching:?}");
-        let key = concat!(
-            "          key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', ",
-            "'**/Cargo.toml', 'Cargo.lock', '.github/workflows/quality-gate.yml') }}"
-        );
+        let key = [
+            "          key: >-",
+            concat!(
+                "            cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', ",
+                "'**/Cargo.toml',"
+            ),
+            "            'Cargo.lock', '.github/workflows/quality-gate.yml') }}",
+        ];
+        let lines: Vec<&str> = caching[0].lines().collect();
         assert!(
-            caching[0].lines().any(|line| line == key),
+            lines.windows(3).any(|w| w == key),
             "the build cache's key is not {key:?}"
         );
         assert!(
