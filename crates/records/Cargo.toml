@@ -1,0 +1,12 @@
+[package]
+name = "balaena-records"
+version = "0.0.0"
+description = "VBCI's records, typed: schemas that refuse a key they don't know, and the checks the records' own rules call for"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+toml = "=1.1.8"
