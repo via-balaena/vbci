@@ -1596,7 +1596,7 @@ codes = ["269", "269.3"]
     #[test]
     fn the_diet_fixtures_hold() {
         let w = warehouse();
-        let fixtures: [(&str, &str, &str); 17] = [
+        let fixtures: [(&str, &str, &str); 18] = [
             ("Mushrooms, oyster, raw", "yes", "yes"),
             ("Mushroom, oyster", "yes", "yes"),
             ("Mushroom, king oyster", "yes", "yes"),
@@ -1626,6 +1626,7 @@ codes = ["269", "269.3"]
                 "no",
             ),
             ("Cheese, parmesan, grated", "no", "unknown"),
+            ("Beans, baked, canned, with franks", "no", "no"),
         ];
         for (name, vegan, vegetarian) in fixtures {
             let got = strings(

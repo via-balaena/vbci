@@ -130,7 +130,7 @@ Each step is one pull request, done when its check passes.
    above. USDA's portions and measure units come with step 7.
 5. **Diet status per food,** vegan and vegetarian, by the definitions decided above, each answer
    yes, no or unknown, from records reviewed by pull request: the first that applies of an exception
-   for it (`diet/exceptions.toml`, 67 foods, each with its reason), a naming rule within its
+   for it (`diet/exceptions.toml`, 71 foods, each with its reason), a naming rule within its
    category (`diet/rules.toml`, 14 rules, such as names starting "Cheese" in Dairy and Egg Products:
    vegetarian unknown), the animal organism a Foundation food records (`diet/taxa.toml`, from USDA's
    NCBI taxon attribute), and its category's class (`diet/categories.toml`, all 28 categories). An

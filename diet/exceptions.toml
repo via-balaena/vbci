@@ -1,10 +1,10 @@
 # Exceptions: foods whose answer is not their category's, organism's or naming rule's, keyed by
 # fdc_id, each with the reason. An exception sets only the diets its food's name gives evidence for;
-# the other diet keeps its answer from below. A food whose name names an animal ingredient takes "no";
-# a dish usually made with one, whose name does not say, takes "unknown". `description` is USDA's
-# name for the food, word for word, or the warehouse refuses to load. Vegan is The Vegan Society's and
-# vegetarian the Vegetarian Society's (docs/architecture.md, "Decided"). Read by crates/records
-# (src/diet.rs).
+# the other diet keeps its answer from below. A food whose name names an animal ingredient takes
+# "no"; a dish usually made with one, whose name does not say, takes "unknown". `description` is
+# USDA's name for the food, word for word, or the warehouse refuses to load. Vegan is The Vegan
+# Society's and vegetarian the Vegetarian Society's (docs/architecture.md, "Decided"). Read by
+# crates/records (src/diet.rs).
 
 [[food]]
 fdc_id = 170448
@@ -228,6 +228,34 @@ description = "Frijoles rojos volteados (Refried beans, red, canned)"
 vegan = "unknown"
 vegetarian = "unknown"
 why = "Refried beans are often made with lard, an animal carcass fat; the name does not say."
+
+[[food]]
+fdc_id = 175184
+description = "Beans, baked, canned, with franks"
+vegan = "no"
+vegetarian = "no"
+why = "Made with franks, which are meat sausages."
+
+[[food]]
+fdc_id = 175207
+description = "Chili with beans, canned"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Canned chili with beans is usually chili con carne, made with meat; the name does not say."
+
+[[food]]
+fdc_id = 172471
+description = "Peanut butter with omega-3, creamy"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Its omega-3 may come from fish oil; the name does not say."
+
+[[food]]
+fdc_id = 175220
+description = "SILK Plus Omega-3 DHA, soymilk"
+vegan = "unknown"
+vegetarian = "unknown"
+why = "Its DHA may come from fish oil or from algae; the name does not say."
 
 [[food]]
 fdc_id = 168592

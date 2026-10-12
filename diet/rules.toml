@@ -16,7 +16,7 @@ category = "Fats and Oils"
 starts_with = "Oil,"
 vegan = "yes"
 vegetarian = "yes"
-why = "Each food named \"Oil, ...\" in Fats and Oils is a plant oil: the six whose names mention butter are plant butters (cocoa, nutmeg, ucuhuba) or a non-dairy butter flavor (read 2026-10-11)."
+why = "Each of the 79 foods named \"Oil, ...\" in Fats and Oils is a plant oil, read one by one on 2026-10-11: of the six whose names mention butter, three are plant butters (cocoa, nutmeg, ucuhuba), one is a soy oil made for a non-dairy butter flavor, and two are palm kernel fats named for the butters they stand in for."
 
 [[rule]]
 category = "Fats and Oils"
