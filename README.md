@@ -11,6 +11,20 @@ USDA's data from a cache: fill it once with `cargo run -p balaena-warehouse -- f
 `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `~/.cache/vbci`), which downloads the zips
 `sources.toml` pins and refuses any whose sha256 differs.
 
+## Use
+
+`balaena`, the command line, reads only the export, which is built into it:
+
+```
+cargo run -p balaena -- analyze recipes/red-lentil-soup.cook
+cargo run -p balaena -- search red lentil
+cargo run -p balaena -- info
+```
+
+`analyze` prints a recipe's report, as `docs/recipes/` holds VBCI's own; `search` finds
+ingredients and USDA foods by name, for writing an ingredient's aliases and forms; `info` says what
+the export came from.
+
 ## License
 
 The code and its documentation are licensed under either of
