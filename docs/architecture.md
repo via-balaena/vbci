@@ -30,11 +30,17 @@ foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed 
 | A newer push to a pull request cancels the Quality Gate's older run on it; a run on `main`, or one started by hand, is a concurrency group of its own, so no other run cancels it or holds it back. | `a_newer_push_cancels_only_a_pull_request_s_older_gate_run`, on the workflow's text. That GitHub runs it so is seen on a pull request, not tested here. |
 | This doc names only tests and files that exist, up to its plan. | `the_architecture_doc_names_real_tests_and_files` |
 | The project's own data records, in the paths `DATA-LICENSE.md` lists, are CC0, with the legal code in `LICENSE-CC0`; the code and its documentation are MIT OR Apache-2.0. | `the_data_license_covers_every_records_path` holds that list to the records row of the Layers table below, and `license_cc0_is_the_cc0_legal_code` holds the legal code to the text Creative Commons served. That every file in those paths is a record, and that no record lies outside them, is held by nothing: no record exists yet (`unknown`). |
-| Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know`, for `sources.toml`, the only record so far |
+| Every schema refuses a key it doesn't know. | `a_source_record_refuses_a_key_it_does_not_know` and `a_nutrient_record_refuses_a_key_it_does_not_know`, for `sources.toml` and `nutrients.toml`, the records so far |
 | `sources.toml` pins each dataset by its zip's sha256, as 64 lowercase hex digits, and its length; a dataset has an id no other has, names a publisher the record lists, and is fetched over https; a publisher gives its terms, the https page they come from, and the day they were read. | `a_dataset_is_pinned_by_a_lowercase_sha256_and_a_length`, `dataset_ids_are_unique_and_plain`, `a_dataset_names_a_publisher_the_record_lists`, `a_dataset_and_its_terms_are_fetched_over_https`, `a_publisher_says_when_its_terms_were_read`, `the_sources_record_loads` |
 | A zip is used only as pinned: fetching refuses a download whose length or sha256 differs and writes nothing, refuses a cached zip that differs and leaves it as it is, and keeps a good zip in the cache under its sha256; loading refuses a cached zip that differs; extraction refuses a file whose path would climb out of its folder. | `bytes_that_differ_from_the_pin_are_refused`, `a_cached_zip_that_differs_from_its_pin_is_refused`, `a_good_download_is_cached_under_its_sha256`, `loading_refuses_a_cached_zip_that_differs`, `a_member_that_would_extract_outside_its_folder_is_refused`. A download is abandoned after 300 s (`DOWNLOAD_TIMEOUT`); nothing tests that, as it needs the network. The cache is `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else `$HOME/.cache/vbci`: `the_cache_follows_the_environment`. |
 | Bronze holds `sources.toml` as read, every file in each pinned zip with its length and sha256, and every CSV in a zip row for row, all text; each bronze USDA row names the zip and the file it came from. A CSV whose name would not make a plain table name is refused, not renamed. | `the_sources_record_is_in_bronze_as_read`; `every_file_in_the_pinned_zips_is_in_bronze_with_its_sha256`; `every_csv_in_the_pinned_zips_is_in_bronze_row_for_row`, which counts each CSV's records apart from DuckDB (`what_counts_as_a_csv_record`); `every_usda_row_traces_to_the_bytes_it_came_from`; `what_counts_as_a_csv_table` |
 | SR Legacy's bronze row counts equal USDA's own count of them, `all_downloaded_table_record_counts.csv`. | `the_sr_legacy_row_counts_equal_usda_s_own` |
+| `nutrients.toml` gives each nutrient a plain key no other has, a name, the unit USDA writes, and its USDA codes as text, digits or digits, a point and digits, each code in one nutrient only. | `a_code_is_written_as_usda_writes_it`, `a_code_belongs_to_one_nutrient`, `nutrient_keys_are_unique_and_plain`, `the_nutrients_record_loads` |
+| Silver holds every SR Legacy and Foundation food, meat included, and each of their nutrient rows is kept or rejected with its reason, never both: no amount; a nutrient its dataset's `nutrient.csv` lacks; a repeat of an earlier row for the same food and nutrient with the same amount (the earliest by id is kept); or a disagreement with another such row (all are rejected, so the food has no value rather than a guess). | `silver_holds_every_sr_legacy_and_foundation_food`, `every_food_nutrient_row_in_scope_is_kept_or_rejected`, and on rows written for the purpose, `silver_keeps_a_row_or_rejects_it_with_its_reason` |
+| Silver's keys refuse a second food with one fdc_id, a food in no category of its dataset or of another data type, an amount for a nutrient its dataset lacks, a second amount for one food and nutrient, a code in two nutrients, and a rejection with no reason. | `the_database_refuses_what_silver_s_keys_refuse`, with an accepted control beside each |
+| A nutrient's codes are matched exactly as written, never rounded, and a food's value comes from the first code it has a value for. A code some dataset's `nutrient.csv` lacks, or has with another unit, stops the load. | `codes_are_matched_exactly_not_rounded`, `the_first_listed_code_with_a_value_is_used`, `a_nutrient_code_usda_does_not_have_is_refused`, `a_nutrient_whose_unit_differs_is_refused` |
+| Every silver row names a dataset in `bronze.usda_zip` or a record in `bronze.record`, and each kept nutrient row the bronze row it came from. | `every_silver_row_traces_to_the_bytes_it_came_from`: DuckDB refuses foreign keys across schemas, so a test holds this link |
+| `docs/coverage.md` and `docs/data-catalogue.md` are what the warehouse writes, and every table and view says what it is. | `the_coverage_report_is_current`, `the_catalogue_is_current`, `every_table_and_view_says_what_it_is` |
 | Parsing records needs no database and no network. | `parsing_records_needs_no_database_or_network` |
 | `main` changes only through a pull request that passes the Quality Gate on a branch up to date with `main`, with signed commits and linear history, and is never force-pushed or deleted. | the `main-protection` ruleset on GitHub, which lists no one who may bypass it, as its settings read on 2026-10-11. Nothing here tests the ruleset. |
 
@@ -90,18 +96,23 @@ Each step is one pull request, done when its check passes.
    `bytes_that_differ_from_the_pin_are_refused`, `the_sr_legacy_row_counts_equal_usda_s_own`, and
    the rules above. GitHub's runners reach fdc.nal.usda.gov: this step's first run on GitHub (run
    38190614286) downloaded both zips, as pinned, before its tests.
-4. **USDA's tables in silver, and our nutrients.** Every SR Legacy and Foundation food (data types
-   `sr_legacy_food` and `foundation_food`; the Foundation zip's sample and acquisition rows stay in
-   bronze), meat included: choosing what a reader sees is gold's job, and "chicken stock" should
-   match chicken. Foods are keyed by fdc_id (scratch check: the two datasets share none, and across
-   three Foundation releases no fdc_id was dropped and none changed its description). Nutrient, unit
-   and category tables are keyed by release (scratch check: 10 nutrient rows with the same id differ
-   between SR Legacy and Foundation). `nutrients.toml` gives each of our nutrients its USDA codes,
-   exactly and in priority order (sugars: 269, then 269.3), and the unit each must have. Gold gives
-   each food's nutrients per 100 g, and `docs/coverage.md` is generated from it. Done when a code
-   rounded or changed, a wrong unit or a duplicate key is refused, and `docs/coverage.md` is
-   current. Reuses no FDC reader, as the search found none; usda_fooddata's `schema.sql`
-   (Apache-2.0) is a check on column types.
+4. **USDA's tables in silver, and our nutrients.** Silver types every SR Legacy and Foundation food
+   (data types `sr_legacy_food` and `foundation_food`; the Foundation zip's sample and acquisition
+   rows stay in bronze), meat included, with its category, and every nutrient row of those foods, or
+   rejects a row with its reason. Foods are keyed by fdc_id (scratch check: the two datasets share
+   none, and across three Foundation releases no fdc_id was dropped and none changed its
+   description). Categories and nutrients are keyed by dataset (scratch check: 10 nutrient rows with
+   the same id differ between SR Legacy and Foundation). `nutrients.toml` gives each of 16 nutrients
+   its USDA codes, exactly and in priority order (sugars: 269, then 269.3), and the unit each must
+   have; `gold.food_nutrient` gives each food's value per 100 g, and `docs/coverage.md` and
+   `docs/data-catalogue.md` are generated. Found on loading: Foundation 2026-04-30 has 33 nutrient
+   rows with no amount, for a nutrient its `nutrient.csv` lacks, and one row repeated; both are in
+   `docs/coverage.md`'s rejected rows. Reuses no FDC reader, as the search found none;
+   usda_fooddata's `schema.sql` (Apache-2.0, FDC's 2020-10 release) types the same columns the same
+   way, except `nutrient_nbr`, which it reads as REAL and silver keeps as text. Done:
+   `codes_are_matched_exactly_not_rounded`, `a_nutrient_whose_unit_differs_is_refused`,
+   `the_database_refuses_what_silver_s_keys_refuse`, `the_coverage_report_is_current`, and the rules
+   above. USDA's portions and measure units come with step 7.
 5. **Diet status per food,** vegan and vegetarian, derived and never typed: for Foundation foods
    from the source organism USDA records (NCBI taxon: plants, fungi or animals) and the category;
    for SR Legacy from the category; a category with mixed foods gives `unknown`. A reviewed
