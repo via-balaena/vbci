@@ -428,6 +428,31 @@ mod tests {
         );
     }
 
+    /// The build cache is restored only under its exact key, which hashes what decides the build:
+    /// a cache restored under an older key brought its builds along, and they were saved again with
+    /// the new ones. Text only: what GitHub restores is seen in a run's log.
+    #[test]
+    fn the_build_cache_is_restored_only_by_its_exact_key() {
+        let gate = quality_gate();
+        let caching: Vec<&str> = gate
+            .split("\n      - ")
+            .filter(|step| step.contains("\n            target\n"))
+            .collect();
+        assert_eq!(caching.len(), 1, "steps that cache target: {caching:?}");
+        let key = concat!(
+            "          key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', ",
+            "'**/Cargo.toml', 'Cargo.lock', '.github/workflows/quality-gate.yml') }}"
+        );
+        assert!(
+            caching[0].lines().any(|line| line == key),
+            "the build cache's key is not {key:?}"
+        );
+        assert!(
+            !caching[0].contains("restore-keys"),
+            "the build cache falls back to an older key"
+        );
+    }
+
     /// A newer push to a pull request cancels the Quality Gate's older run on it; a run on main, or
     /// one started by hand, is a concurrency group of its own, so nothing cancels it or holds it
     /// back. Text only: that GitHub does so is seen on a pull request, not here.
