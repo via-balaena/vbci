@@ -2,9 +2,10 @@
 //! warehouse writes it (crates/warehouse, src/export.rs) as a Frictionless Data Package, version 2;
 //! this crate reads it into tables and checks what the descriptor says of them: each row has its
 //! fields' types, each primary key is unique, and each foreign key finds its row. `recipe` analyses
-//! a recipe against it.
+//! a recipe against it, and `search` finds ingredients and USDA foods in it by name.
 
 pub mod recipe;
+pub mod search;
 
 use serde::Deserialize;
 use serde_json::Value as Json;

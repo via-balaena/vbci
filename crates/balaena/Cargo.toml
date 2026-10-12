@@ -1,0 +1,14 @@
+[package]
+name = "balaena"
+version = "0.0.0"
+description = "VBCI's command line: recipes analysed and foods found, read from the export built into it"
+publish = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+balaena-core = { path = "../core" }
+# The builder alone, without its default color and suggestions features: it adds anstyle,
+# clap_builder and clap_lex (docs/architecture.md, step 10).
+clap = { version = "=4.6.7", default-features = false, features = ["std", "help", "usage", "error-context"] }
