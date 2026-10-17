@@ -1,6 +1,6 @@
 # VBCI
 
-The Via Balaena Culinary Institute. At its peak, a farm/greenhouse/hydroponic/aquaponic
+The Via Balaena Culinary Institute. At its peak, a farm/greenhouse/hydroponic/aeroponic
 farm-to-table vegan/vegetarian app, and "a very data engineering oriented app" (Jon, 2026-10-11).
 How it is built, the rules that keep it honest, and the plan: `docs/architecture.md`.
 

@@ -8,9 +8,10 @@ from them, and readers read only its last layer.
 
 ## Where it is headed
 
-Jon, 2026-10-11: at its peak, a farm/greenhouse/hydroponic/aquaponic farm-to-table vegan/vegetarian
-app, and "a very data engineering oriented app". The foundation comes first: reference data about
-foods, ingredients, recipes and diets, rebuilt from pinned sources and reviewed records.
+Jon, 2026-10-11: at its peak, a farm/greenhouse/hydroponic/aeroponic farm-to-table vegan/vegetarian
+app, and "a very data engineering oriented app". (Jon wrote "aquaponic" and corrected it to
+"aeroponic" on 2026-10-16.) The foundation comes first: reference data about foods, ingredients,
+recipes and diets, rebuilt from pinned sources and reviewed records.
 
 ## Two kinds of data
 
@@ -248,8 +249,7 @@ Each step is one pull request, done when its check passes.
 with GBIF and Wikidata ids and AGROVOC with GBIF. A grower's weight per bunch or head comes from
 harvests that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search
 found none stored in farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff. Interchange through
-farmOS's JSON:API and the Data Food Consortium's, which Open Food Network uses. Whether aquaponic
-fish are ever an in-app product is decided then.
+farmOS's JSON:API and the Data Food Consortium's, which Open Food Network uses.
 
 ### Grades
 
