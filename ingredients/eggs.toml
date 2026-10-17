@@ -1,0 +1,15 @@
+name = "Eggs"
+aliases = ["egg", "eggs", "large egg", "large eggs"]
+
+[organism]
+taxon = "NCBITaxon_9031"
+fdc_id = 748967
+description = "Eggs, Grade A, Large, egg whole"
+
+[origin]
+harvested = true
+
+[[form]]
+state = "raw"
+fdc_id = 171287
+description = "Egg, whole, raw, fresh"

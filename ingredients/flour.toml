@@ -1,0 +1,15 @@
+name = "Flour"
+aliases = ["flour", "all-purpose flour", "all purpose flour", "plain flour"]
+
+[organism]
+taxon = "NCBITaxon_4564"
+fdc_id = 789890
+description = "Flour, wheat, all-purpose, enriched, bleached"
+
+[origin]
+none = "Milled from wheat, which no ingredient is."
+
+[[form]]
+state = "as_sold"
+fdc_id = 168894
+description = "Wheat flour, white, all-purpose, enriched, bleached"

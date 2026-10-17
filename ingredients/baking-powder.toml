@@ -1,0 +1,13 @@
+name = "Baking powder"
+aliases = ["baking powder"]
+
+[organism]
+none = "Mineral salts, not from an organism."
+
+[origin]
+none = "Mixed from mineral salts, which no ingredient is."
+
+[[form]]
+state = "as_sold"
+fdc_id = 172803
+description = "Leavening agents, baking powder, double-acting, sodium aluminum sulfate"

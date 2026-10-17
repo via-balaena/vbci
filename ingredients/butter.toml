@@ -1,0 +1,16 @@
+name = "Butter"
+aliases = ["butter", "unsalted butter"]
+
+# The cow whose cream it is churned from.
+[organism]
+taxon = "NCBITaxon_9913"
+fdc_id = 789828
+description = "Butter, stick, unsalted"
+
+[origin]
+made_from = ["milk"]
+
+[[form]]
+state = "as_sold"
+fdc_id = 173430
+description = "Butter, without salt"

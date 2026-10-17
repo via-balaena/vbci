@@ -1,0 +1,13 @@
+name = "Sugar"
+aliases = ["sugar", "granulated sugar", "white sugar", "cane sugar"]
+
+[organism]
+none = "Refined from sugarcane or sugar beet, and USDA's name does not say which."
+
+[origin]
+none = "Refined from sugarcane or sugar beet, which no ingredient is."
+
+[[form]]
+state = "as_sold"
+fdc_id = 169655
+description = "Sugars, granulated"

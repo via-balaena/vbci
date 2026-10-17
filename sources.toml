@@ -146,3 +146,31 @@ item = "Q11006"
 revision = 2545415117
 sha256 = "ed5e67d32b45f0046f564a05239639cfb2a5ad49ea052c83c68783b0906004ce"
 bytes = 178451
+
+# Pinned 2026-10-17 for step 16, each at its newest revision that day: black pepper's item,
+# Q22915010, the spice, which reads its organism through its "natural product of taxon", Q43084;
+# and vanilla's, Q12008959, the vanilla bean, read through Q7224923, as no item for vanilla
+# extract names a taxon.
+[[wikidata]]
+item = "Q22915010"
+revision = 2539241356
+sha256 = "890141f15265d5fbb60264e7efaa0f1d52a6f03b679be4a7a4286282e082a0d6"
+bytes = 9478
+
+[[wikidata]]
+item = "Q43084"
+revision = 2550048160
+sha256 = "d724a07586f7e9bd22d43384acc917b79ec949357349e0b215c415d6e9c23d2b"
+bytes = 105639
+
+[[wikidata]]
+item = "Q12008959"
+revision = 2308825522
+sha256 = "2532c6411660e7da24f688ffe0a7501e7ed677080dcd2521546efedf30f0372e"
+bytes = 3928
+
+[[wikidata]]
+item = "Q7224923"
+revision = 2553160384
+sha256 = "b14b1fb7ab120c6ed16c1032cb56bb4ed1f6d1bf9d4a8d85f2ab6f6e745f30e0"
+bytes = 78518
