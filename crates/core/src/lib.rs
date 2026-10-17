@@ -639,6 +639,7 @@ mod tests {
                 "nutrient",
                 "food_nutrient",
                 "portion",
+                "count_unit",
                 "count_unit_name",
                 "ingredient",
                 "ingredient_alias",

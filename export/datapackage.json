@@ -366,7 +366,7 @@
       },
       {
         "path": "units/count.toml",
-        "sha256": "5ce550e07d540a2e07f40a06030d7b2feb6dfd16e5671b88e307fc5be4b115e6"
+        "sha256": "ec427cea7118c89491801b2228532f2439b3285f9c53288b3b2225540d813b85"
       }
     ]
   },
@@ -135359,6 +135359,47 @@
       ]
     },
     {
+      "name": "count_unit",
+      "type": "table",
+      "description": "Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food's portions in the units that are.",
+      "schema": {
+        "fields": [
+          {
+            "name": "unit",
+            "type": "string"
+          },
+          {
+            "name": "whole",
+            "type": "boolean"
+          }
+        ],
+        "primaryKey": [
+          "unit"
+        ]
+      },
+      "data": [
+        ["unit","whole"],
+        ["bunch",false],
+        ["can",false],
+        ["clove",false],
+        ["dash",false],
+        ["each",true],
+        ["fruit",true],
+        ["head",true],
+        ["jar",false],
+        ["large",true],
+        ["leaf",false],
+        ["medium",true],
+        ["package",false],
+        ["piece",false],
+        ["pinch",false],
+        ["slice",false],
+        ["small",true],
+        ["sprig",false],
+        ["stalk",false]
+      ]
+    },
+    {
       "name": "count_unit_name",
       "type": "table",
       "description": "Each name a count unit may be written with, and the count unit it names: the unit gold.portion gives a portion counted in it.",
@@ -135375,6 +135416,19 @@
         ],
         "primaryKey": [
           "name"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "unit"
+            ],
+            "reference": {
+              "resource": "count_unit",
+              "fields": [
+                "unit"
+              ]
+            }
+          }
         ]
       },
       "data": [

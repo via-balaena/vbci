@@ -226,8 +226,8 @@ fn load_portions(conn: &Connection, counts: &CountUnits) -> Result<(), String> {
     .map_err(|e| format!("silver.usda_portion: {e}"))?;
     for u in &counts.unit {
         conn.execute(
-            "INSERT INTO silver.count_unit VALUES (?, ?)",
-            params![u.key, CountUnits::PATH],
+            "INSERT INTO silver.count_unit VALUES (?, ?, ?)",
+            params![u.key, u.is_whole(), CountUnits::PATH],
         )
         .map_err(|e| format!("{} {}: {e}", CountUnits::PATH, u.key))?;
         for name in &u.names {
@@ -2083,9 +2083,9 @@ codes = ["269", "269.3"]
         assert_eq!(
             strings(
                 &w,
-                "SELECT n.name || ' ' || u.unit || ' ' || u.record FROM silver.count_unit u JOIN silver.count_unit_name n USING (unit)"
+                "SELECT n.name || ' ' || u.unit || ' ' || u.whole || ' ' || u.record FROM silver.count_unit u JOIN silver.count_unit_name n USING (unit)"
             ),
-            ["medium medium units/count.toml"]
+            ["medium medium false units/count.toml"]
         );
     }
 
@@ -2203,8 +2203,9 @@ codes = ["269", "269.3"]
     }
 
     /// Silver's keys refuse a second food with one fdc_id, a food in no category, an amount for a
-    /// nutrient its dataset lacks or a second amount for one food and nutrient, and one code in two
-    /// nutrients; the control rows beside each are accepted.
+    /// nutrient its dataset lacks or a second amount for one food and nutrient, one code in two
+    /// nutrients, and a count unit that says neither that it is whole nor that it is not; the control
+    /// rows beside each are accepted.
     #[test]
     fn the_database_refuses_what_silver_s_keys_refuse() {
         let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
@@ -2262,6 +2263,14 @@ codes = ["269", "269.3"]
             ),
             (
                 "INSERT INTO silver.crop VALUES ('c', 'C', 'Q2', 'NCBITaxon_111', 'A b', 'olive-oil', 'as_sold', NULL, 'x')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.count_unit VALUES ('x', true, 'x')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.count_unit VALUES ('x', NULL, 'x')",
                 false,
             ),
         ];
