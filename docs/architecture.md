@@ -127,7 +127,7 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
 
 | layer | where | what it is |
 |---|---|---|
-| records | `sources.toml`, `nutrients.toml`, `ingredients/`, `diet/`, `units/`, `recipes/<name>.cook` | The system of record, reviewed by pull request. |
+| records | `sources.toml`, `nutrients.toml`, `ingredients/`, `crops/`, `diet/`, `units/`, `recipes/<name>.cook` | The system of record, reviewed by pull request. |
 | upstream | USDA's zips and Wikidata's revisions, fetched by `cargo run -p balaena-warehouse -- fetch` into the user's cache, never committed | Pinned in `sources.toml` by sha256 and length, a zip with its URL and release and a revision with its id, and each publisher's license, quoted terms, and the citation it asks for. |
 | schemas and loaders | `crates/records` | Typed schemas that refuse a key they don't know. |
 | warehouse | `crates/warehouse`, DuckDB, described in a generated `docs/data-catalogue.md` | Bronze holds every file as read, with its sha256; silver holds typed rows with keys; gold holds views that answer questions. It can be deleted at any time. |

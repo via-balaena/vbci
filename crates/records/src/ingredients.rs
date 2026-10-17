@@ -20,7 +20,6 @@
 
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 use std::path::Path;
 
 /// The state an ingredient is in, as a recipe uses it.
@@ -195,37 +194,13 @@ pub struct Ingredients {
     pub ingredient: Vec<Ingredient>,
 }
 
-/// Whether `s` is lowercase letters and digits joined by single hyphens.
-fn is_id(s: &str) -> bool {
-    !s.is_empty()
-        && s.split('-').all(|part| {
-            !part.is_empty()
-                && part
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-        })
-}
-
 impl Ingredients {
     /// The folder, relative to the repo root.
     pub const DIR: &'static str = "ingredients";
 
     /// Reads every file in `ingredients/` under `root`, refusing one that is not `<id>.toml`.
     pub fn load(root: &Path) -> Result<Ingredients, String> {
-        let dir = root.join(Self::DIR);
-        let mut files = Vec::new();
-        for entry in fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))? {
-            let name = entry
-                .map_err(|e| format!("{}: {e}", dir.display()))?
-                .file_name()
-                .to_string_lossy()
-                .into_owned();
-            let text = fs::read_to_string(dir.join(&name))
-                .map_err(|e| format!("{}/{name}: {e}", Self::DIR))?;
-            files.push((name, text));
-        }
-        files.sort();
-        Self::parse(&files)
+        Self::parse(&crate::read_folder(root, Self::DIR)?)
     }
 
     /// Parses each `(file name, text)` and checks the rules the module's docs state, within each
@@ -237,7 +212,7 @@ impl Ingredients {
             let path = format!("{}/{file}", Self::DIR);
             let id = file
                 .strip_suffix(".toml")
-                .filter(|id| is_id(id))
+                .filter(|id| crate::is_id(id))
                 .ok_or_else(|| {
                     format!(
                         "{path}: an ingredient's file is named <id>.toml, its id lowercase letters and digits joined by hyphens"

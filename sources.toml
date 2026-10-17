@@ -68,3 +68,66 @@ item = "Q132624"
 revision = 2550171690
 sha256 = "73959f6d701a96fc7f863072c8e444444c2a396d036412073ea416eac643758e"
 bytes = 97537
+
+# The items crops/ reads organisms from, each at its newest revision on 2026-10-16: each crop's
+# own item, and for carrot and cherry tomato, whose organism is one step below their ingredient's,
+# the parent taxon: Q30056 and Q23501. The cumin crop reads Q132624, pinned above.
+[[wikidata]]
+item = "Q11678009"
+revision = 2478966423
+sha256 = "ce2c8d3769d96198334ee8b02e64638969aa42a01fb455105ef42116e1ed1fa9"
+bytes = 43627
+
+[[wikidata]]
+item = "Q30056"
+revision = 2547605574
+sha256 = "dee82c890c608e634e84a6e3108c5ce0c1f8ff45e2beebccfb9b4cc8d6fc2d71"
+bytes = 132441
+
+[[wikidata]]
+item = "Q23400"
+revision = 2552071035
+sha256 = "a6fafd952973af01e0c847573729b29ef3255541795c473096153d983d4263f1"
+bytes = 162803
+
+[[wikidata]]
+item = "Q23485"
+revision = 2557408632
+sha256 = "8922267a90b06da9b5c1f2a968ff71d6199727c6f9914dcf628bf2e4c0597845"
+bytes = 157957
+
+[[wikidata]]
+item = "Q10998"
+revision = 2557408936
+sha256 = "c4456ada5cc72e2cf1791414c042cda1501dd9fbe5ca0b1d3967c7608b242c26"
+bytes = 201413
+
+[[wikidata]]
+item = "Q81464"
+revision = 2551363088
+sha256 = "f0eb904efe785882daa963394da14db5da289a7c47ed51b837a52629163dce64"
+bytes = 135949
+
+[[wikidata]]
+item = "Q23501"
+revision = 2557409868
+sha256 = "467b4a3d37098bef65de5442ea08b7ec8bb95fc9ee7fb2e94164baf855254240"
+bytes = 160685
+
+[[wikidata]]
+item = "Q6540634"
+revision = 2556981154
+sha256 = "8075cb589851a6549a08e38aef5f3dfc8242d1752c8602ac334faabccb161144"
+bytes = 37423
+
+[[wikidata]]
+item = "Q81375"
+revision = 2544371033
+sha256 = "451c46eacc32a53d22721e3b5e1f649d7f6154baf5cf4f936089ec8dd96b6164"
+bytes = 121736
+
+[[wikidata]]
+item = "Q131226"
+revision = 2553321145
+sha256 = "c7cf8923cd05ff939a1e279e8b3bd1e7868f0add2996c28a713feff3bd40a565"
+bytes = 108964

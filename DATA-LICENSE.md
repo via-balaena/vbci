@@ -12,6 +12,7 @@ The records, in these paths.
 - `sources.toml`
 - `nutrients.toml`
 - `ingredients/`
+- `crops/`
 - `diet/`
 - `units/`
 - `recipes/`
