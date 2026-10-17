@@ -1156,6 +1156,7 @@ mod tests {
             sources: Vec::new(),
             lineage: Lineage {
                 zips: Vec::new(),
+                wikidata: Vec::new(),
                 records: Vec::new(),
             },
             tables: vec![

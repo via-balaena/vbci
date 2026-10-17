@@ -255,7 +255,8 @@ mod tests {
     }
 
     /// Reading the records is parsing and checking; the database and the network come after, in
-    /// the warehouse, which fetches USDA's zips and loads them into DuckDB.
+    /// the warehouse, which fetches USDA's zips and Wikidata's revisions and loads them into
+    /// DuckDB.
     #[test]
     fn parsing_records_needs_no_database_or_network() {
         assert_eq!(runtime_dependencies("crates/records"), ["serde", "toml"]);

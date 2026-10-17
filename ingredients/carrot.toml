@@ -1,6 +1,11 @@
 name = "Carrot"
 aliases = ["carrot", "carrots"]
 
+[organism]
+taxon = "NCBITaxon_4039"
+fdc_id = 2258586
+description = "Carrots, mature, raw"
+
 [[form]]
 state = "raw"
 fdc_id = 170393

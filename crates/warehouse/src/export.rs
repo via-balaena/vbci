@@ -4,7 +4,7 @@
 //! rows are inline, as arrays, its columns' names first (Table Dialect's `header`, true by
 //! default), then one row per line in the order of its primary key, so a diff of the file reads
 //! row by row. `_lineage`, a private property (the spec's `_` prefix for what software writes),
-//! gives the sha256 of each zip and record file the rows came from.
+//! gives the sha256 of each zip, Wikidata revision and record file the rows came from.
 
 use crate::{literal, rows};
 use balaena_records::Sources;
@@ -97,6 +97,11 @@ pub const EXPORTED: &[Exported] = &[
         key: &["ingredient", "state"],
         references: &[INGREDIENT, FOOD],
     },
+    Exported {
+        view: "ingredient_organism",
+        key: &["ingredient"],
+        references: &[INGREDIENT],
+    },
 ];
 
 #[derive(Serialize)]
@@ -131,6 +136,7 @@ struct Source {
 #[derive(Serialize)]
 struct Lineage {
     zips: Vec<Zip>,
+    wikidata: Vec<WikidataRevision>,
     records: Vec<Record>,
 }
 
@@ -138,6 +144,14 @@ struct Lineage {
 struct Zip {
     dataset: String,
     url: String,
+    sha256: String,
+    bytes: i64,
+}
+
+#[derive(Serialize)]
+struct WikidataRevision {
+    item: String,
+    revision: i64,
     sha256: String,
     bytes: i64,
 }
@@ -329,6 +343,18 @@ pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
             })
         },
     )?;
+    let wikidata = rows(
+        conn,
+        "SELECT item, revision, sha256, bytes FROM bronze.wikidata_revision ORDER BY item",
+        |r| {
+            Ok(WikidataRevision {
+                item: r.get(0)?,
+                revision: r.get(1)?,
+                sha256: r.get(2)?,
+                bytes: r.get(3)?,
+            })
+        },
+    )?;
     let records = rows(
         conn,
         "SELECT path, sha256 FROM bronze.record_hash ORDER BY path",
@@ -348,6 +374,18 @@ pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
             version: Some(d.release.clone()),
         });
     }
+    if let Some(publisher) = sources.publisher.get(balaena_records::sources::WIKIDATA) {
+        for w in &sources.wikidata {
+            sources_out.push(Source {
+                title: format!("{}, {}", w.item, publisher.name),
+                path: format!(
+                    "https://www.wikidata.org/w/index.php?title={}&oldid={}",
+                    w.item, w.revision
+                ),
+                version: Some(w.revision.to_string()),
+            });
+        }
+    }
     sources_out.push(Source {
         title: "VBCI's records, at the sha256s _lineage gives".into(),
         path: "https://github.com/via-balaena/vbci".into(),
@@ -359,11 +397,15 @@ pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
          `the_export_is_current` fails when this file differs from what that would write. \
          Change the records, not this file.\n\n\
          Each resource's rows are inline, its fields' names first. `_lineage` gives the sha256 \
-         of each zip and record file the rows came from.\n\n\
-         Each publisher's suggested citation, as `sources.toml` gives it:\n",
+         of each zip, Wikidata revision and record file the rows came from.\n\n\
+         The citation each publisher that asks for one suggests, as `sources.toml` gives it:\n",
     );
-    for p in sources.publisher.values() {
-        description.push_str(&format!("\n- {}", p.citation));
+    for citation in sources
+        .publisher
+        .values()
+        .filter_map(|p| p.citation.as_ref())
+    {
+        description.push_str(&format!("\n- {citation}"));
     }
     let mut resources = Vec::new();
     let mut data = Vec::new();
@@ -383,7 +425,11 @@ pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
             title: "CC0 1.0 Universal",
         }],
         sources: sources_out,
-        lineage: Lineage { zips, records },
+        lineage: Lineage {
+            zips,
+            wikidata,
+            records,
+        },
         resources,
     };
     let mut text = serde_json::to_string_pretty(&package).map_err(|e| e.to_string())?;

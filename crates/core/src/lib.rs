@@ -50,11 +50,12 @@ pub struct Source {
     pub version: Option<String>,
 }
 
-/// The sha256 of each zip and record file the export's rows came from.
+/// The sha256 of each zip, Wikidata revision and record file the export's rows came from.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Lineage {
     pub zips: Vec<Zip>,
+    pub wikidata: Vec<WikidataRevision>,
     pub records: Vec<Record>,
 }
 
@@ -63,6 +64,17 @@ pub struct Lineage {
 pub struct Zip {
     pub dataset: String,
     pub url: String,
+    pub sha256: String,
+    pub bytes: u64,
+}
+
+/// A Wikidata item at the revision `sources.toml` pins, with the sha256 and length of the content
+/// Wikidata stores for it.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WikidataRevision {
+    pub item: String,
+    pub revision: u64,
     pub sha256: String,
     pub bytes: u64,
 }
@@ -363,7 +375,7 @@ mod tests {
   "description": "Two tables.",
   "licenses": [{"name": "CC0-1.0", "path": "https://creativecommons.org/publicdomain/zero/1.0/", "title": "CC0 1.0 Universal"}],
   "sources": [{"title": "A test", "path": "https://example.org"}],
-  "_lineage": {"zips": [], "records": []},
+  "_lineage": {"zips": [], "wikidata": [], "records": []},
   "resources": [
     {
       "name": "food",
@@ -630,12 +642,14 @@ mod tests {
                 "count_unit_name",
                 "ingredient",
                 "ingredient_alias",
-                "ingredient_form"
+                "ingredient_form",
+                "ingredient_organism"
             ]
         );
         assert!(e.table("food_diet").unwrap().rows.len() >= 8000);
         assert!(e.table("food_nutrient").unwrap().rows.len() >= 100_000);
         assert_eq!(e.lineage.zips.len(), 2);
+        assert!(e.lineage.wikidata.len() >= 2);
         let alias = e.table("ingredient_alias").unwrap();
         assert!(alias.rows.contains(&vec![
             Value::String("red lentils".into()),

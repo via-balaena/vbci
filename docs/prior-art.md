@@ -107,3 +107,26 @@ For the plan's "Later": none of it is built on yet.
 A GitHub search for hydroponics, aquaponics, vertical farms and greenhouse management found
 hardware controllers and student repos, read by their descriptions only; none of those says it
 keeps crop, harvest or unit records.
+
+## Organisms, and aeroponics
+
+For plan step 11 and the farm reference data after it. Searched on 2026-10-16 without agents:
+USDA's pinned Foundation zip read with a scratch script, Wikidata through its SPARQL endpoint and
+API, each publisher's own page for its license, and GitHub's repository search. A source marked
+**re-read** was read that day for what the mark names.
+
+| source | what it is | license | what VBCI takes | source |
+|---|---|---|---|---|
+| USDA's "NCBI Taxon" | Foundation's `food_attribute.csv` names each food's own organism beside its group: 359 of the 2026-04-30 release's 469 foods, 142 taxa, and NA for 6 more | CC0, by USDA's API guide (quoted in `sources.toml`) | step 11's organisms, first | scratch check |
+| Wikidata | items for foods and for taxa: a food's natural product of taxon (P1582) names a taxon's item, which carries its NCBI taxonomy ID (P685) and a GBIF taxon ID (P846) | CC0 for structured data | step 11's organisms where USDA has none, each item pinned to a revision | wikidata.org/wiki/Wikidata:Licensing, **re-read** (license sentence) |
+| NCBI Taxonomy | the ids USDA and Wikidata use; monthly dumps, `new_taxdump_<date>.zip`, 155 MB on 2026-10-01 | NCBI "places no restrictions on the use or distribution of the data contained therein" | its ids; the dump only if a crop's organism must be held to its ingredient's lineage | ncbi.nlm.nih.gov/home/about/policies, **re-read** (sentence); ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive, **re-read** (listing) |
+| GBIF Backbone Taxonomy | GBIF's taxonomy, DOI 10.15468/39omei, last published 2023-08-28 | CC BY 4.0 | nothing: not CC0 (decided with Jon, 2026-10-16) | api.gbif.org/v1/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c, **re-read** (license, dates) |
+
+Eleven of the twelve NCBI ids step 11's ingredients read from USDA, all but soy's, were looked up in
+Wikidata: each names one item, and each of those items carries one GBIF id.
+
+A GitHub search for "aeroponic" and for "aeroponics", the 15 repos with the most stars for each,
+read by their descriptions only, found DIY builds and hardware controllers, a project predicting
+yield, one measuring plant height by camera, and two with no description; no description says it
+keeps crop, harvest or unit records. The 2026-10-11 search above did
+not look for aeroponics: Jon's word then was "aquaponic", corrected to "aeroponic" on 2026-10-16.

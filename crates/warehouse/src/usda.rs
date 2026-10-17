@@ -82,12 +82,18 @@ pub fn fetch(
 /// ureq sets no limit of its own. On 2026-10-11, fetch downloaded both zips in 37.6 s.
 pub const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(300);
 
+/// The User-Agent every download sends. Wikimedia's User-Agent policy, read 2026-10-16: "Scripts
+/// should use an informative User-Agent string with contact information, or they may be blocked
+/// without notice."
+pub const USER_AGENT: &str = "balaena-warehouse (https://github.com/via-balaena/vbci)";
+
 /// Downloads `url`, refusing a body longer than `limit` bytes, and abandoning a download that takes
 /// longer than `DOWNLOAD_TIMEOUT`. ureq refuses a body that reaches its own limit (measured on
 /// 2026-10-11: a limit of 6074592 refused a 6074592-byte body), so it is given one byte more.
 pub fn http_get(url: &str, limit: u64) -> Result<Vec<u8>, String> {
     let agent = ureq::Agent::config_builder()
         .timeout_global(Some(DOWNLOAD_TIMEOUT))
+        .user_agent(USER_AGENT)
         .build()
         .new_agent();
     let mut response = agent.get(url).call().map_err(|e| format!("{url}: {e}"))?;

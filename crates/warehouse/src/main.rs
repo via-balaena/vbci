@@ -1,7 +1,7 @@
 //! `cargo run -p balaena-warehouse -- <command>`
 //!
-//! - `fetch`: puts each zip `sources.toml` pins into the cache, downloading the ones not there, and
-//!   refuses bytes that differ from their pin.
+//! - `fetch`: puts each zip and Wikidata revision `sources.toml` pins into the cache, downloading
+//!   the ones not there, and refuses bytes that differ from their pin.
 //! - `load`: builds the warehouse and prints each table's row count.
 //! - `coverage`: writes `docs/coverage.md`, how many foods have a value for each nutrient.
 //! - `catalogue`: writes `docs/data-catalogue.md`, every table and view with its comment.
@@ -18,7 +18,7 @@ use balaena_warehouse::export::{EXPORT_PATH, export};
 use balaena_warehouse::{
     CATALOGUE_PATH, COVERAGE_PATH, DIET_PATH, INGREDIENTS_PATH, PORTIONS_PATH, cache_dir,
     catalogue, coverage_report, diet_report, ingredients_report, load, portions_report, repo_root,
-    usda,
+    usda, wikidata,
 };
 use std::process::ExitCode;
 
@@ -30,6 +30,9 @@ fn run(command: &str) -> Result<(), String> {
             let (sources, _) = Sources::load(&root)?;
             for (id, how) in usda::fetch(&sources.dataset, &cache, usda::http_get)? {
                 println!("{id}: {how:?}, in {}", cache.display());
+            }
+            for (item, how) in wikidata::fetch(&sources.wikidata, &cache, usda::http_get)? {
+                println!("{item}: {how:?}, in {}", cache.display());
             }
         }
         "load" => {

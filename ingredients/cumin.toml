@@ -1,6 +1,10 @@
 name = "Cumin"
 aliases = ["cumin", "ground cumin", "cumin seed", "cumin seeds"]
 
+[organism]
+taxon = "NCBITaxon_52462"
+wikidata = "Q57328174"
+
 [[form]]
 state = "dry"
 fdc_id = 170923

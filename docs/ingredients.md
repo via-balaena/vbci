@@ -11,9 +11,15 @@ come from USDA's data, which gives them for Foundation foods only. 3 alias
 candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no
 ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.
 
+Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one
+place: the "NCBI Taxon" USDA's data gives a Foundation food, for 13 ingredients; a
+Wikidata item `sources.toml` pins, for 2; or none, saying why, for 1.
+
 ## Brown rice (`brown-rice`)
 
 Aliases: brown rice.
+
+Organism: `NCBITaxon_4530`, from Foundation food 2512380, Rice, brown, long grain, unenriched, raw.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -23,6 +29,8 @@ Aliases: brown rice.
 ## Carrot (`carrot`)
 
 Aliases: carrot, carrots.
+
+Organism: `NCBITaxon_4039`, from Foundation food 2258586, Carrots, mature, raw.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -34,6 +42,8 @@ Aliases: carrot, carrots.
 ## Chickpeas (`chickpeas`)
 
 Aliases: chickpea, chickpeas, garbanzo beans, garbanzos.
+
+Organism: `NCBITaxon_3827`, from Foundation food 2644282, Chickpeas, (garbanzo beans, bengal gram), dry.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -47,6 +57,8 @@ Alias candidates: bengal gram (USDA's name, in parentheses, 173756); bengal gram
 
 Aliases: cumin, cumin seed, cumin seeds, ground cumin.
 
+Organism: `NCBITaxon_52462`, from Wikidata item Q57328174 through its natural product of taxon, Q132624.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | dry | yes | 170923 | sr-legacy | Spices, cumin seed | 15 | - |
@@ -55,6 +67,8 @@ Aliases: cumin, cumin seed, cumin seeds, ground cumin.
 
 Aliases: garlic, garlic clove, garlic cloves.
 
+Organism: `NCBITaxon_4682`, from Foundation food 1104647, Garlic, raw.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | raw | yes | 169230 | sr-legacy | Garlic, raw | 15 | - |
@@ -62,6 +76,8 @@ Aliases: garlic, garlic clove, garlic cloves.
 ## Lemon juice (`lemon-juice`)
 
 Aliases: fresh lemon juice, lemon juice.
+
+Organism: `NCBITaxon_2708`, from Wikidata item Q1375049 through its natural product of taxon, Q500.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -72,6 +88,8 @@ Aliases: fresh lemon juice, lemon juice.
 
 Aliases: brown lentils, green lentils, lentil, lentils.
 
+Organism: `NCBITaxon_3864`, from Foundation food 2644283, Lentils, dry.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | dry | yes | 172420 | sr-legacy | Lentils, raw | 15 | - |
@@ -81,6 +99,8 @@ Aliases: brown lentils, green lentils, lentil, lentils.
 
 Aliases: olive oil.
 
+Organism: `NCBITaxon_4146`, from Foundation food 748608, Oil, olive, extra virgin.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | as_sold | yes | 171413 | sr-legacy | Oil, olive, salad or cooking | 15 | - |
@@ -88,6 +108,8 @@ Aliases: olive oil.
 ## Onion (`onion`)
 
 Aliases: onion, onions.
+
+Organism: `NCBITaxon_4679`, from Foundation food 790646, Onions, yellow, raw.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -98,6 +120,8 @@ Aliases: onion, onions.
 
 Aliases: parmesan, parmesan cheese, parmigiano reggiano, parmigiano-reggiano.
 
+Organism: `NCBITaxon_9913`, from Foundation food 325036, Cheese, parmesan, grated.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | as_sold | yes | 171247 | sr-legacy | Cheese, parmesan, grated | 16 | - |
@@ -105,6 +129,8 @@ Aliases: parmesan, parmesan cheese, parmigiano reggiano, parmigiano-reggiano.
 ## Potato (`potato`)
 
 Aliases: potato, potatoes.
+
+Organism: `NCBITaxon_4113`, from Foundation food 2346401, Potatoes, russet, without skin, raw.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -115,6 +141,8 @@ Aliases: potato, potatoes.
 
 Aliases: masoor dal, pink lentils, red lentil, red lentils, split red lentils.
 
+Organism: `NCBITaxon_3864`, from Foundation food 2644283, Lentils, dry.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | dry | yes | 174284 | sr-legacy | Lentils, pink or red, raw | 14 | - |
@@ -122,6 +150,8 @@ Aliases: masoor dal, pink lentils, red lentil, red lentils, split red lentils.
 ## Spinach (`spinach`)
 
 Aliases: spinach.
+
+Organism: `NCBITaxon_3562`, from Foundation food 1999633, Spinach, mature.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -134,6 +164,8 @@ Aliases: spinach.
 
 Aliases: bean curd, firm tofu, tofu.
 
+Organism: `NCBITaxon_3847`, from Foundation food 1999630, Soy milk, unsweetened, plain, shelf stable.
+
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
 | raw | yes | 172475 | sr-legacy | Tofu, raw, firm, prepared with calcium sulfate | 14 | - |
@@ -141,6 +173,8 @@ Aliases: bean curd, firm tofu, tofu.
 ## Tomato (`tomato`)
 
 Aliases: tomato, tomatoes.
+
+Organism: `NCBITaxon_4081`, from Foundation food 1999634, Tomato, roma.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -151,6 +185,8 @@ Aliases: tomato, tomatoes.
 ## Vegetable broth (`vegetable-broth`)
 
 Aliases: veg stock, vegetable broth, vegetable stock, veggie broth.
+
+Organism: none. A broth of several vegetables, so no one organism.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|

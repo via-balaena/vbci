@@ -120,6 +120,15 @@ fn info(export: &Export) -> String {
     for z in &export.lineage.zips {
         out.push_str(&format!("| {} | {} | {} |\n", z.dataset, z.sha256, z.bytes));
     }
+    out.push_str(
+        "\n## Wikidata's revisions\n\n| item | revision | sha256 | bytes |\n|---|---|---|---|\n",
+    );
+    for w in &export.lineage.wikidata {
+        out.push_str(&format!(
+            "| {} | {} | {} | {} |\n",
+            w.item, w.revision, w.sha256, w.bytes
+        ));
+    }
     out.push_str(&format!(
         "\nRecord files: {}, each with its sha256 in the export's `_lineage`.\n\n\
          ## Tables\n\n| table | rows |\n|---|---|\n",

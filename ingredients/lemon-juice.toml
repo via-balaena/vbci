@@ -1,6 +1,10 @@
 name = "Lemon juice"
 aliases = ["lemon juice", "fresh lemon juice"]
 
+[organism]
+taxon = "NCBITaxon_2708"
+wikidata = "Q1375049"
+
 [[form]]
 state = "raw"
 fdc_id = 167747

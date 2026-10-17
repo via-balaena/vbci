@@ -1,6 +1,7 @@
 -- The VBCI warehouse, loaded in order by crates/warehouse (src/lib.rs):
 --
---   bronze  every file exactly as read: the records, and every CSV in USDA's pinned zips, as text
+--   bronze  every file exactly as read: the records, every CSV in USDA's pinned zips, as text, and
+--           each pinned Wikidata revision's content
 --   silver  typed rows with keys, foreign keys and checks; each names the dataset or record it came
 --           from. A nutrient or portion row of a silver food that silver does not keep is in
 --           silver.usda_rejected with its reason; any other value that does not cast stops the load
@@ -46,6 +47,15 @@ CREATE TABLE bronze.usda_member (
 COMMENT ON TABLE bronze.usda_member IS 'Every file in each dataset''s zip, with its length and sha256.';
 COMMENT ON COLUMN bronze.usda_member.member IS 'The file''s path inside the zip.';
 COMMENT ON COLUMN bronze.usda_member.loaded_as IS 'The bronze table a CSV was loaded into; NULL for a file that is not CSV, such as a workbook describing the fields.';
+
+CREATE TABLE bronze.wikidata_revision (
+    item     TEXT PRIMARY KEY CHECK (regexp_full_match(item, 'Q[0-9]+')),
+    revision BIGINT NOT NULL CHECK (revision > 0),
+    sha256   TEXT NOT NULL CHECK (length(sha256) = 64),
+    bytes    BIGINT NOT NULL CHECK (bytes > 0),
+    content  TEXT NOT NULL
+);
+COMMENT ON TABLE bronze.wikidata_revision IS 'Each Wikidata item sources.toml pins, with the content Wikidata stores for its pinned revision: the item''s JSON, exactly as read. The loader refuses content whose length or sha256 differs.';
 
 -- ---------------------------------------------------------------- silver
 
@@ -135,6 +145,24 @@ CREATE TABLE silver.usda_food_taxon (
 );
 COMMENT ON TABLE silver.usda_food_taxon IS 'The source organism''s group each Foundation food records, from food_attribute.csv''s "NCBI Taxon Parent", once per food; a food recorded as NA has none.';
 
+CREATE TABLE silver.usda_food_organism (
+    fdc_id  INTEGER PRIMARY KEY REFERENCES silver.usda_food (fdc_id),
+    dataset TEXT NOT NULL,
+    taxon   TEXT NOT NULL CHECK (regexp_full_match(taxon, 'NCBITaxon_[0-9]+'))
+);
+COMMENT ON TABLE silver.usda_food_organism IS 'The source organism each Foundation food records, from food_attribute.csv''s "NCBI Taxon", once per food however often USDA repeats it; a food recorded as NA has none, and the key refuses a food with two.';
+
+CREATE TABLE silver.wikidata_statement (
+    item     TEXT NOT NULL,
+    property TEXT NOT NULL CHECK (property IN ('P685', 'P1582')),
+    position INTEGER NOT NULL CHECK (position >= 1),
+    value    TEXT,
+    rank     TEXT NOT NULL CHECK (rank IN ('preferred', 'normal', 'deprecated')),
+    PRIMARY KEY (item, property, position)
+);
+COMMENT ON TABLE silver.wikidata_statement IS 'Each statement of P685 (NCBI taxonomy ID) and P1582 (natural product of taxon) in each pinned Wikidata item''s content, in its order there.';
+COMMENT ON COLUMN silver.wikidata_statement.value IS 'For P685 the NCBI Taxonomy id''s digits, for P1582 the item it names; NULL where the statement says some value or no value rather than giving one.';
+
 CREATE TABLE silver.diet_category (
     description TEXT PRIMARY KEY,
     class       TEXT NOT NULL CHECK (class IN ('plant', 'dairy_and_egg', 'flesh', 'mixed')),
@@ -213,6 +241,22 @@ CREATE TABLE silver.ingredient_form (
     UNIQUE (ingredient, position)
 );
 COMMENT ON TABLE silver.ingredient_form IS 'Each form of an ingredient: a state linked to one USDA food in the pinned release, with USDA''s name for it. Position 1 is the default.';
+
+CREATE TABLE silver.ingredient_organism (
+    ingredient  TEXT PRIMARY KEY REFERENCES silver.ingredient (ingredient),
+    taxon       TEXT CHECK (taxon IS NULL OR regexp_full_match(taxon, 'NCBITaxon_[0-9]+')),
+    fdc_id      INTEGER REFERENCES silver.usda_food (fdc_id),
+    description TEXT,
+    wikidata    TEXT CHECK (wikidata IS NULL OR regexp_full_match(wikidata, 'Q[0-9]+')),
+    taxon_item  TEXT CHECK (taxon_item IS NULL OR regexp_full_match(taxon_item, 'Q[0-9]+')),
+    none        TEXT,
+    CHECK ((fdc_id IS NOT NULL)::INTEGER + (wikidata IS NOT NULL)::INTEGER + (none IS NOT NULL)::INTEGER = 1),
+    CHECK ((taxon IS NULL) = (none IS NOT NULL)),
+    CHECK ((description IS NULL) = (fdc_id IS NULL)),
+    CHECK ((taxon_item IS NULL) = (wikidata IS NULL))
+);
+COMMENT ON TABLE silver.ingredient_organism IS 'Each ingredient''s organism, from its file''s [organism] table: an NCBI Taxonomy id read from a Foundation food or a pinned Wikidata item, or none and why. The load refuses a taxon its source does not give.';
+COMMENT ON COLUMN silver.ingredient_organism.taxon_item IS 'Derived, never typed: the Wikidata item whose P685 gave the taxon, the one named or the one its P1582 names.';
 
 CREATE TABLE silver.usda_measure_unit (
     dataset TEXT NOT NULL,
@@ -406,6 +450,15 @@ COMMENT ON VIEW gold.nutrient IS 'Each nutrient VBCI reports, from nutrients.tom
 CREATE VIEW gold.ingredient AS
 SELECT ingredient, name, wikidata FROM silver.ingredient;
 COMMENT ON VIEW gold.ingredient IS 'Each of VBCI''s own ingredients, by id, with its name and Wikidata item.';
+
+CREATE VIEW gold.ingredient_organism AS
+SELECT ingredient, taxon, fdc_id, wikidata, taxon_item, none FROM silver.ingredient_organism;
+COMMENT ON VIEW gold.ingredient_organism IS 'Each ingredient''s organism by its NCBI Taxonomy id, and where the id was read from: a Foundation food, or a Wikidata item that sources.toml pins; or why it has none. Many ingredients can share one organism.';
+COMMENT ON COLUMN gold.ingredient_organism.taxon IS 'The NCBI Taxonomy id, as NCBITaxon_<digits>; NULL for an ingredient with none.';
+COMMENT ON COLUMN gold.ingredient_organism.fdc_id IS 'The Foundation food whose "NCBI Taxon" in USDA''s data gave the taxon.';
+COMMENT ON COLUMN gold.ingredient_organism.wikidata IS 'The Wikidata item the ingredient names, at the revision sources.toml pins.';
+COMMENT ON COLUMN gold.ingredient_organism.taxon_item IS 'The Wikidata item whose P685 (NCBI taxonomy ID) gave the taxon: the one named, or the one its P1582 (natural product of taxon) names.';
+COMMENT ON COLUMN gold.ingredient_organism.none IS 'Why the ingredient has no organism, as its file says.';
 
 CREATE VIEW gold.ingredient_alias AS
 SELECT alias, ingredient FROM silver.ingredient_alias;

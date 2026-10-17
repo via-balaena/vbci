@@ -4,10 +4,11 @@
 pub mod export;
 pub mod portions;
 pub mod usda;
+pub mod wikidata;
 
-use balaena_records::{CountUnits, Diet, Ingredients, Nutrients, Sources};
+use balaena_records::{CountUnits, Diet, IngredientOrganism, Ingredients, Nutrients, Sources};
 use duckdb::{Connection, params};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -98,9 +99,10 @@ fn sql(e: duckdb::Error) -> String {
     e.to_string()
 }
 
-/// Builds the warehouse in memory from the records under `root` and the pinned zips in `cache`.
-/// Bronze takes `sources.toml` and `nutrients.toml` as read, each dataset's zip as pinned, every
-/// file in each zip with its sha256, and every CSV row for row, as text; then silver and gold.
+/// Builds the warehouse in memory from the records under `root` and the pinned zips and Wikidata
+/// revisions in `cache`. Bronze takes the records as read, each dataset's zip as pinned, every file
+/// in each zip with its sha256, every CSV row for row, as text, and each pinned Wikidata revision's
+/// content; then silver and gold.
 pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (sources, sources_text) = Sources::load(root)?;
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
@@ -174,9 +176,18 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
         ))
         .map_err(|e| format!("bronze.{table}: {e}"))?;
     }
+    for w in &sources.wikidata {
+        let content = wikidata::read(cache, w)?;
+        conn.execute(
+            "INSERT INTO bronze.wikidata_revision VALUES (?, ?, ?, ?, ?)",
+            params![w.item, w.revision as i64, w.sha256, w.bytes as i64, content],
+        )
+        .map_err(|e| format!("bronze.wikidata_revision {}: {e}", w.item))?;
+    }
     load_silver(&conn, &nutrients)?;
     load_diet(&conn, &diet)?;
     load_ingredients(&conn, &ingredients)?;
+    load_organisms(&conn, &ingredients)?;
     load_portions(&conn, &counts)?;
     Ok(conn)
 }
@@ -312,6 +323,114 @@ fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), 
          JOIN silver.ingredient i USING (ingredient)
          JOIN silver.usda_food u USING (fdc_id)
          WHERE f.description <> u.description
+         ORDER BY 1",
+    )
+}
+
+/// Loads the organism USDA's data gives each Foundation food, the P685 and P1582 statements of each
+/// pinned Wikidata item, and each ingredient's organism into silver; then refuses an organism its
+/// source does not give, and a pinned item no organism reads. A food or item named but not in the
+/// pinned data, the keys and the Wikidata reading refuse.
+fn load_organisms(conn: &Connection, ingredients: &Ingredients) -> Result<(), String> {
+    conn.execute_batch(
+        "INSERT INTO silver.usda_food_organism
+         SELECT DISTINCT CAST(fdc_id AS INTEGER), dataset,
+                replace(value, 'http://purl.obolibrary.org/obo/', '')
+         FROM bronze.usda_food_attribute
+         WHERE name = 'NCBI Taxon' AND value <> 'NA'
+           AND CAST(fdc_id AS INTEGER) IN (SELECT fdc_id FROM silver.usda_food);",
+    )
+    .map_err(|e| format!("silver.usda_food_organism: {e}"))?;
+    let revisions = rows(
+        conn,
+        "SELECT item, content FROM bronze.wikidata_revision ORDER BY item",
+        |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+    )?;
+    let mut pinned = BTreeMap::new();
+    for (item, content) in revisions {
+        let statements = wikidata::statements(&item, &content)?;
+        let mut positions: BTreeMap<&str, i64> = BTreeMap::new();
+        for st in &statements {
+            let position = positions.entry(st.property).or_default();
+            *position += 1;
+            conn.execute(
+                "INSERT INTO silver.wikidata_statement VALUES (?, ?, ?, ?, ?)",
+                params![item, st.property, *position, st.value, st.rank],
+            )
+            .map_err(|e| format!("silver.wikidata_statement {item}: {e}"))?;
+        }
+        pinned.insert(item, statements);
+    }
+    let mut read = BTreeSet::new();
+    for i in &ingredients.ingredient {
+        let (mut fdc_id, mut description, mut item, mut taxon_item, mut none) =
+            (None, None, None, None, None);
+        match &i.organism {
+            IngredientOrganism::Usda {
+                fdc_id: f,
+                description: d,
+                ..
+            } => (fdc_id, description) = (Some(*f), Some(d)),
+            IngredientOrganism::Wikidata { taxon, item: q } => {
+                let (got, from) = wikidata::taxon(q, &pinned)
+                    .map_err(|e| format!("{}: organism: {e}", i.path))?;
+                if got != *taxon {
+                    return Err(format!(
+                        "{}: organism: Wikidata gives {got}, not {taxon}",
+                        i.path
+                    ));
+                }
+                read.insert(q.clone());
+                read.insert(from.clone());
+                (item, taxon_item) = (Some(q), Some(from));
+            }
+            IngredientOrganism::None { why } => none = Some(why),
+        }
+        conn.execute(
+            "INSERT INTO silver.ingredient_organism VALUES (?, ?, ?, ?, ?, ?, ?)",
+            params![
+                i.id,
+                i.organism.taxon(),
+                fdc_id,
+                description,
+                item,
+                taxon_item,
+                none
+            ],
+        )
+        .map_err(|e| format!("{} organism: {e}", i.path))?;
+    }
+    if let Some(item) = pinned.keys().find(|q| !read.contains(*q)) {
+        return Err(format!(
+            "sources.toml: Wikidata item {item} is pinned, but no ingredient's organism reads it"
+        ));
+    }
+    refuse_any(
+        conn,
+        "SELECT i.record || ': organism: food ' || o.fdc_id || ' is ' || u.description
+                || ' in USDA''s data, not ' || o.description
+         FROM silver.ingredient_organism o
+         JOIN silver.ingredient i USING (ingredient)
+         JOIN silver.usda_food u USING (fdc_id)
+         WHERE o.description <> u.description
+         ORDER BY 1",
+    )?;
+    refuse_any(
+        conn,
+        "SELECT i.record || ': organism: food ' || o.fdc_id || ' records no NCBI Taxon in USDA''s data'
+         FROM silver.ingredient_organism o
+         JOIN silver.ingredient i USING (ingredient)
+         WHERE o.fdc_id NOT IN (SELECT fdc_id FROM silver.usda_food_organism)
+         ORDER BY 1",
+    )?;
+    refuse_any(
+        conn,
+        "SELECT i.record || ': organism: food ' || o.fdc_id || ' records ' || f.taxon
+                || ' in USDA''s data, not ' || o.taxon
+         FROM silver.ingredient_organism o
+         JOIN silver.ingredient i USING (ingredient)
+         JOIN silver.usda_food_organism f USING (fdc_id)
+         WHERE o.taxon <> f.taxon
          ORDER BY 1",
     )
 }
@@ -776,8 +895,8 @@ pub fn diet_report(conn: &Connection, sources: &Sources) -> Result<String, Strin
 /// Where `ingredients` writes its report, relative to the repo root.
 pub const INGREDIENTS_PATH: &str = "docs/ingredients.md";
 
-/// `docs/ingredients.md`, as the warehouse writes it: each ingredient with its aliases and forms,
-/// and the alias candidates USDA's data gives its foods.
+/// `docs/ingredients.md`, as the warehouse writes it: each ingredient with its aliases, its
+/// organism and its forms, and the alias candidates USDA's data gives its foods.
 pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
     let count = |query: &str| -> Result<i64, String> {
         conn.query_row(query, [], |r| r.get(0))
@@ -789,6 +908,11 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         count("SELECT count(*) FROM gold.alias_candidate")?,
         count("SELECT count(*) FROM silver.nutrient")?,
     );
+    let (from_usda, from_wikidata, no_organism) = (
+        count("SELECT count(*) FROM gold.ingredient_organism WHERE fdc_id IS NOT NULL")?,
+        count("SELECT count(*) FROM gold.ingredient_organism WHERE wikidata IS NOT NULL")?,
+        count("SELECT count(*) FROM gold.ingredient_organism WHERE none IS NOT NULL")?,
+    );
     let mut out = format!(
         "# Ingredients\n\n\
          Generated by `cargo run -p balaena-warehouse -- ingredients` from `ingredients/` and the\n\
@@ -799,7 +923,10 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
          {nutrients}\" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids\n\
          come from USDA's data, which gives them for Foundation foods only. {candidates} alias\n\
          candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no\n\
-         ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n"
+         ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n\n\
+         Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one\n\
+         place: the \"NCBI Taxon\" USDA's data gives a Foundation food, for {from_usda} ingredients; a\n\
+         Wikidata item `sources.toml` pins, for {from_wikidata}; or none, saying why, for {no_organism}.\n"
     );
     let ids = rows(
         conn,
@@ -815,8 +942,38 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
             ),
             |r| r.get::<_, String>(0),
         )?;
+        let organism = rows(
+            conn,
+            &format!(
+                "SELECT taxon, fdc_id, description, wikidata, taxon_item, none
+                 FROM silver.ingredient_organism WHERE ingredient = {i}"
+            ),
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, Option<i64>>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                    r.get::<_, Option<String>>(3)?,
+                    r.get::<_, Option<String>>(4)?,
+                    r.get::<_, Option<String>>(5)?,
+                ))
+            },
+        )?;
+        let organism = match organism.as_slice() {
+            [(Some(taxon), Some(fdc_id), Some(description), None, None, None)] => {
+                format!("`{taxon}`, from Foundation food {fdc_id}, {description}.")
+            }
+            [(Some(taxon), None, None, Some(item), Some(from), None)] if item == from => {
+                format!("`{taxon}`, from Wikidata item {item}.")
+            }
+            [(Some(taxon), None, None, Some(item), Some(from), None)] => format!(
+                "`{taxon}`, from Wikidata item {item} through its natural product of taxon, {from}."
+            ),
+            [(None, None, None, None, None, Some(why))] => format!("none. {why}"),
+            other => return Err(format!("{id}: organism {other:?}")),
+        };
         out.push_str(&format!(
-            "\n## {name} (`{id}`)\n\nAliases: {}.\n\n\
+            "\n## {name} (`{id}`)\n\nAliases: {}.\n\nOrganism: {organism}\n\n\
              | state | default | fdc_id | dataset | USDA's name | of {nutrients} | FoodOn |\n|---|---|---|---|---|---|---|\n",
             aliases.join(", ")
         ));
@@ -1215,6 +1372,125 @@ mod tests {
         assert_eq!(calls.get(), 1);
     }
 
+    /// A pinned Wikidata revision is downloaded once and cached under its pin: item, revision and
+    /// sha256. Content that differs from its pin is refused, neither written when downloaded nor
+    /// replaced when cached, and reading it for the load refuses it too; a pin whose revision was
+    /// mistyped misses the cache and is checked against the answer.
+    #[test]
+    fn a_wikidata_revision_is_cached_under_its_pin_and_refused_where_it_differs() {
+        let content = r#"{"type":"item","id":"Q1","claims":{}}"#;
+        let w = balaena_records::WikidataItem {
+            item: "Q1".into(),
+            revision: 7,
+            sha256: usda::sha256_hex(content.as_bytes()),
+            bytes: content.len() as u64,
+        };
+        let answer = |c: &str| {
+            format!(
+                r#"{{"query":{{"pages":[{{"title":"Q1","revisions":[{{"revid":7,"slots":{{"main":{{"content":{}}}}}}}]}}]}}}}"#,
+                serde_json::to_string(c).unwrap()
+            )
+            .into_bytes()
+        };
+        let cache = Scratch::new().unwrap();
+        let calls = Cell::new(0);
+        let get = |url: &str, limit: u64| {
+            calls.set(calls.get() + 1);
+            assert_eq!(
+                (url, limit),
+                (wikidata::url(&w).as_str(), wikidata::answer_limit(&w))
+            );
+            Ok(answer(content))
+        };
+        let first = wikidata::fetch(std::slice::from_ref(&w), &cache.0, get).unwrap();
+        assert_eq!(first, [("Q1".to_string(), usda::Fetched::Downloaded)]);
+        let path = wikidata::content_path(&cache.0, &w);
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
+        let second = wikidata::fetch(std::slice::from_ref(&w), &cache.0, get).unwrap();
+        assert_eq!(second, [("Q1".to_string(), usda::Fetched::Cached)]);
+        assert_eq!(calls.get(), 1);
+        assert_eq!(wikidata::read(&cache.0, &w).unwrap(), content);
+
+        let other = content.replace("{}", "[]");
+        assert_eq!(other.len(), content.len());
+        let empty = Scratch::new().unwrap();
+        let err = wikidata::fetch(std::slice::from_ref(&w), &empty.0, |_, _| {
+            Ok(answer(&other))
+        })
+        .unwrap_err();
+        assert!(
+            err.contains("sha256") && err.contains("downloaded from"),
+            "{err}"
+        );
+        let left: Vec<_> = fs::read_dir(&empty.0).unwrap().collect();
+        assert!(left.is_empty(), "a refused download left {left:?}");
+        let err = wikidata::fetch(std::slice::from_ref(&w), &empty.0, |_, _| {
+            Ok(answer(&format!("{content} ")))
+        })
+        .unwrap_err();
+        assert!(err.contains("bytes, but sources.toml pins"), "{err}");
+
+        fs::write(&path, &other).unwrap();
+        let called = Cell::new(false);
+        let err = wikidata::fetch(std::slice::from_ref(&w), &cache.0, |_, _| {
+            called.set(true);
+            Ok(answer(content))
+        })
+        .unwrap_err();
+        assert!(err.contains("sha256") && err.contains("cached at"), "{err}");
+        assert!(!called.get(), "cached content that differs was replaced");
+        assert_eq!(fs::read_to_string(&path).unwrap(), other);
+        let err = wikidata::read(&cache.0, &w).unwrap_err();
+        assert!(err.contains("sha256") && err.contains("cached at"), "{err}");
+
+        let good = Scratch::new().unwrap();
+        wikidata::fetch(std::slice::from_ref(&w), &good.0, |_, _| {
+            Ok(answer(content))
+        })
+        .unwrap();
+        let mistyped = balaena_records::WikidataItem {
+            revision: 8,
+            ..w.clone()
+        };
+        let err = wikidata::fetch(std::slice::from_ref(&mistyped), &good.0, |_, _| {
+            Ok(answer(content))
+        })
+        .unwrap_err();
+        assert!(err.contains("the answer is revision 7"), "{err}");
+    }
+
+    /// `load` reads each pinned revision through its pin too: content of the pinned length with
+    /// other bytes, cached where the revision should be, stops the load.
+    #[test]
+    fn loading_refuses_cached_wikidata_content_that_differs() {
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let real = cache_dir().unwrap();
+        let cache = Scratch::new().unwrap();
+        for d in &sources.dataset {
+            fs::copy(usda::zip_path(&real, d), usda::zip_path(&cache.0, d)).unwrap();
+        }
+        for w in &sources.wikidata {
+            fs::copy(
+                wikidata::content_path(&real, w),
+                wikidata::content_path(&cache.0, w),
+            )
+            .unwrap();
+        }
+        let w = &sources.wikidata[0];
+        fs::write(
+            wikidata::content_path(&cache.0, w),
+            vec![b' '; w.bytes as usize],
+        )
+        .unwrap();
+        let Err(err) = load(&repo_root(), &cache.0) else {
+            panic!("cached content that differs from its pin was loaded");
+        };
+        assert!(
+            err.contains(&format!("wikidata {}: sha256", w.item)) && err.contains("cached at"),
+            "{err}"
+        );
+    }
+
     /// `load` checks each cached zip against its pin too: a file of the pinned length with other
     /// bytes, sitting where the zip should be, stops the load.
     #[test]
@@ -1294,6 +1570,8 @@ codes = ["269", "269.3"]
     /// less than its pound, and p4's measure unit is read before its modifier. Foods 4-10 sit in four categories for the diet; foods 2 and 10 record an
     /// animal organism, food 6 a plant, food 1 NA. A naming rule matches food 2, and exceptions
     /// override the rules matching foods 4 and 6, so each layer is seen over the one below it.
+    /// Foods 2 and 6 record their own organism, food 6 twice, and food 10 NA; olive oil's organism
+    /// is read from food 6, and a-food's from Wikidata item Q1 through Q2.
     fn synthetic(nutrients: &str) -> Result<Connection, String> {
         synthetic_with(nutrients, SYNTHETIC_DIET)
     }
@@ -1302,13 +1580,51 @@ codes = ["269", "269.3"]
     const SYNTHETIC_INGREDIENTS: [(&str, &str); 2] = [
         (
             "a-food.toml",
-            "name = \"A\"\naliases = [\"a-food\", \"ay\"]\n\n[[form]]\nstate = \"raw\"\nfdc_id = 1\ndescription = \"A\"\n",
+            "name = \"A\"\naliases = [\"a-food\", \"ay\"]\n\n[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n\n[[form]]\nstate = \"raw\"\nfdc_id = 1\ndescription = \"A\"\n",
         ),
         (
             "olive-oil.toml",
-            "name = \"Olive oil\"\naliases = [\"olive oil\"]\n\n[[form]]\nstate = \"as_sold\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n",
+            "name = \"Olive oil\"\naliases = [\"olive oil\"]\n\n[organism]\ntaxon = \"NCBITaxon_4146\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n\n[[form]]\nstate = \"as_sold\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n",
         ),
     ];
+
+    /// A Wikidata item's content, as Wikidata stores it, with `statements` as its claims.
+    fn wikidata_item(id: &str, statements: &[(&str, &str, &str)]) -> String {
+        let mut claims: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+        for (property, value, rank) in statements {
+            let datavalue = match *property {
+                "P685" => format!("{{\"value\":\"{value}\",\"type\":\"string\"}}"),
+                _ => format!(
+                    "{{\"value\":{{\"entity-type\":\"item\",\"id\":\"{value}\"}},\"type\":\"wikibase-entityid\"}}"
+                ),
+            };
+            claims.entry(property).or_default().push(format!(
+                "{{\"mainsnak\":{{\"snaktype\":\"value\",\"property\":\"{property}\",\"datavalue\":{datavalue}}},\"type\":\"statement\",\"rank\":\"{rank}\"}}"
+            ));
+        }
+        let claims: Vec<String> = claims
+            .iter()
+            .map(|(p, s)| format!("\"{p}\":[{}]", s.join(",")))
+            .collect();
+        format!(
+            "{{\"type\":\"item\",\"id\":\"{id}\",\"labels\":{{}},\"claims\":{{{}}}}}",
+            claims.join(",")
+        )
+    }
+
+    /// The synthetic warehouse's pinned Wikidata items: Q1 is a product of Q2, whose NCBI id is 111.
+    fn synthetic_wikidata() -> Vec<(String, String)> {
+        vec![
+            (
+                "Q1".into(),
+                wikidata_item("Q1", &[("P1582", "Q2", "normal")]),
+            ),
+            (
+                "Q2".into(),
+                wikidata_item("Q2", &[("P685", "111", "normal")]),
+            ),
+        ]
+    }
 
     /// Count units for the synthetic bronze.
     const SYNTHETIC_COUNT_UNITS: &str = "[[unit]]\nkey = \"medium\"\nnames = [\"medium\"]\n";
@@ -1327,6 +1643,17 @@ codes = ["269", "269.3"]
         diet: [&str; 4],
         ingredients: &[(&str, &str)],
         counts: &str,
+    ) -> Result<Connection, String> {
+        synthetic_pinned(nutrients, diet, ingredients, counts, &synthetic_wikidata())
+    }
+
+    /// The synthetic warehouse with `wikidata` as its pinned items, (item, content).
+    fn synthetic_pinned(
+        nutrients: &str,
+        diet: [&str; 4],
+        ingredients: &[(&str, &str)],
+        counts: &str,
+        wikidata: &[(String, String)],
     ) -> Result<Connection, String> {
         let conn = Connection::open_in_memory().map_err(sql)?;
         conn.execute_batch(SCHEMA).map_err(sql)?;
@@ -1352,7 +1679,11 @@ codes = ["269", "269.3"]
                ('d', '4', '1', NULL, 'NCBI Taxon Parent', 'NA'),
                ('d', '5', '1', '1000', NULL, 'Ay, a-food, plain a'),
                ('d', '7', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826'),
-               ('d', '8', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826');
+               ('d', '8', '6', NULL, 'FoodOn Ontology ID For FDC Item', 'http://purl.obolibrary.org/obo/FOODON_03301826'),
+               ('d', '9', '6', NULL, 'NCBI Taxon', 'http://purl.obolibrary.org/obo/NCBITaxon_4146'),
+               ('d', '10', '6', NULL, 'NCBI Taxon', 'http://purl.obolibrary.org/obo/NCBITaxon_4146'),
+               ('d', '11', '2', NULL, 'NCBI Taxon', 'http://purl.obolibrary.org/obo/NCBITaxon_9913'),
+               ('d', '12', '10', NULL, 'NCBI Taxon', 'NA');
              CREATE TABLE bronze.usda_measure_unit (dataset VARCHAR, id VARCHAR, name VARCHAR);
              INSERT INTO bronze.usda_measure_unit VALUES ('d', '9999', 'undetermined'), ('d', '1000', 'tablespoon');
              CREATE TABLE bronze.usda_food_portion (dataset VARCHAR, id VARCHAR, fdc_id VARCHAR, amount VARCHAR, measure_unit_id VARCHAR, modifier VARCHAR, gram_weight VARCHAR);
@@ -1376,13 +1707,28 @@ codes = ["269", "269.3"]
             "a".repeat(64)
         ))
         .map_err(sql)?;
+        for (n, (item, content)) in wikidata.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO bronze.wikidata_revision VALUES (?, ?, ?, ?, ?)",
+                params![
+                    item,
+                    n as i64 + 1,
+                    usda::sha256_hex(content.as_bytes()),
+                    content.len() as i64,
+                    content
+                ],
+            )
+            .map_err(sql)?;
+        }
         load_silver(&conn, &Nutrients::parse(nutrients)?)?;
         load_diet(&conn, &Diet::parse(diet[0], diet[1], diet[2], diet[3])?)?;
         let files: Vec<(String, String)> = ingredients
             .iter()
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
-        load_ingredients(&conn, &Ingredients::parse(&files)?)?;
+        let ingredients = Ingredients::parse(&files)?;
+        load_ingredients(&conn, &ingredients)?;
+        load_organisms(&conn, &ingredients)?;
         load_portions(&conn, &CountUnits::parse(counts)?)?;
         Ok(conn)
     }
@@ -1816,6 +2162,162 @@ codes = ["269", "269.3"]
         );
     }
 
+    /// Olive oil's organism is read from food 6's NCBI Taxon, which USDA repeats, and a-food's from
+    /// Wikidata item Q1 through its P1582, Q2. Each Foundation food's own organism is in silver once,
+    /// a food recorded as NA has none, and each pinned item's P685 and P1582 statements are there.
+    #[test]
+    fn each_ingredient_s_organism_is_read_from_its_source() {
+        let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ' ' || taxon || ' ' || coalesce(fdc_id::VARCHAR, '-') || ' '
+                        || coalesce(wikidata, '-') || ' ' || coalesce(taxon_item, '-') || ' ' || coalesce(none, '-')
+                 FROM gold.ingredient_organism ORDER BY ingredient"
+            ),
+            [
+                "a-food NCBITaxon_111 - Q1 Q2 -",
+                "olive-oil NCBITaxon_4146 6 - - -"
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT fdc_id || ' ' || taxon FROM silver.usda_food_organism ORDER BY fdc_id"
+            ),
+            ["2 NCBITaxon_9913", "6 NCBITaxon_4146"]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT item || ' ' || property || ' ' || position || ' ' || value || ' ' || rank
+                 FROM silver.wikidata_statement ORDER BY item"
+            ),
+            ["Q1 P1582 1 Q2 normal", "Q2 P685 1 111 normal"]
+        );
+        let broth = SYNTHETIC_INGREDIENTS[0].1.replace(
+            "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
+            "[organism]\nnone = \"A mix.\"\n",
+        );
+        let w = synthetic_pinned(
+            SYNTHETIC_NUTRIENTS,
+            SYNTHETIC_DIET,
+            &[("a-food.toml", &broth), SYNTHETIC_INGREDIENTS[1]],
+            SYNTHETIC_COUNT_UNITS,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ' ' || coalesce(taxon, '-') || ' ' || coalesce(none, '-')
+                 FROM gold.ingredient_organism ORDER BY ingredient"
+            ),
+            ["a-food - A mix.", "olive-oil NCBITaxon_4146 -"]
+        );
+    }
+
+    /// The load stops on an organism its source does not give: a food named by another name than
+    /// USDA's, one USDA's data records no NCBI Taxon for (an SR Legacy food, or NA), one whose NCBI
+    /// Taxon is another, a food not in the pinned release, a Wikidata item that gives another taxon
+    /// or is not pinned, a pinned item no organism reads, and pinned content that is another item's.
+    #[test]
+    fn the_load_refuses_an_organism_its_source_does_not_give() {
+        let oil = SYNTHETIC_INGREDIENTS[1].1;
+        let a = SYNTHETIC_INGREDIENTS[0].1;
+        let oil_with = |old: &str, new: &str| {
+            let organism = &oil[oil.find("[organism]").unwrap()..oil.find("[[form]]").unwrap()];
+            assert_eq!(organism.matches(old).count(), 1, "{old:?}");
+            oil.replace(organism, &organism.replace(old, new))
+        };
+        let pinned = synthetic_wikidata();
+        let mut unread = pinned.clone();
+        unread.push(("Q3".into(), wikidata_item("Q3", &[("P685", "3", "normal")])));
+        let mut swapped = pinned.clone();
+        swapped[1].1 = wikidata_item("Q5", &[("P685", "111", "normal")]);
+        let cases = [
+            (
+                a.into(),
+                oil_with(
+                    "description = \"Oil, olive\"",
+                    "description = \"Oil, olives\"",
+                ),
+                &pinned,
+                "ingredients/olive-oil.toml: organism: food 6 is Oil, olive in USDA's data, not Oil, olives",
+            ),
+            (
+                a.into(),
+                oil_with(
+                    "fdc_id = 6\ndescription = \"Oil, olive\"",
+                    "fdc_id = 1\ndescription = \"A\"",
+                ),
+                &pinned,
+                "ingredients/olive-oil.toml: organism: food 1 records no NCBI Taxon in USDA's data",
+            ),
+            (
+                a.into(),
+                oil_with(
+                    "fdc_id = 6\ndescription = \"Oil, olive\"",
+                    "fdc_id = 10\ndescription = \"D\"",
+                ),
+                &pinned,
+                "ingredients/olive-oil.toml: organism: food 10 records no NCBI Taxon in USDA's data",
+            ),
+            (
+                a.into(),
+                oil_with("NCBITaxon_4146", "NCBITaxon_4147"),
+                &pinned,
+                "ingredients/olive-oil.toml: organism: food 6 records NCBITaxon_4146 in USDA's data, not NCBITaxon_4147",
+            ),
+            (
+                a.into(),
+                oil_with("fdc_id = 6", "fdc_id = 99"),
+                &pinned,
+                "ingredients/olive-oil.toml organism: Constraint Error: Violates foreign key",
+            ),
+            (
+                a.replace("NCBITaxon_111", "NCBITaxon_112"),
+                oil.into(),
+                &pinned,
+                "ingredients/a-food.toml: organism: Wikidata gives NCBITaxon_111, not NCBITaxon_112",
+            ),
+            (
+                a.replace("wikidata = \"Q1\"", "wikidata = \"Q9\""),
+                oil.into(),
+                &pinned,
+                "ingredients/a-food.toml: organism: Wikidata item Q9 is not pinned in sources.toml",
+            ),
+            (
+                a.into(),
+                oil.into(),
+                &unread,
+                "sources.toml: Wikidata item Q3 is pinned, but no ingredient's organism reads it",
+            ),
+            (
+                a.into(),
+                oil.into(),
+                &swapped,
+                "wikidata Q2: the content is \"Q5\"'s",
+            ),
+        ];
+        for (a_food, olive_oil, wikidata, why) in cases {
+            let files = [
+                ("a-food.toml", a_food.as_str()),
+                ("olive-oil.toml", olive_oil.as_str()),
+            ];
+            let Err(err) = synthetic_pinned(
+                SYNTHETIC_NUTRIENTS,
+                SYNTHETIC_DIET,
+                &files,
+                SYNTHETIC_COUNT_UNITS,
+                wikidata,
+            ) else {
+                panic!("loaded, though it should refuse: {why}");
+            };
+            assert!(err.contains(why), "{err:?} does not say {why:?}");
+        }
+    }
+
     #[test]
     fn the_load_refuses_a_form_that_is_not_usda_s() {
         let unknown_food = SYNTHETIC_INGREDIENTS[0]
@@ -2056,8 +2558,98 @@ codes = ["269", "269.3"]
         assert_eq!(n(&format!("{kept} INTERSECT {rejected}")), 0);
     }
 
+    /// One organism can be several crops, so an organism does not say which ingredient a crop is:
+    /// USDA's data gives its Foundation broccoli, kale and collards one taxon, Brassica oleracea.
+    #[test]
+    fn one_organism_can_be_several_crops() {
+        let w = warehouse();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT DISTINCT split_part(f.description, ',', 1) || ' ' || o.taxon
+                 FROM silver.usda_food_organism o JOIN silver.usda_food f USING (fdc_id)
+                 WHERE split_part(f.description, ',', 1) IN ('Broccoli', 'Kale', 'Collards')
+                 ORDER BY 1"
+            ),
+            [
+                "Broccoli NCBITaxon_3712",
+                "Collards NCBITaxon_3712",
+                "Kale NCBITaxon_3712"
+            ]
+        );
+    }
+
+    /// bronze.wikidata_revision holds each item `sources.toml` pins, at its revision, with content
+    /// whose length and sha256 are the pin's, and no other item.
+    #[test]
+    fn every_pinned_wikidata_revision_is_in_bronze_as_pinned() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        assert!(sources.wikidata.len() >= 2);
+        for pin in &sources.wikidata {
+            let (revision, sha256, bytes, content): (i64, String, i64, String) = w
+                .query_row(
+                    "SELECT revision, sha256, bytes, content FROM bronze.wikidata_revision WHERE item = ?",
+                    params![pin.item],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )
+                .unwrap_or_else(|e| panic!("{}: {e}", pin.item));
+            assert_eq!(
+                (revision as u64, sha256.as_str(), bytes as u64),
+                (pin.revision, pin.sha256.as_str(), pin.bytes),
+                "{}",
+                pin.item
+            );
+            assert_eq!(content.len() as u64, pin.bytes, "{}", pin.item);
+            assert_eq!(
+                usda::sha256_hex(content.as_bytes()),
+                pin.sha256,
+                "{}",
+                pin.item
+            );
+        }
+        assert_eq!(
+            count(&w, "SELECT count(*) FROM bronze.wikidata_revision") as usize,
+            sources.wikidata.len()
+        );
+    }
+
+    /// The red lentil soup's ingredients read their organisms from the pinned data: lemon juice and
+    /// cumin from Wikidata through a natural product of taxon, red lentils from lentils' Foundation
+    /// food, parmesan from its cow's, and vegetable broth has none. Every ingredient has a row.
+    #[test]
+    fn the_red_lentil_soup_s_organisms_are_read_from_their_sources() {
+        let w = warehouse();
+        assert_eq!(
+            count(&w, "SELECT count(*) FROM gold.ingredient_organism"),
+            count(&w, "SELECT count(*) FROM silver.ingredient")
+        );
+        for (ingredient, row) in [
+            ("red-lentils", "NCBITaxon_3864 2644283 - -"),
+            ("onion", "NCBITaxon_4679 790646 - -"),
+            ("garlic", "NCBITaxon_4682 1104647 - -"),
+            ("olive-oil", "NCBITaxon_4146 748608 - -"),
+            ("parmesan", "NCBITaxon_9913 325036 - -"),
+            ("cumin", "NCBITaxon_52462 - Q57328174 Q132624"),
+            ("lemon-juice", "NCBITaxon_2708 - Q1375049 Q500"),
+            ("vegetable-broth", "- - - -"),
+        ] {
+            let got = strings(
+                &w,
+                &format!(
+                    "SELECT coalesce(taxon, '-') || ' ' || coalesce(fdc_id::VARCHAR, '-') || ' '
+                            || coalesce(wikidata, '-') || ' ' || coalesce(taxon_item, '-')
+                     FROM gold.ingredient_organism WHERE ingredient = {}",
+                    literal(ingredient)
+                ),
+            );
+            assert_eq!(got, [row], "{ingredient}");
+        }
+    }
+
     /// A silver row names a dataset bronze.usda_zip holds, or a record bronze.record holds: the
-    /// link DuckDB will not hold as a foreign key across schemas.
+    /// link DuckDB will not hold as a foreign key across schemas. A Wikidata statement names an
+    /// item bronze.wikidata_revision holds.
     #[test]
     fn every_silver_row_traces_to_the_bytes_it_came_from() {
         let w = warehouse();
@@ -2116,8 +2708,17 @@ codes = ["269", "269.3"]
             );
             assert_eq!(untraced, 0, "silver.{table}");
         }
+        assert_eq!(
+            count(
+                &w,
+                "SELECT count(*) FROM silver.wikidata_statement WHERE item NOT IN (SELECT item FROM bronze.wikidata_revision)"
+            ),
+            0
+        );
+        assert!(count(&w, "SELECT count(*) FROM silver.wikidata_statement") >= 2);
         for table in [
             "usda_food_taxon",
+            "usda_food_organism",
             "usda_food_foodon",
             "usda_food_common_name",
             "usda_measure_unit",

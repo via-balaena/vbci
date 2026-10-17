@@ -90,7 +90,7 @@ fn search_finds_aliases_and_foods_simplest_first() {
 }
 
 #[test]
-fn info_names_the_zips_the_export_came_from() {
+fn info_names_the_zips_and_revisions_the_export_came_from() {
     let (code, out, _) = balaena(&["info"]);
     assert_eq!(code, 0);
     let export = Export::load(&root()).unwrap();
@@ -99,6 +99,16 @@ fn info_names_the_zips_the_export_came_from() {
     for z in &export.lineage.zips {
         let row = format!("| {} | {} | {} |", z.dataset, z.sha256, z.bytes);
         assert!(zips.contains(&row.as_str()), "{row} is not in {out}");
+    }
+    let revisions = rows(&out, "Wikidata's revisions");
+    assert!(!revisions.is_empty(), "{out}");
+    assert_eq!(revisions.len(), export.lineage.wikidata.len());
+    for w in &export.lineage.wikidata {
+        let row = format!(
+            "| {} | {} | {} | {} |",
+            w.item, w.revision, w.sha256, w.bytes
+        );
+        assert!(revisions.contains(&row.as_str()), "{row} is not in {out}");
     }
     assert!(out.contains("- CC0 1.0 Universal (CC0-1.0): "), "{out}");
     let tables: Vec<String> = export
