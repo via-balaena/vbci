@@ -1724,6 +1724,18 @@ codes = ["269", "269.3"]
         ),
     ];
 
+    /// A Wikidata item's statements, as (property, value, rank).
+    type Claims<'a> = &'a [(&'a str, &'a str, &'a str)];
+
+    /// One refusal case for crops: the ingredient files, the pinned items, the crop's text, and
+    /// what the refusal must say.
+    type CropCase<'a> = (
+        &'a [(&'a str, &'a str)],
+        Vec<(String, String)>,
+        String,
+        &'a str,
+    );
+
     /// A Wikidata item's content, as Wikidata stores it, with `statements` as its claims.
     fn wikidata_item(id: &str, statements: &[(&str, &str, &str)]) -> String {
         let mut claims: BTreeMap<&str, Vec<String>> = BTreeMap::new();
@@ -1768,7 +1780,7 @@ codes = ["269", "269.3"]
     /// `synthetic_wikidata` and the items the synthetic crops read: Q3, a variety whose parent
     /// taxon is Q10, which is NCBI id 111 too. Q3 is read only as a crop's own item and Q10 only as
     /// a crop's parent, so each way of reading an item is the only one that reads some item.
-    fn crop_wikidata(more: &[(&str, &[(&str, &str, &str)])]) -> Vec<(String, String)> {
+    fn crop_wikidata(more: &[(&str, Claims)]) -> Vec<(String, String)> {
         let mut items = synthetic_wikidata();
         items.push((
             "Q3".into(),
@@ -2581,7 +2593,7 @@ codes = ["269", "269.3"]
                 "name = \"C\"\nwikidata = \"{item}\"\ntaxon = \"{taxon}\"\nscientific_name = \"{name}\"\ningredient = \"{ingredient}\"\nstate = \"{state}\"\n"
             )
         };
-        let cases: Vec<(&[(&str, &str)], Vec<(String, String)>, String, &str)> = vec![
+        let cases: Vec<CropCase> = vec![
             (
                 &SYNTHETIC_INGREDIENTS,
                 crop_wikidata(&[]),
