@@ -4,6 +4,10 @@
 # Each name is lowercase with single spaces and names one unit, and no name is a unit cooklang
 # knows, of mass, volume, length, temperature or time, or the warehouse refuses to load. Read by
 # crates/records (src/units.rs).
+#
+# whole = true marks a unit one of which is one whole item of a food: a bare count, such as
+# @onion{1}, is weighed by the food's USDA portions in the units marked so. A unit that names a
+# part (clove, leaf, slice), several items (bunch) or a pack (can, package) is not marked.
 
 [[unit]]
 key = "clove"
@@ -16,6 +20,7 @@ names = ["bunch", "bunches"]
 [[unit]]
 key = "head"
 names = ["head", "heads"]
+whole = true
 
 [[unit]]
 key = "leaf"
@@ -40,18 +45,27 @@ names = ["piece", "pieces"]
 [[unit]]
 key = "each"
 names = ["each"]
+whole = true
 
 [[unit]]
 key = "small"
 names = ["small"]
+whole = true
 
 [[unit]]
 key = "medium"
 names = ["medium"]
+whole = true
 
 [[unit]]
 key = "large"
 names = ["large"]
+whole = true
+
+[[unit]]
+key = "fruit"
+names = ["fruit", "fruits"]
+whole = true
 
 [[unit]]
 key = "can"

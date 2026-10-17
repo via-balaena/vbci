@@ -13,6 +13,16 @@ pub struct CountUnit {
     pub key: String,
     /// The names it may be written with, lowercase; each names this unit alone.
     pub names: Vec<String>,
+    /// `true` where one of the unit is one whole item of a food, so a bare count, such as
+    /// `@onion{1}`, is weighed by a food's portions in it; left out where it is not.
+    pub whole: Option<bool>,
+}
+
+impl CountUnit {
+    /// Whether one of the unit is one whole item of a food.
+    pub fn is_whole(&self) -> bool {
+        self.whole == Some(true)
+    }
 }
 
 /// The record, as `units/count.toml` holds it.
@@ -67,6 +77,12 @@ impl CountUnits {
             }
             if u.names.is_empty() {
                 return Err(format!("unit {}: no name", u.key));
+            }
+            if u.whole == Some(false) {
+                return Err(format!(
+                    "unit {}: whole = false says nothing: leave whole out",
+                    u.key
+                ));
             }
             for name in &u.names {
                 let plain = !name.is_empty()
@@ -136,6 +152,33 @@ mod tests {
             "lowercase letters",
         );
         refused(&GOOD.replace("names = [\"head\"]", "names = []"), "no name");
+        refused(
+            &GOOD.replace("names = [\"head\"]", "names = [\"head\"]\nwhole = false"),
+            "unit head: whole = false says nothing",
+        );
+        refused(
+            &GOOD.replace("names = [\"head\"]", "names = [\"head\"]\nwhole = \"yes\""),
+            "invalid type",
+        );
+    }
+
+    #[test]
+    fn a_count_unit_is_whole_where_its_record_says_so() {
+        let u = CountUnits::parse(
+            &GOOD.replace("names = [\"head\"]", "names = [\"head\"]\nwhole = true"),
+        )
+        .unwrap();
+        assert!(u.find("head").unwrap().is_whole());
+        assert!(!u.find("clove").unwrap().is_whole());
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let (units, _) = CountUnits::load(&root).unwrap();
+        let whole: Vec<&str> = units
+            .unit
+            .iter()
+            .filter(|u| u.is_whole())
+            .map(|u| u.key.as_str())
+            .collect();
+        assert_eq!(whole, ["head", "each", "small", "medium", "large", "fruit"]);
     }
 
     #[test]

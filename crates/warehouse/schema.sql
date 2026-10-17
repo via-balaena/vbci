@@ -317,9 +317,11 @@ COMMENT ON COLUMN silver.usda_portion.unit_text IS 'The text its unit is read fr
 
 CREATE TABLE silver.count_unit (
     unit   TEXT PRIMARY KEY,
+    whole  BOOLEAN NOT NULL,
     record TEXT NOT NULL
 );
 COMMENT ON TABLE silver.count_unit IS 'Each count unit, from units/count.toml: a unit a recipe counts in, which no mass or volume unit converts.';
+COMMENT ON COLUMN silver.count_unit.whole IS 'Whether one of the unit is one whole item of a food: true where units/count.toml says whole = true.';
 
 CREATE TABLE silver.count_unit_name (
     name TEXT PRIMARY KEY,
@@ -517,6 +519,10 @@ COMMENT ON COLUMN gold.crop.steps_below IS 'How many steps the crop''s organism 
 CREATE VIEW gold.ingredient_alias AS
 SELECT alias, ingredient FROM silver.ingredient_alias;
 COMMENT ON VIEW gold.ingredient_alias IS 'Each name a recipe may call an ingredient by, and the ingredient it names.';
+
+CREATE VIEW gold.count_unit AS
+SELECT unit, whole FROM silver.count_unit;
+COMMENT ON VIEW gold.count_unit IS 'Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food''s portions in the units that are.';
 
 CREATE VIEW gold.count_unit_name AS
 SELECT name, unit FROM silver.count_unit_name;

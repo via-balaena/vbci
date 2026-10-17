@@ -346,7 +346,11 @@ Columns: `item` VARCHAR, `revision` BIGINT, `sha256` VARCHAR, `bytes` BIGINT, `c
 
 A table. Each count unit, from units/count.toml: a unit a recipe counts in, which no mass or volume unit converts.
 
-Columns: `unit` VARCHAR, `record` VARCHAR.
+| column | type | what it is |
+|---|---|---|
+| whole | BOOLEAN | Whether one of the unit is one whole item of a food: true where units/count.toml says whole = true. |
+
+Other columns: `unit` VARCHAR, `record` VARCHAR.
 
 ### silver.count_unit_name
 
@@ -555,6 +559,12 @@ Other columns: `item` VARCHAR, `property` VARCHAR, `position` INTEGER, `rank` VA
 A view. Names USDA's data gives a linked food that no ingredient lists as an alias yet: unknown until a person reviews one into an ingredient's aliases. From SR Legacy's common names and from the parentheses in USDA's names, less notes such as "Includes foods for ...".
 
 Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` INTEGER.
+
+### gold.count_unit
+
+A view. Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food's portions in the units that are.
+
+Columns: `unit` VARCHAR, `whole` BOOLEAN.
 
 ### gold.count_unit_name
 
