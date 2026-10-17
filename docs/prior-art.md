@@ -183,3 +183,16 @@ description names paddy, rough, husked or unmilled rice. That red lentils are le
 seed coat taken off, which shows their red, and are mostly split too, is as a web search reported
 it (recipe pages, and a 2005 Cereal Chemistry paper on lentil milling whose page answered 403), not
 re-read.
+
+## Bare counts
+
+For plan step 14. Searched on 2026-10-17 without agents: open-tandoor-data's conversions at its
+latest commit, read through GitHub's API with a scratch script; USDA's two pinned releases' portions
+with scratch scripts. Other recipe tools' handling of a line with no unit was not searched again.
+A source marked **re-read** was read that day for what the mark names.
+
+| source | what it is | license | what VBCI takes | source |
+|---|---|---|---|---|
+| open-tandoor-data's conversions | 163 conversions, 27 of them a food's one piece ("pcs") in grams, one number each: carrot 61 g, from SR Legacy's medium carrot; onion 143 g, from Foundation's "Onions, yellow, raw"; lemon 65 g, from FDC 2344662, which neither of VBCI's pinned releases holds | ODbL schema, DbCL contents, as "Linking recipes to USDA data" above gives them | nothing: ODbL is share-alike. Its shape, a weight per food, was passed over for count units marked whole (`docs/architecture.md`, decided 2026-10-17) | github.com/TandoorRecipes/open-tandoor-data at b4d05271, `data/conversion/base/data.json`, **re-read** (counts, the three weights) |
+| recipya-rs | takes grams from a `food_portion` modifier, else "medium" | AGPL-3.0 | nothing | as the 2026-10-11 search reported it |
+| USDA's portions | one whole item's portions: for VBCI's carrot, onion, potato and tomato in small, medium and large, and for its lemon in "fruit"; some name the food itself, as cooked carrot's "carrot" and Foundation's yellow onion's "Onion" do | CC0 | step 14's grams, read through the count units marked whole | scratch check of both pinned zips |

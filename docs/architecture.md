@@ -41,7 +41,7 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | SR Legacy's bronze row counts equal USDA's own count of them, `all_downloaded_table_record_counts.csv`. | `the_sr_legacy_row_counts_equal_usda_s_own` |
 | `nutrients.toml` gives each nutrient a plain key no other has, a name, the unit USDA writes, and its USDA codes as text, digits or digits, a point and digits, each code in one nutrient only. | `a_code_is_written_as_usda_writes_it`, `a_code_belongs_to_one_nutrient`, `nutrient_keys_are_unique_and_plain`, `the_nutrients_record_loads` |
 | Silver holds every SR Legacy and Foundation food, meat included, and each of their nutrient rows is kept or rejected with its reason, never both: no amount; a nutrient its dataset's `nutrient.csv` lacks; a repeat of an earlier row for the same food and nutrient with the same amount (the earliest by id is kept); or a disagreement with another such row (all are rejected, so the food has no value rather than a guess). | `silver_holds_every_sr_legacy_and_foundation_food`, `every_food_nutrient_row_in_scope_is_kept_or_rejected`, and on rows written for the purpose, `silver_keeps_a_row_or_rejects_it_with_its_reason` |
-| Silver's keys refuse a second food with one fdc_id, a food in no category of its dataset or of another data type, an amount for a nutrient its dataset lacks, a second amount for one food and nutrient, a code in two nutrients, a rejection with no reason, and a crop harvested in a state other than raw or dry. | `the_database_refuses_what_silver_s_keys_refuse`, with an accepted control beside each |
+| Silver's keys refuse a second food with one fdc_id, a food in no category of its dataset or of another data type, an amount for a nutrient its dataset lacks, a second amount for one food and nutrient, a code in two nutrients, a rejection with no reason, a crop harvested in a state other than raw or dry, and a count unit that says neither that it is whole nor that it is not. | `the_database_refuses_what_silver_s_keys_refuse`, with an accepted control beside each |
 | A nutrient's codes are matched exactly as written, never rounded, and a food's value comes from the first code it has a value for. A code some dataset's `nutrient.csv` lacks, or has with another unit, stops the load. | `codes_are_matched_exactly_not_rounded`, `the_first_listed_code_with_a_value_is_used`, `a_nutrient_code_usda_does_not_have_is_refused`, `a_nutrient_whose_unit_differs_is_refused` |
 | Every silver row names a dataset in `bronze.usda_zip`, a record in `bronze.record`, or, for a Wikidata statement, an item in `bronze.wikidata_revision`; and each kept nutrient row and portion names the bronze row it came from. | `every_silver_row_traces_to_the_bytes_it_came_from`: DuckDB refuses foreign keys across schemas, so a test holds this link |
 | `docs/coverage.md`, `docs/diet.md`, `docs/ingredients.md`, `docs/crops.md`, `docs/portions.md` and `docs/data-catalogue.md` are what the warehouse writes, and every table and view says what it is. | `the_coverage_report_is_current`, `the_diet_report_is_current`, `the_ingredients_report_is_current`, `the_crops_report_is_current`, `the_portions_report_is_current`, `the_catalogue_is_current`, `every_table_and_view_says_what_it_is` |
@@ -64,14 +64,14 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks either; whose ingredient is not in `ingredients/`, has no organism, is not harvested, or has no form in the crop's state; and whose organism is neither its ingredient's nor one step below it: a parent taxon with another organism, two steps down, no parent taxon, or one not pinned. | `the_load_refuses_a_crop_its_organism_does_not_fit`, and on the pinned data, `the_crops_read_their_organisms_from_their_items` |
 | Which ingredient a crop yields, and in which state, is a review's choice; several crops can yield one ingredient (tomato and cherry tomato yield tomato). | nothing: review. `docs/crops.md` shows each crop, what it yields and how its organism stands to its ingredient's. |
 | An alias candidate is a name USDA's data gives a linked food (an SR Legacy common name, or a name in the parentheses of USDA's name, less notes such as "Includes foods for ...") that no ingredient lists; it stays unknown until a person reviews it into an ingredient's aliases. | `alias_candidates_come_from_usda_s_names`, `foodon_ids_are_derived_and_candidates_are_names_not_yet_aliases` |
-| `units/` holds `units/count.toml` and no other file: count units, each with a key no other has and the names it may be written with, lowercase with single spaces, each naming one unit. A count unit has no grams of its own. The load stops on a count unit's name that cooklang's bundled units know. | `the_units_folder_holds_count_toml_alone`, `a_count_unit_record_refuses_what_it_does_not_know`, `a_count_unit_is_found_by_its_names`, `a_count_unit_may_not_be_a_unit_cooklang_knows`, `the_load_refuses_a_count_unit_cooklang_knows` |
+| `units/` holds `units/count.toml` and no other file: count units, each with a key no other has and the names it may be written with, lowercase with single spaces, each naming one unit. A count unit has no grams of its own. `whole = true` marks a unit one of which is one whole item of a food, and leaving the key out says it is not; `whole = false` is refused. Which units are whole is a review's choice (decided 2026-10-17): head, each, small, medium, large and fruit. The load stops on a count unit's name that cooklang's bundled units know. | `the_units_folder_holds_count_toml_alone`, `a_count_unit_record_refuses_what_it_does_not_know`, `a_count_unit_is_found_by_its_names`, `a_count_unit_is_whole_where_its_record_says_so`, `a_count_unit_may_not_be_a_unit_cooklang_knows`, `the_load_refuses_a_count_unit_cooklang_knows` |
 | Every portion of a silver food is kept or rejected with its reason (an amount or gram weight not above 0), and each kept portion's unit is read from its text or listed in `docs/portions.md` by its leading phrase, never guessed. The text is its measure unit's name, or its modifier where its measure unit is "undetermined", as all of SR Legacy's are; its unit is the longest run of its leading phrase's first words that is a mass or volume unit cooklang's bundled units know, or a count unit. A unit later in the text is not the portion's. | `every_portion_is_read_or_listed`, `what_a_portion_s_unit_is_read_as`, `what_a_portion_s_unit_is_not_read_as`, `the_longest_run_that_names_a_unit_wins`, `fluid_ounce_portions_are_read_as_volume`, and on rows written for the purpose, `each_portion_s_unit_is_read_or_listed` |
 | A portion in a mass unit whose grams differ from what the unit defines by more than 2% is kept as USDA gives it and listed in `docs/portions.md`. | on rows written for the purpose, `each_portion_s_unit_is_read_or_listed` |
 | `export/datapackage.json` is what the warehouse writes: a Frictionless Data Package, version 2, of the gold views `EXPORTED` lists in `crates/warehouse/src/export.rs`, each a table resource with every column of its view, the view's and its columns' comments as descriptions, its rows inline as arrays, its columns' names first, then a row per line in primary-key order; and `_lineage`, the sha256 of each zip, Wikidata revision and record file the warehouse loaded. `crates/core` reads every value back equal to gold's. | `the_export_is_current`, `the_export_reads_back_as_gold`, and on views and text written for the purpose, `a_view_is_written_as_its_columns_names_then_a_row_per_line_in_key_order`, `the_rows_take_their_placeholder_s_place_a_step_past_its_line`, `a_column_of_a_type_the_export_does_not_write_is_refused` and `what_json_cannot_hold_or_gold_lacks_is_refused`. That the file conforms to the version 2 profile was seen on 2026-10-12 with the profile's JSON Schema and with frictionless-py 5.20.0, which checked its rows, keys and foreign keys; that check is not in the repo. |
 | The export is licensed CC0-1.0 whole, and is not written while a publisher in `sources.toml` licenses its data otherwise. | `the_export_is_written_only_while_every_publisher_s_license_is_cc0` |
 | `crates/core` reads the export into typed tables, and refuses one that is not a version 2 Data Package with the keys it knows, each once, a resource that is not a table or is listed twice, a field whose name another field of its resource has, or rows that break what the descriptor says: a first row that is not the fields' names, a value that is neither of its field's type nor null, a primary key repeated or null, a foreign key whose values are not all present and found in the table it names, or one that refers to fields other than that table's primary key. | `an_export_is_a_v2_data_package_with_keys_it_knows`, `each_row_has_a_value_of_its_field_s_type_in_each_field`, `a_primary_key_is_unique_and_never_null`, `a_foreign_key_finds_its_row`, `the_export_loads` |
 | A recipe line's food is the ingredient one of whose aliases is its name, lowercased with single spaces, in the form whose state its note names in whole words ("as sold" for `as_sold`), else in its default form. A name that is no alias, or a note naming a state the ingredient has no form in, or naming two, gives the line no food. The states a note can name are the records' own. | `a_line_s_food_is_its_alias_s_ingredient_in_the_note_s_state`, `a_note_names_the_states_the_records_have` |
-| A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units. A range amount gives a range. A line with no amount, an amount in text, no unit, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why` |
+| A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units; for no unit, as whole items (decided 2026-10-17), by the food's USDA portions in the count units marked whole, or, where they disagree and the note's words are in some of their texts and not all, by those. A range amount gives a range. A line with no amount, an amount in text, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why`, `a_report_says_a_bare_count_counts_whole_items` |
 | A nutrient's total is the sum, over the lines with grams whose food has a value for it, of the grams times the food's amount per 100 g, and says how many lines those are. | `a_total_says_how_many_lines_it_covers` |
 | A recipe's vegan and vegetarian answers are the weakest of its lines': no if one is, else unknown if one is or a line has no food, else yes; a recipe with no line is unknown. Each answer names the lines that decided it. | `a_recipe_s_diet_is_its_weakest_line_s` |
 | `recipes/` holds only `.cook` files, each parsing with no cooklang error or warning, with a title and a whole number of servings, 1 or more. Each has its report, `docs/recipes/<name>.md`, which is what `crates/core` writes from it and the export, and no report lacks its recipe. A report shows amounts to 0.1, a range by both its ends unless they show the same, and lists the lines without grams. | `a_recipe_record_parses_without_warnings`, `the_recipe_reports_are_current`, `amounts_are_shown_to_a_tenth_and_a_range_by_both_ends`, `a_report_lists_the_lines_without_grams` |
@@ -153,6 +153,20 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    *Nutrients* 9(6):542, 2017, read 2026-10-17). VBCI takes the line, not FoodEx2's data, which is
    reused with EFSA acknowledged. The cost: nothing but review holds whether an ingredient is
    harvested; the load holds what follows from it.
+2. **A bare count is whole items, weighed by the count units `units/count.toml` marks whole** (Jon:
+   "your call"). A line such as `@onion{1}` had no grams. Of the 18 ingredients' 34 forms, raw
+   carrot, onion, potato and tomato, cooked onion, potato and tomato, and canned tomato have USDA
+   portions in small, medium or large, and the lemon in "fruit", which no count unit read until
+   step 14 (scratch check, 2026-10-17). Grouping the export's portions in head, each, small, medium
+   and large by the words beside the unit found a few that are not one whole item of their food,
+   among them a turkey's "medium slice", raisins' "small box" and a graham cracker's "large
+   rectangular piece"; and "fruit" reads three juices' "fruit yields", the juice of one fruit. None is a food of
+   VBCI's ingredients. Passed over: each ingredient's record naming the units a bare count of it
+   is weighed by, which gives the 18 ingredients the same grams at a field in each record.
+   open-tandoor-data gives 27 of its foods one weight per piece (`docs/prior-art.md`, "Bare
+   counts"), one number where the range rule (decided 2026-10-12) gives the range. The cost: a unit marked
+   whole holds for every food, so a food whose portion in it names a part is weighed by that part
+   as one whole item until a review sees it.
 
 ### Layers
 
@@ -271,9 +285,10 @@ Each step is one pull request, done when its check passes.
    from the food. How sure each number is comes from how it was reached, never typed: each line
    says how, or why it has no grams; an amount the data does not pin to one number is a range
    (decided above); and each total says how many lines it covers. A line with no unit
-   (`@onion{1}`) has no grams. `cargo run -p balaena-warehouse -- recipes` writes
-   `docs/recipes/<name>.md` for each `recipes/<name>.cook`; the first is the red lentil soup of
-   the 2026-10-11 draft, with its onion as `{1%medium}`. Done, with the tests in the rules above:
+   (`@onion{1}`) has no grams (step 14 weighs it as whole items).
+   `cargo run -p balaena-warehouse -- recipes` writes `docs/recipes/<name>.md` for each
+   `recipes/<name>.cook`; the first is the red lentil soup of the 2026-10-11 draft, with its onion
+   as `{1%medium}`. Done, with the tests in the rules above:
    the soup's report is current. On 2026-10-12 it answered vegan no (parmesan) and vegetarian
    unknown (parmesan, by its naming rule; vegetable broth, by its category), found the lentils dry
    and weighed the garlic by its clove portions.
@@ -324,6 +339,15 @@ The second arc, farm reference data, began on 2026-10-16.
     for paddy rice (searched by description, 2026-10-17). The lemon's organism is read from
     Wikidata's lemon fruit item, as Foundation foods have no lemon, and soybeans' from the soy milk
     tofu's is. Done, with the tests in the rules above.
+14. **Bare counts.** A recipe line with no unit, such as `@onion{1}`, counts whole items, weighed
+    by the food's USDA portions in the count units `units/count.toml` marks whole (decided above):
+    head, each, small, medium, large and fruit. "fruit" is new, and reads 70 of USDA's portions
+    that no unit read, the lemon's two among them. One raw onion is then 70–150 g, a raw carrot
+    50–72 g, a raw potato 92–369 g, a raw tomato 91–182 g and a lemon 58–84 g. Garlic, whose count
+    portions are cloves, and spinach, a bunch, a leaf or a package, have none, nor has cooked
+    carrot, whose one portion of a whole carrot reads "carrot", a phrase no unit reads. The export
+    carries `gold.count_unit`, each count unit and whether it is whole. Done, with the tests in the
+    rules above.
 
 **Later:** the rest of farm reference data. A grower's weight per bunch or head comes from harvests
 that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search found
@@ -332,7 +356,9 @@ data, so they wait for its design. Interchange through farmOS's JSON:API and the
 Consortium's, which Open Food Network uses. Growstuff's crops carry GBIF and Wikidata ids and nest
 under a parent crop, and AGROVOC links GBIF. A crop more than one step below its ingredient's
 organism, such as a cultivar under a variety, is refused until a rule for it is decided. Olive
-and rice crops wait for a USDA food for each as harvested.
+and rice crops wait for a USDA food for each as harvested. A portion whose phrase is its food's
+name, such as cooked carrot's "carrot", is read by no unit, so a bare count of that form has no
+grams.
 
 ### Grades
 
