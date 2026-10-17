@@ -334,6 +334,12 @@ A table. Each dataset's zip as sources.toml pins it. The loader refuses a zip wh
 
 Other columns: `url` VARCHAR, `sha256` VARCHAR, `bytes` BIGINT.
 
+### bronze.wikidata_revision
+
+A table. Each Wikidata item sources.toml pins, with the content Wikidata stores for its pinned revision: the item's JSON, exactly as read. The loader refuses content whose length or sha256 differs.
+
+Columns: `item` VARCHAR, `revision` BIGINT, `sha256` VARCHAR, `bytes` BIGINT, `content` VARCHAR.
+
 ## silver
 
 ### silver.count_unit
@@ -390,6 +396,16 @@ A table. Each form of an ingredient: a state linked to one USDA food in the pinn
 
 Columns: `ingredient` VARCHAR, `state` VARCHAR, `position` INTEGER, `fdc_id` INTEGER, `description` VARCHAR.
 
+### silver.ingredient_organism
+
+A table. Each ingredient's organism, from its file's [organism] table: an NCBI Taxonomy id read from a Foundation food or a pinned Wikidata item, or none and why. The load refuses a taxon its source does not give.
+
+| column | type | what it is |
+|---|---|---|
+| taxon_item | VARCHAR | Derived, never typed: the Wikidata item whose P685 gave the taxon, the one named or the one its P1582 names. |
+
+Other columns: `ingredient` VARCHAR, `taxon` VARCHAR, `fdc_id` INTEGER, `description` VARCHAR, `wikidata` VARCHAR, `none` VARCHAR.
+
 ### silver.nutrient
 
 A table. Each nutrient VBCI reports, from nutrients.toml, in the record's order.
@@ -439,6 +455,12 @@ A table. Each amount of a nutrient in 100 g of a silver food, from food_nutrient
 | source_id | VARCHAR | The row's id in food_nutrient.csv, as written. |
 
 Other columns: `fdc_id` INTEGER, `dataset` VARCHAR, `nutrient_id` INTEGER, `amount` DOUBLE.
+
+### silver.usda_food_organism
+
+A table. The source organism each Foundation food records, from food_attribute.csv's "NCBI Taxon", once per food however often USDA repeats it; a food recorded as NA has none, and the key refuses a food with two.
+
+Columns: `fdc_id` INTEGER, `dataset` VARCHAR, `taxon` VARCHAR.
 
 ### silver.usda_food_taxon
 
@@ -493,6 +515,16 @@ A table. Each nutrient or portion row of a silver food that silver did not keep,
 | id | VARCHAR | The row's id in that table, as written. |
 
 Other columns: `dataset` VARCHAR, `reason` VARCHAR.
+
+### silver.wikidata_statement
+
+A table. Each statement of P685 (NCBI taxonomy ID) and P1582 (natural product of taxon) in each pinned Wikidata item's content, in its order there.
+
+| column | type | what it is |
+|---|---|---|
+| value | VARCHAR | For P685 the NCBI Taxonomy id's digits, for P1582 the item it names; NULL where the statement says some value or no value rather than giving one. |
+
+Other columns: `item` VARCHAR, `property` VARCHAR, `position` INTEGER, `rank` VARCHAR.
 
 ## gold
 
@@ -550,6 +582,20 @@ A view. Each form of each ingredient, with its USDA food, whether it is the defa
 | foodon | VARCHAR | Derived, never typed: the FoodOn ids USDA's data gives the linked food. |
 
 Other columns: `ingredient` VARCHAR, `state` VARCHAR, `is_default` BOOLEAN, `fdc_id` INTEGER, `dataset` VARCHAR, `description` VARCHAR, `nutrients` BIGINT.
+
+### gold.ingredient_organism
+
+A view. Each ingredient's organism by its NCBI Taxonomy id, and where the id was read from: a Foundation food, or a Wikidata item that sources.toml pins; or why it has none. Many ingredients can share one organism.
+
+| column | type | what it is |
+|---|---|---|
+| taxon | VARCHAR | The NCBI Taxonomy id, as NCBITaxon_<digits>; NULL for an ingredient with none. |
+| fdc_id | INTEGER | The Foundation food whose "NCBI Taxon" in USDA's data gave the taxon. |
+| wikidata | VARCHAR | The Wikidata item the ingredient names, at the revision sources.toml pins. |
+| taxon_item | VARCHAR | The Wikidata item whose P685 (NCBI taxonomy ID) gave the taxon: the one named, or the one its P1582 (natural product of taxon) names. |
+| none | VARCHAR | Why the ingredient has no organism, as its file says. |
+
+Other columns: `ingredient` VARCHAR.
 
 ### gold.nutrient
 
