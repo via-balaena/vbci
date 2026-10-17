@@ -1441,6 +1441,53 @@ mod tests {
         assert_eq!(fs::read_to_string(&path).unwrap(), other);
         let err = wikidata::read(&cache.0, &w).unwrap_err();
         assert!(err.contains("sha256") && err.contains("cached at"), "{err}");
+
+        let good = Scratch::new().unwrap();
+        wikidata::fetch(std::slice::from_ref(&w), &good.0, |_, _| {
+            Ok(answer(content))
+        })
+        .unwrap();
+        let mistyped = balaena_records::WikidataItem {
+            revision: 8,
+            ..w.clone()
+        };
+        let err = wikidata::fetch(std::slice::from_ref(&mistyped), &good.0, |_, _| {
+            Ok(answer(content))
+        })
+        .unwrap_err();
+        assert!(err.contains("the answer is revision 7"), "{err}");
+    }
+
+    /// `load` reads each pinned revision through its pin too: content of the pinned length with
+    /// other bytes, cached where the revision should be, stops the load.
+    #[test]
+    fn loading_refuses_cached_wikidata_content_that_differs() {
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        let real = cache_dir().unwrap();
+        let cache = Scratch::new().unwrap();
+        for d in &sources.dataset {
+            fs::copy(usda::zip_path(&real, d), usda::zip_path(&cache.0, d)).unwrap();
+        }
+        for w in &sources.wikidata {
+            fs::copy(
+                wikidata::content_path(&real, w),
+                wikidata::content_path(&cache.0, w),
+            )
+            .unwrap();
+        }
+        let w = &sources.wikidata[0];
+        fs::write(
+            wikidata::content_path(&cache.0, w),
+            vec![b' '; w.bytes as usize],
+        )
+        .unwrap();
+        let Err(err) = load(&repo_root(), &cache.0) else {
+            panic!("cached content that differs from its pin was loaded");
+        };
+        assert!(
+            err.contains(&format!("wikidata {}: sha256", w.item)) && err.contains("cached at"),
+            "{err}"
+        );
     }
 
     /// `load` checks each cached zip against its pin too: a file of the pinned length with other
@@ -2508,6 +2555,27 @@ codes = ["269", "269.3"]
             0
         );
         assert_eq!(n(&format!("{kept} INTERSECT {rejected}")), 0);
+    }
+
+    /// One organism can be several crops, so an organism does not say which ingredient a crop is:
+    /// USDA's data gives its Foundation broccoli, kale and collards one taxon, Brassica oleracea.
+    #[test]
+    fn one_organism_can_be_several_crops() {
+        let w = warehouse();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT DISTINCT split_part(f.description, ',', 1) || ' ' || o.taxon
+                 FROM silver.usda_food_organism o JOIN silver.usda_food f USING (fdc_id)
+                 WHERE split_part(f.description, ',', 1) IN ('Broccoli', 'Kale', 'Collards')
+                 ORDER BY 1"
+            ),
+            [
+                "Broccoli NCBITaxon_3712",
+                "Collards NCBITaxon_3712",
+                "Kale NCBITaxon_3712"
+            ]
+        );
     }
 
     /// bronze.wikidata_revision holds each item `sources.toml` pins, at its revision, with content

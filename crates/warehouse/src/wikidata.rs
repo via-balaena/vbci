@@ -34,9 +34,15 @@ pub fn answer_limit(w: &WikidataItem) -> u64 {
     2 * w.bytes + 4096
 }
 
-/// Where a revision's content lives in the cache: named by its sha256, so the name is its identity.
+/// Where a revision's content lives in the cache: named by its item, its revision and its sha256,
+/// so a change to any of the three misses the cache, and the download that follows checks the item
+/// and the revision against Wikidata's answer. Named by the sha256 alone, a mistyped revision with
+/// the right sha256 was found in the cache, loaded, and written to the export (2026-10-16).
 pub fn content_path(cache: &Path, w: &WikidataItem) -> PathBuf {
-    cache.join(format!("{}.json", w.sha256))
+    cache.join(format!(
+        "wikidata-{}-{}-{}.json",
+        w.item, w.revision, w.sha256
+    ))
 }
 
 /// Refuses bytes that are not the item's pinned content: first their length, then their sha256.
@@ -451,7 +457,8 @@ mod tests {
     }
 
     /// The content comes out of the answer as Wikidata stored it; an answer about another item,
-    /// another revision, no page (an unknown revision) or two pages is refused.
+    /// another revision, no page (an unknown revision), two pages, or a page without one revision
+    /// is refused.
     #[test]
     fn an_answer_about_another_item_or_revision_is_refused() {
         let w = pin("Q1", 7);
@@ -478,6 +485,10 @@ mod tests {
             (
                 two,
                 "wikidata Q1 revision 7: the answer has 2 pages, not one",
+            ),
+            (
+                r#"{"query":{"pages":[{"title":"Q1","revisions":[]}]}}"#.to_string(),
+                "wikidata Q1 revision 7: the answer has 0 revisions, not one",
             ),
         ] {
             assert_eq!(content_of(&w, body.as_bytes()), Err(why.to_string()));
