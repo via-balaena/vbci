@@ -71,7 +71,7 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | The export is licensed CC0-1.0 whole, and is not written while a publisher in `sources.toml` licenses its data otherwise. | `the_export_is_written_only_while_every_publisher_s_license_is_cc0` |
 | `crates/core` reads the export into typed tables, and refuses one that is not a version 2 Data Package with the keys it knows, each once, a resource that is not a table or is listed twice, a field whose name another field of its resource has, or rows that break what the descriptor says: a first row that is not the fields' names, a value that is neither of its field's type nor null, a primary key repeated or null, a foreign key whose values are not all present and found in the table it names, or one that refers to fields other than that table's primary key. | `an_export_is_a_v2_data_package_with_keys_it_knows`, `each_row_has_a_value_of_its_field_s_type_in_each_field`, `a_primary_key_is_unique_and_never_null`, `a_foreign_key_finds_its_row`, `the_export_loads` |
 | A recipe line's food is the ingredient one of whose aliases is its name, lowercased with single spaces, in the form whose state its note names in whole words ("as sold" for `as_sold`), else in its default form. A name that is no alias, or a note naming a state the ingredient has no form in, or naming two, gives the line no food. The states a note can name are the records' own. | `a_line_s_food_is_its_alias_s_ingredient_in_the_note_s_state`, `a_note_names_the_states_the_records_have` |
-| An alias of two or more words whose last word is a count unit's name counts in that unit (`gold.ingredient_alias_unit`), and `docs/ingredients.md` shows the unit beside it. Whether an alias reads so is a review's to see: "celery rib with leaves" would count leaves. | `an_alias_ending_in_a_count_unit_s_name_counts_in_it` |
+| An alias of two or more words whose last word is a count unit's name counts in that unit (`gold.ingredient_alias_unit`), and `docs/ingredients.md` shows the unit beside it. Whether an alias reads so is a review's to see: "celery rib with leaves" would count leaves. | `an_alias_ending_in_a_count_unit_s_name_counts_in_it`, and `the_ingredients_report_is_current` for the report |
 | A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words, as one run in their order, are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units; for no unit, where the line's name is an alias ending in a count unit's name, in that unit, by the food's portions in it as for a count unit, and otherwise as whole items (both decided 2026-10-17), by the food's USDA portions in the count units marked whole, or, where they disagree and the note's words, as one run in their order, are in some of their texts and not all, by those. A range amount gives a range. A line with no amount, an amount in text, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why`, `a_report_says_a_bare_count_counts_whole_items`, `a_bare_count_of_each_ingredient_is_weighed_by_its_whole_items`, `a_report_says_a_bare_count_counts_in_its_name_s_unit`, `an_alias_s_unit_weighs_a_bare_count_in_the_export` |
 | A nutrient's total is the sum, over the lines with grams whose food has a value for it, of the grams times the food's amount per 100 g, and says how many lines those are. | `a_total_says_how_many_lines_it_covers` |
 | A recipe's vegan and vegetarian answers are the weakest of its lines': no if one is, else unknown if one is or a line has no food, else yes; a recipe with no line is unknown. Each answer names the lines that decided it. | `a_recipe_s_diet_is_its_weakest_line_s` |
@@ -174,16 +174,17 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    (`gold.ingredient_alias_unit`) and `docs/ingredients.md` shows it. In 1,461 public Cooklang
    recipes (`docs/prior-art.md`, "Bare counts"), 25 lines were bare counts of garlic written
    `@garlic cloves{2}` or `@garlic clove{1}`, which had no grams, as garlic has no portion of one
-   whole item. Of the 178 lines whose name of two or more words ends in a count unit's name, 14
-   have a name holding a comma, "with", "from" or a parenthesis, whose last word is not what is
-   counted ("celery rib with leaves", "potatoes, cut into 1-inch pieces", "garlic, 3 cloves"); of
-   the other 164, in 53 names, only "ground cloves" names the food by the word, and it had a unit
-   on all 11 lines. None of VBCI's 49 aliases holds a comma, "with", "from" or a parenthesis.
-   Passed over: each alias naming its unit in its ingredient's record,
-   which would rule out a misreading at the cost of a field in the alias, a plain string in every
-   record. strangetom's ingredient-parser reads "2 garlic cloves" with "cloves" as its unit too.
-   The cost: an alias's unit holds without anyone typing it, so it is right only as far as a
-   review of the alias sees it.
+   whole item. Of the 174 lines whose name, read from the recipe's text, has two or more words and
+   ends in a count unit's name, 12 have a name holding a comma, "with", "from" or a parenthesis,
+   whose last word need not be what is counted ("celery rib with leaves", "potatoes, cut into
+   1-inch pieces"); none of VBCI's 49 aliases holds one. Whether each of the other 162, in 52
+   names, reads right is a reading of the name: "bay leaves" and "thyme sprigs" do; in "ground
+   cloves" and "whole dried cloves" the word is the spice, and each of the 11 lines of "ground
+   cloves" had a unit, while the one of "whole dried cloves" was a bare count. Passed over: each
+   alias naming its unit in its ingredient's record, which would rule out a misreading at the cost
+   of a field in the alias, a plain string in every record. ingredient-parser's tests hold that "2
+   garlic cloves" has "cloves" as its unit. The cost: an alias's unit holds without anyone typing
+   it, so it is right only as far as a review of the alias sees it.
 
 ### Layers
 
@@ -302,7 +303,7 @@ Each step is one pull request, done when its check passes.
    from the food. How sure each number is comes from how it was reached, never typed: each line
    says how, or why it has no grams; an amount the data does not pin to one number is a range
    (decided above); and each total says how many lines it covers. A line with no unit
-   (`@onion{1}`) has no grams (step 14 weighs it as whole items).
+   (`@onion{1}`) has no grams (steps 14 and 15 weigh it).
    `cargo run -p balaena-warehouse -- recipes` writes `docs/recipes/<name>.md` for each
    `recipes/<name>.cook`; the first is the red lentil soup of the 2026-10-11 draft, with its onion
    as `{1%medium}`. Done, with the tests in the rules above:
@@ -356,10 +357,11 @@ The second arc, farm reference data, began on 2026-10-16.
     for paddy rice (searched by description, 2026-10-17). The lemon's organism is read from
     Wikidata's lemon fruit item, as Foundation foods have no lemon, and soybeans' from the soy milk
     tofu's is. Done, with the tests in the rules above.
-14. **Bare counts.** A recipe line with no unit, such as `@onion{1}`, counts whole items, weighed
-    by the food's USDA portions in the count units `units/count.toml` marks whole (decided above):
-    head, each, small, medium, large and fruit. "fruit" is new, and reads 70 of USDA's portions
-    that no unit read, the lemon's two among them. One raw onion is then 70–150 g, a raw carrot
+14. **Bare counts.** A recipe line with no unit, such as `@onion{1}`, counts whole items (from
+    step 15, unless its name ends in a count unit's name), weighed by the food's USDA portions in
+    the count units `units/count.toml` marks whole (decided above): head, each, small, medium,
+    large and fruit. "fruit" is new, and reads 70 of USDA's portions that no unit read, the
+    lemon's two among them. One raw onion is then 70–150 g, a raw carrot
     50–72 g, a raw potato 92–369 g, a raw tomato 91–182 g and a lemon 58–84 g. Garlic, whose count
     portions are cloves, and spinach, a bunch, a leaf or a package, have none, nor has cooked
     carrot, whose one portion of a whole carrot reads "carrot", a phrase no unit reads. The export
@@ -387,9 +389,11 @@ carrot reads "carrot", which no unit reads, so a bare count of cooked carrot has
 narrows a line's portions only where its words are in their texts as one run in their order:
 `@onion{1}(large, chopped)` gets every size, and `@onion{1}(2)` names "medium (2-1/2" dia)".
 In the 1,461 recipes, the largest groups of lines of VBCI's ingredients still without grams, after
-the 64 with no amount, were cans by their size or in `can` (`15-oz can`; 30), lemon juice by the
+the 64 with no amount, were cans by their size or in `can` (`15-oz can`; 33), lemon juice by the
 lemon (`1/2 lemon`, or a bare count; 19) and `lbs` (11), which cooklang's bundled units do not
-know; each came from one collection.
+know; each came from one collection. A size given as a line's unit wins over its name's unit:
+`@garlic cloves{2%large}` has no grams, as garlic has no portion in `large`; and the corpus wrote
+garlic's unit as `large cloves` or `large clove` 8 times, which no unit reads.
 
 ### Grades
 
