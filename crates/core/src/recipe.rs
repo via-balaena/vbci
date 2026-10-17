@@ -70,7 +70,7 @@ pub enum How {
     /// The food's USDA portions in its unit, by their texts.
     Portions(Vec<String>),
     /// Of the food's USDA portions in its unit, which disagree, those whose text holds its note's
-    /// words.
+    /// words as one run, in their order.
     PortionsByNote(Vec<String>),
     /// The food has no portion in its volume unit: grams per millilitre from the food's portions in
     /// other volume units, by their texts.
@@ -79,7 +79,7 @@ pub enum How {
     /// units one of which is one whole item, by their texts.
     Whole(Vec<String>),
     /// Of the food's USDA portions of one whole item, which disagree, those whose text holds its
-    /// note's words.
+    /// note's words as one run, in their order.
     WholeByNote(Vec<String>),
 }
 
@@ -593,8 +593,8 @@ impl Kitchen {
 
     /// Grams in one unit of `fdc_id` by its USDA portions of `kind` in the units `unit` accepts:
     /// the range of what they give, or, when they disagree, of those whose text holds the note's
-    /// words, if some do and some do not; with those portions' texts, and whether the note's words
-    /// chose them. None when it has no such portion.
+    /// words as one run, in their order, if some do and some do not; with those portions' texts,
+    /// and whether the note's words chose them. None when it has no such portion.
     fn portions(
         &self,
         fdc_id: i64,

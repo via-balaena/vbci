@@ -71,7 +71,7 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | The export is licensed CC0-1.0 whole, and is not written while a publisher in `sources.toml` licenses its data otherwise. | `the_export_is_written_only_while_every_publisher_s_license_is_cc0` |
 | `crates/core` reads the export into typed tables, and refuses one that is not a version 2 Data Package with the keys it knows, each once, a resource that is not a table or is listed twice, a field whose name another field of its resource has, or rows that break what the descriptor says: a first row that is not the fields' names, a value that is neither of its field's type nor null, a primary key repeated or null, a foreign key whose values are not all present and found in the table it names, or one that refers to fields other than that table's primary key. | `an_export_is_a_v2_data_package_with_keys_it_knows`, `each_row_has_a_value_of_its_field_s_type_in_each_field`, `a_primary_key_is_unique_and_never_null`, `a_foreign_key_finds_its_row`, `the_export_loads` |
 | A recipe line's food is the ingredient one of whose aliases is its name, lowercased with single spaces, in the form whose state its note names in whole words ("as sold" for `as_sold`), else in its default form. A name that is no alias, or a note naming a state the ingredient has no form in, or naming two, gives the line no food. The states a note can name are the records' own. | `a_line_s_food_is_its_alias_s_ingredient_in_the_note_s_state`, `a_note_names_the_states_the_records_have` |
-| A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units; for no unit, as whole items (decided 2026-10-17), by the food's USDA portions in the count units marked whole, or, where they disagree and the note's words are in some of their texts and not all, by those. A range amount gives a range. A line with no amount, an amount in text, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why`, `a_report_says_a_bare_count_counts_whole_items` |
+| A line's grams are the range of what the data gives, never one picked from it (decided with Jon, 2026-10-12): for a mass unit, by its definition in cooklang's bundled units; for a volume or count unit, read as a portion's unit is, by the food's USDA portions in it, or, where they disagree and the note's words, as one run in their order, are in some of their texts and not all, by those; for a volume unit the food has no portion in, by grams per millilitre from its portions in other volume units; for no unit, as whole items (decided 2026-10-17), by the food's USDA portions in the count units marked whole, or, where they disagree and the note's words, as one run in their order, are in some of their texts and not all, by those. A range amount gives a range. A line with no amount, an amount in text, a unit that is no mass, volume or count unit, or no portion to use has no grams, and says why. | `each_way_a_line_s_grams_are_reached`, `a_line_without_grams_says_why`, `a_report_says_a_bare_count_counts_whole_items`, `a_bare_count_of_each_ingredient_is_weighed_by_its_whole_items` |
 | A nutrient's total is the sum, over the lines with grams whose food has a value for it, of the grams times the food's amount per 100 g, and says how many lines those are. | `a_total_says_how_many_lines_it_covers` |
 | A recipe's vegan and vegetarian answers are the weakest of its lines': no if one is, else unknown if one is or a line has no food, else yes; a recipe with no line is unknown. Each answer names the lines that decided it. | `a_recipe_s_diet_is_its_weakest_line_s` |
 | `recipes/` holds only `.cook` files, each parsing with no cooklang error or warning, with a title and a whole number of servings, 1 or more. Each has its report, `docs/recipes/<name>.md`, which is what `crates/core` writes from it and the export, and no report lacks its recipe. A report shows amounts to 0.1, a range by both its ends unless they show the same, and lists the lines without grams. | `a_recipe_record_parses_without_warnings`, `the_recipe_reports_are_current`, `amounts_are_shown_to_a_tenth_and_a_range_by_both_ends`, `a_report_lists_the_lines_without_grams` |
@@ -158,15 +158,16 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    carrot, onion, potato and tomato, cooked onion, potato and tomato, and canned tomato have USDA
    portions in small, medium or large, and the lemon in "fruit", which no count unit read until
    step 14 (scratch check, 2026-10-17). Grouping the export's portions in head, each, small, medium
-   and large by the words beside the unit found a few that are not one whole item of their food,
-   among them a turkey's "medium slice", raisins' "small box" and a graham cracker's "large
-   rectangular piece"; and "fruit" reads three juices' "fruit yields", the juice of one fruit. None is a food of
-   VBCI's ingredients. Passed over: each ingredient's record naming the units a bare count of it
-   is weighed by, which gives the 18 ingredients the same grams at a field in each record.
-   open-tandoor-data gives 27 of its foods one weight per piece (`docs/prior-art.md`, "Bare
-   counts"), one number where the range rule (decided 2026-10-12) gives the range. The cost: a unit marked
-   whole holds for every food, so a food whose portion in it names a part is weighed by that part
-   as one whole item until a review sees it.
+   and large by the words outside parentheses beside the unit found 4 that name a part or a pack
+   (a turkey's "medium slice", twice; raisins' "small box"; a graham cracker's "large rectangular
+   piece") and 16 fast-food servings and drinks named by their size; and "fruit" reads three
+   juices' "fruit yields", the juice of one fruit. None is a food of VBCI's ingredients. Passed
+   over: each ingredient's record naming the units a bare count of it is weighed by. Naming the
+   units its food has portions of one whole item in, it would give the 18 ingredients the same
+   grams, at a field in each record. open-tandoor-data gives 27 of its foods one weight per piece
+   (`docs/prior-art.md`, "Bare counts"), one number where the range rule (decided 2026-10-12)
+   gives the range. The cost: a unit marked whole holds for every food, so a food whose portion in
+   it names a part is weighed by that part as one whole item.
 
 ### Layers
 
@@ -356,9 +357,10 @@ data, so they wait for its design. Interchange through farmOS's JSON:API and the
 Consortium's, which Open Food Network uses. Growstuff's crops carry GBIF and Wikidata ids and nest
 under a parent crop, and AGROVOC links GBIF. A crop more than one step below its ingredient's
 organism, such as a cultivar under a variety, is refused until a rule for it is decided. Olive
-and rice crops wait for a USDA food for each as harvested. A portion whose phrase is its food's
-name, such as cooked carrot's "carrot", is read by no unit, so a bare count of that form has no
-grams.
+and rice crops wait for a USDA food for each as harvested. Cooked carrot's one portion of a whole
+carrot reads "carrot", which no unit reads, so a bare count of cooked carrot has no grams. A note
+narrows a line's portions only where its words are in their texts as one run in their order:
+`@onion{1}(large, chopped)` gets every size, and `@onion{1}(2)` names "medium (2-1/2" dia)".
 
 ### Grades
 
