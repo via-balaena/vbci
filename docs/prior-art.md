@@ -150,3 +150,36 @@ item with an NCBI id, and 37 name none. Its carrot "var. sativus" names an item 
 NCBI's name is "Daucus carota subsp. sativus". Searched by name, it has crops for 11 of the 13
 organisms of VBCI's plant ingredients, none for lentil or rice. Its other records include named
 cultivars with no scientific name and a few duplicates (carrot and carrots).
+
+## Made from
+
+For plan step 13. Searched on 2026-10-17 without agents: Wikidata's items through its API, read as
+they stood that day, not at pinned revisions; USDA's two pinned releases by description, with a
+scratch script; FoodEx2 through one paper and one web search. A source marked **re-read** was read
+that day for what the mark names.
+
+| source | what it is | license | what VBCI takes | source |
+|---|---|---|---|---|
+| Wikidata's P186 (made from material) | a statement naming what an item is made from | CC0 | nothing: read from Wikidata, two of the seven ingredients made from something would have their link (`docs/architecture.md`, decided 2026-10-17) | the items below, **re-read** (P186, P279) |
+| FoodEx2 | EFSA's food classification: raw commodities, "the parts physically separated from a living source after harvesting (plants)", and derivatives, "food products obtained from raw commodities by applying a process that changes the nature of food"; its facet F27, "source commodities", names what a food comes from | reuse with EFSA acknowledged | the line between harvested and made from, not its data | Eftimov, Korošec and Koroušić Seljak, *Nutrients* 9(6):542, 2017, pmc.ncbi.nlm.nih.gov/articles/5490521, **re-read** (both definitions); F27 as reported by a web search of EFSA's FoodEx2 slides |
+
+What Wikidata's items for the seven say they are made from (P186), and what they are a subclass of
+(P279):
+
+| ingredient | item | P186 | P279 |
+|---|---|---|---|
+| lemon juice | Q1375049 | lemon (Q1093742, the fruit) | lemon and lime juice, juice |
+| tofu | Q177378 | soy milk, soy bean (Q61503220, the food), soybean (Q11006, the plant) | soy cheese, meat alternative |
+| olive oil | Q93165 | Olea europaea (Q37083, the plant) | vegetable oil, cooking oil, seed oil |
+| vegetable broth | Q42366457, vegetable stock | winter vegetable, condiment, bean, cereal | broth, convenience food, soup |
+| parmesan | Q155922 | cow's milk, calf rennet | Grana cheese, dairy product |
+| brown rice | Q1066624 | none | rice |
+| red lentils | Q67445480, red lentil | none | lentil |
+
+Wikidata has no item for olives as picked that a search for "olive", "olives", "olive fruit" or
+"table olive" found; "paddy rice" is Q110461730, which states neither P186 nor P279. USDA's pinned
+releases have no food for either: their olives are canned, pickled or stuffed, and no food's
+description names paddy, rough, husked or unmilled rice. That red lentils are lentils with the
+seed coat taken off, which shows their red, and are mostly split too, is as a web search reported
+it (recipe pages, and a 2005 Cereal Chemistry paper on lentil milling whose page answered 403), not
+re-read.

@@ -56,9 +56,12 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | A Foundation food's organism is the "NCBI Taxon" USDA's data gives it, once however often USDA repeats it. A Wikidata item's is its own P685 (NCBI taxonomy ID), else the P685 of the one pinned item its P1582 (natural product of taxon) names, one step only; a deprecated statement is not read, and two read statements of a property, or one with no value, are refused. | `each_ingredient_s_organism_is_read_from_its_source`, `an_item_s_taxon_is_its_own_p685_else_its_product_of_s`, `an_item_whose_taxon_is_not_one_value_is_refused`, `statements_are_read_as_wikidata_writes_them` |
 | The load stops on an organism its source does not give: a food named by other than USDA's name, one USDA's data records no NCBI Taxon for or another one for, a food not in the pinned release; a Wikidata item that is not pinned or gives another taxon; and on a pinned item no ingredient's or crop's organism reads, or pinned content that is another item's. | `the_load_refuses_an_organism_its_source_does_not_give`, and on the pinned data, `the_red_lentil_soup_s_organisms_are_read_from_their_sources` |
 | Which Foundation food or Wikidata item an ingredient's organism is read from is a review's choice: red lentils read "Lentils, dry" and tofu a soy milk, as Foundation foods have neither of their own; parmesan reads its own Foundation food, whose NCBI Taxon is the cow's. Many ingredients can share one organism, and one organism can be several crops (USDA gives broccoli, kale and collards one taxon), so an organism does not say which ingredient a crop is. | nothing: review. `docs/ingredients.md` shows each ingredient's organism and where it was read from. That USDA gives the three crops one taxon: `one_organism_can_be_several_crops`. |
-| A crop is a file `crops/<id>.toml`, its id as an ingredient's is; it has a name, the Wikidata item of its organism (`Q<digits>`) with the NCBI Taxonomy id (`NCBITaxon_<digits>`) and the scientific name that item gives, and the ingredient it yields, by its id, with the state it is harvested in. | `a_good_crop_loads`, `a_crop_is_named_by_its_file`, `a_crop_names_its_organism_and_its_ingredient_by_their_ids`, `the_crops_on_disk_load` |
+| An ingredient says in an `[origin]` table what it is made from: `harvested = true`, for a food as harvested, made from nothing; `made_from`, the ids of the ingredients it is made from, each once; or `none`, saying why, where what it is made from is no ingredient (decided 2026-10-17, Jon: "your call": the record says, and a review decides). `harvested` is never false. | `an_ingredient_says_what_it_is_made_from` |
+| Each ingredient an ingredient is made from is in `ingredients/`, and has its organism where it has one; none leads back to it, directly or through others; a harvested ingredient has an organism. | `what_an_ingredient_is_made_from_is_there_shares_its_organism_and_leads_elsewhere`, and in silver, `each_ingredient_s_origin_is_loaded_and_its_keys_hold` |
+| Whether an ingredient is harvested, and what it is made from, is a review's choice: red lentils are made from lentils, being lentils with the seed coat taken off; olive oil, pressed from olives as picked, and brown rice, hulled from paddy rice, name none, as USDA has no food for either as harvested. | nothing: review. `docs/ingredients.md` shows each ingredient's origin. |
+| A crop is a file `crops/<id>.toml`, its id as an ingredient's is; it has a name, the Wikidata item of its organism (`Q<digits>`) with the NCBI Taxonomy id (`NCBITaxon_<digits>`) and the scientific name that item gives, and the ingredient it yields, by its id, with the state it is harvested in, raw or dry. | `a_good_crop_loads`, `a_crop_is_named_by_its_file`, `a_crop_names_its_organism_and_its_ingredient_by_their_ids`, `a_crop_is_harvested_raw_or_dry`, `the_crops_on_disk_load` |
 | A crop's organism is its item's own P685, and its scientific name the item's own P225, each one statement. It is its ingredient's organism, or one step below it: the item's one P171 (parent taxon) names a pinned item whose own P685 is the ingredient's organism (decided 2026-10-16, Jon: "your call": Wikidata's parent taxon, not NCBI's dump, as the export is CC0 whole). | `a_crop_s_item_gives_its_own_taxon_and_its_parent_s`, `each_crop_s_organism_is_its_ingredient_s_or_one_step_below` |
-| The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks either; whose ingredient is not in `ingredients/`, has no organism, or has no form in the crop's state; and whose organism is neither its ingredient's nor one step below it: a parent taxon with another organism, two steps down, no parent taxon, or one not pinned. | `the_load_refuses_a_crop_its_organism_does_not_fit`, and on the pinned data, `the_crops_read_their_organisms_from_their_items` |
+| The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks either; whose ingredient is not in `ingredients/`, has no organism, is not harvested, or has no form in the crop's state; and whose organism is neither its ingredient's nor one step below it: a parent taxon with another organism, two steps down, no parent taxon, or one not pinned. | `the_load_refuses_a_crop_its_organism_does_not_fit`, and on the pinned data, `the_crops_read_their_organisms_from_their_items` |
 | Which ingredient a crop yields, and in which state, is a review's choice; several crops can yield one ingredient (tomato and cherry tomato yield tomato). | nothing: review. `docs/crops.md` shows each crop, what it yields and how its organism stands to its ingredient's. |
 | An alias candidate is a name USDA's data gives a linked food (an SR Legacy common name, or a name in the parentheses of USDA's name, less notes such as "Includes foods for ...") that no ingredient lists; it stays unknown until a person reviews it into an ingredient's aliases. | `alias_candidates_come_from_usda_s_names`, `foodon_ids_are_derived_and_candidates_are_names_not_yet_aliases` |
 | `units/` holds `units/count.toml` and no other file: count units, each with a key no other has and the names it may be written with, lowercase with single spaces, each naming one unit. A count unit has no grams of its own. The load stops on a count unit's name that cooklang's bundled units know. | `the_units_folder_holds_count_toml_alone`, `a_count_unit_record_refuses_what_it_does_not_know`, `a_count_unit_is_found_by_its_names`, `a_count_unit_may_not_be_a_unit_cooklang_knows`, `the_load_refuses_a_count_unit_cooklang_knows` |
@@ -134,6 +137,22 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    export is not written while a publisher licenses its data otherwise than CC0, so pinning the dump
    would have meant weakening that rule. The cost: Wikidata's classification stands in for NCBI's,
    and a crop below its ingredient's species pins its parent's item too.
+
+### Decided 2026-10-17
+
+1. **What an ingredient is made from is its record's to say, and a review's to decide** (Jon: "your
+   call"). Wikidata's P186 (made from material) was read for the seven ingredients made from
+   something on 2026-10-17: lemon juice's names lemon, a food VBCI has since this step, and tofu's
+   soy bean, beside soy milk and the soybean plant; olive oil's names the olive plant, vegetable
+   broth's classes (winter vegetable, condiment, bean, cereal), parmesan's cow's milk and calf
+   rennet, and brown rice and red lentils have none, only P279 (subclass of) rice and lentil. Read
+   from Wikidata, two of the seven would have their link and five would be typed anyway. EFSA's
+   FoodEx2 draws the same line: raw commodities are "the parts physically separated from a living
+   source after harvesting (plants)", and derivatives "food products obtained from raw commodities
+   by applying a process that changes the nature of food" (Eftimov, Korošec and Koroušić Seljak,
+   *Nutrients* 9(6):542, 2017, read 2026-10-17). VBCI takes the line, not FoodEx2's data, which is
+   reused with EFSA acknowledged. The cost: nothing but review holds whether an ingredient is
+   harvested; the load holds what follows from it.
 
 ### Layers
 
@@ -286,14 +305,25 @@ The second arc, farm reference data, began on 2026-10-16.
     serde_json and ureq. Done, with the tests in the rules above.
 12. **Crops.** Each crop names the ingredient it yields and the state it is harvested in, and its
     organism through a pinned Wikidata item, which must be its ingredient's organism or one step
-    below it by the item's parent taxon (decided above). Ten crops yield nine ingredients;
-    carrot, as the cultivated subspecies, and cherry tomato are one step below their
-    ingredient's species. Lemon, olive, soybean and rice wait for ingredients they yield as
-    harvested; lemon juice, olive oil, tofu and brown rice are made from them. Measured on
+    below it by the item's parent taxon (decided above). Ten crops yield nine ingredients; carrot,
+    as the cultivated subspecies, and cherry tomato are one step below their ingredient's species.
+    Lemon, olive, soybean and rice waited for ingredients they yield as harvested; lemon juice,
+    olive oil, tofu and brown rice are made from them (step 13 adds lemon and soybeans). Measured on
     2026-10-16: NCBI's lineage puts cultivated carrot, cherry tomato, cauliflower and Brussels
-    sprouts one step below their species, and Wikidata's parent taxon agreed for all four
-    (scratch check). The OpenFarm rescue's 340 CC0 records (`docs/prior-art.md`) are not loaded:
-    their growing fields have no reader yet. Done, with the tests in the rules above.
+    sprouts one step below their species, and Wikidata's parent taxon agreed for all four (scratch
+    check). The OpenFarm rescue's 340 CC0 records (`docs/prior-art.md`) are not loaded: their
+    growing fields have no reader yet. Done, with the tests in the rules above.
+13. **What each ingredient is made from.** Each ingredient says it is harvested, made from other
+    ingredients, or made from what is no ingredient and why (decided above), and a crop yields only
+    a harvested ingredient, raw or dry: until this step, nothing but review held that a crop yields
+    its ingredient as harvested. Of the 18 ingredients, 11 are harvested; lemon juice, tofu and red
+    lentils are made from lemon, soybeans and lentils; olive oil, brown rice, parmesan and vegetable
+    broth name none. Lemon ("Lemons, raw, without peel") and soybeans ("Soybeans, mature seeds,
+    raw") are new, so the lemon and soybean crops load. Olive and rice still wait: USDA's two pinned
+    releases have no food for olives as picked, their olives being canned, pickled or stuffed, or
+    for paddy rice (searched by description, 2026-10-17). The lemon's organism is read from
+    Wikidata's lemon fruit item, as Foundation foods have no lemon, and soybeans' from the soy milk
+    tofu's is. Done, with the tests in the rules above.
 
 **Later:** the rest of farm reference data. A grower's weight per bunch or head comes from harvests
 that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search found
@@ -301,7 +331,8 @@ none stored in farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff. Harves
 data, so they wait for its design. Interchange through farmOS's JSON:API and the Data Food
 Consortium's, which Open Food Network uses. Growstuff's crops carry GBIF and Wikidata ids and nest
 under a parent crop, and AGROVOC links GBIF. A crop more than one step below its ingredient's
-organism, such as a cultivar under a variety, is refused until a rule for it is decided.
+organism, such as a cultivar under a variety, is refused until a rule for it is decided. Olive
+and rice crops wait for a USDA food for each as harvested.
 
 ### Grades
 
