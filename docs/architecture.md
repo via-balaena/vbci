@@ -185,6 +185,18 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    of a field in the alias, a plain string in every record. ingredient-parser's tests hold that "2
    garlic cloves" has "cloves" as its unit. The cost: an alias's unit holds without anyone typing
    it, so it is right only as far as a review of the alias sees it.
+4. **Granulated sugar's vegan answer is unknown** (decided with Jon: "your recommendation"). USDA's
+   "Sugars, granulated" does not say whether it is cane sugar or beet sugar, and cane sugar in the
+   US and Canada may be filtered through bone char: a reply on The Vegan Society's blog, by a
+   commenter the page does not identify, "it's in the US and Canada that cane sugar is filtered
+   through bone char, but not all of it" (2015), and the Society's baking guide, "the vast majority
+   of sugar in the UK is not bleached with bone char so most of the big brands are fine. However,
+   you might want to use unbleached sugar to be on the safe side if you are not sure where the sugar
+   comes from" (2016), both read 2026-10-17. An exception sets only what a food's name gives
+   evidence for, so its category's unknown stands. Passed over: yes, on the guide's "most of the big
+   brands are fine", which is of UK sugar, while USDA's foods are American. Its vegetarian answer,
+   unknown by its category, was not decided apart. The cost: a recipe with sugar is vegan unknown
+   unless another line makes it no.
 
 ### Layers
 
@@ -240,7 +252,8 @@ Each step is one pull request, done when its check passes.
    above. USDA's portions and measure units come with step 7.
 5. **Diet status per food,** vegan and vegetarian, by the definitions decided above, each answer
    yes, no or unknown, from records reviewed by pull request: the first that applies of an exception
-   for it (`diet/exceptions.toml`, 71 foods, each with its reason), a naming rule within its
+   for it (`diet/exceptions.toml`, 71 foods, each with its reason; 74 from step 16), a naming
+   rule within its
    category (`diet/rules.toml`, 14 rules, such as names starting "Cheese" in Dairy and Egg Products:
    vegetarian unknown), the animal organism a Foundation food records (`diet/taxa.toml`, from USDA's
    NCBI taxon attribute), and its category's class (`diet/categories.toml`, all 28 categories). An
@@ -377,6 +390,23 @@ The second arc, farm reference data, began on 2026-10-16.
     times, and neither today's matching nor two by words narrowed any. Done, with the tests in
     the rules above.
 
+16. **Staples.** Eleven ingredients that recipes name most and VBCI lacked, chosen by how often
+    the 1,461 public Cooklang recipes name them: salt, sugar, butter, black pepper, flour, eggs,
+    water, vanilla extract, milk, baking powder and baking soda. Each is linked to an SR Legacy
+    food with the portions recipes use. Their organisms follow step 11's order: butter and milk
+    the cow, eggs the chicken and flour wheat, from Foundation foods; black pepper and vanilla from
+    Wikidata, vanilla through the vanilla bean's item, as no item for vanilla extract names a
+    taxon (four more pins, 20 in all); salt, sugar, water, baking powder and baking soda none.
+    Their origins follow step 13's line: eggs and milk harvested, butter made from milk, the rest
+    made from what no ingredient is; and parmesan, made from cow's milk, is now made from milk.
+    Aliases are the recipes' own spellings, less "kosher salt" and "sea salt", lighter per
+    teaspoon than table salt, and "salted butter", saltier. Water, baking soda and baking powder
+    are vegan and vegetarian by exceptions, the first that raise an answer to yes, as each name
+    gives what the food is; granulated sugar stays vegan unknown (decided above). Measured on
+    2026-10-17 with the CLI built from this step, on the recipes: of 13,858 lines, those that
+    reach an ingredient went from 1,437 to 5,640, and those with grams from 1,253 (1,228 before
+    step 15, and the 25 it weighs) to 4,794; the recipes answering vegan no went from 58 to 611.
+    Done, with the tests in the rules above.
 **Later:** the rest of farm reference data. A grower's weight per bunch or head comes from harvests
 that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search found
 none stored in farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff. Harvests are operational
@@ -393,7 +423,12 @@ the 64 with no amount, were cans by their size or in `can` (`15-oz can`; 33), le
 lemon (`1/2 lemon`, or a bare count; 19) and `lbs` (11), which cooklang's bundled units do not
 know; each came from one collection. A size given as a line's unit wins over its name's unit:
 `@garlic cloves{2%large}` has no grams, as garlic has no portion in `large`; and the corpus wrote
-garlic's unit as `large cloves` or `large clove` 8 times, which no unit reads.
+garlic's unit as `large cloves` or `large clove` 8 times, which no unit reads. Of the staples'
+662 lines still without grams, 491 have no amount, salt's and black pepper's most (226 and 199);
+71 are salt in a `pinch`, which USDA's salt has no portion in, and 24 butter in a `stick` or
+`sticks`, which no count unit reads. "kosher salt", "sea salt" and "salted butter" wait for foods
+of their own; "pepper" reads as black pepper, so `@pepper{1}`, a bell pepper, has no grams; and
+"large eggs" counts eggs of every size, as an alias ending in a size gives no unit.
 
 ### Grades
 
