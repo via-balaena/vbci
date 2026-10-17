@@ -1,7 +1,9 @@
-# The datasets the warehouse loads, and whose they are. Each dataset is pinned by its zip's sha256
-# and length: `cargo run -p balaena-warehouse -- fetch` downloads it into the cache under that
-# sha256, and the warehouse refuses bytes that differ, so a URL that starts serving other bytes
-# stops the load instead of changing what is loaded. Read by crates/records (src/sources.rs).
+# The datasets and Wikidata items the warehouse loads, and whose they are. Each dataset is pinned
+# by its zip's sha256 and length, and each Wikidata item by one revision's id and the sha256 and
+# length of the content Wikidata stores for it: `cargo run -p balaena-warehouse -- fetch`
+# downloads each into the cache under that sha256, and the warehouse refuses bytes that differ, so
+# a URL that starts serving other bytes stops the load instead of changing what is loaded. Read by
+# crates/records (src/sources.rs).
 
 [publisher.usda]
 name = "U.S. Department of Agriculture, Agricultural Research Service: FoodData Central"
@@ -13,6 +15,14 @@ terms = "USDA FoodData Central data are in the public domain and they are not co
 # USDA's suggested citation, as the same page gives it; the page adds that release numbers and
 # years change as new versions are released.
 citation = "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, 2019. fdc.nal.usda.gov."
+
+[publisher.wikidata]
+name = "Wikidata"
+license = "CC0-1.0"
+terms_url = "https://www.wikidata.org/wiki/Wikidata:Licensing"
+terms_read = "2026-10-16"
+# Quoted from terms_url, as read on terms_read. The page asks for no citation, so none is given.
+terms = "All structured data (i.e. the main, Property, Lexeme, and EntitySchema namespaces) is released into the public domain under Creative Commons Zero."
 
 [[dataset]]
 id = "sr-legacy"
@@ -31,3 +41,30 @@ release = "2026-04-30"
 url = "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip"
 sha256 = "70457ee9d9342f43bda2010318c85f04210c689fdeb9cd2da4c513b0e8dbc655"
 bytes = 3825741
+
+# The items ingredients/ reads organisms from, each at its newest revision on 2026-10-16. Lemon
+# juice names Q1375049 and cumin Q57328174, and each reads its organism through its "natural
+# product of taxon": Q500 and Q132624.
+[[wikidata]]
+item = "Q1375049"
+revision = 2549623412
+sha256 = "4e2040a786b7644866699875f6024758f83631ec7ffd7ff6d27504a82db2390e"
+bytes = 19857
+
+[[wikidata]]
+item = "Q500"
+revision = 2557102922
+sha256 = "4deba13eb189c0d324efb84e456347adfb0b9bd3371c69830d736990d68d8537"
+bytes = 115704
+
+[[wikidata]]
+item = "Q57328174"
+revision = 2520829203
+sha256 = "10679119924247f6f0e39cae26a59b8e66afcaa0fc4415b2edc6d4e2404d2c4d"
+bytes = 9676
+
+[[wikidata]]
+item = "Q132624"
+revision = 2550171690
+sha256 = "73959f6d701a96fc7f863072c8e444444c2a396d036412073ea416eac643758e"
+bytes = 97537

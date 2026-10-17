@@ -1,6 +1,11 @@
 name = "Olive oil"
 aliases = ["olive oil"]
 
+[organism]
+taxon = "NCBITaxon_4146"
+fdc_id = 748608
+description = "Oil, olive, extra virgin"
+
 [[form]]
 state = "as_sold"
 fdc_id = 171413

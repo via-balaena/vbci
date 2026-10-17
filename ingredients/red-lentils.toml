@@ -1,6 +1,12 @@
 name = "Red lentils"
 aliases = ["red lentils", "red lentil", "pink lentils", "split red lentils", "masoor dal"]
 
+# Red lentils are lentils; Foundation foods have no red lentils of their own.
+[organism]
+taxon = "NCBITaxon_3864"
+fdc_id = 2644283
+description = "Lentils, dry"
+
 [[form]]
 state = "dry"
 fdc_id = 174284

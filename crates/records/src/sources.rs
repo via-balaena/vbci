@@ -1,5 +1,6 @@
-//! `sources.toml`: the datasets the warehouse loads, each pinned by its zip's sha256 and length,
-//! and the publishers whose terms they come under.
+//! `sources.toml`: the datasets the warehouse loads, each pinned by its zip's sha256 and length;
+//! the Wikidata items it reads, each pinned by one revision's stored content; and the publishers
+//! whose terms they come under.
 
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -12,6 +13,9 @@ use std::path::Path;
 pub struct Sources {
     pub publisher: BTreeMap<String, Publisher>,
     pub dataset: Vec<Dataset>,
+    /// Each comes under `[publisher.wikidata]`.
+    #[serde(default)]
+    pub wikidata: Vec<WikidataItem>,
 }
 
 /// Whose data a dataset is, and the terms it comes under.
@@ -27,8 +31,8 @@ pub struct Publisher {
     pub terms_read: String,
     /// The terms, quoted from `terms_url`.
     pub terms: String,
-    /// The citation the publisher asks for.
-    pub citation: String,
+    /// The citation the publisher asks for, or None where its terms ask for none.
+    pub citation: Option<String>,
 }
 
 /// One zip the warehouse loads, pinned by its sha256 and length.
@@ -47,6 +51,29 @@ pub struct Dataset {
     pub sha256: String,
     /// The zip's length in bytes.
     pub bytes: u64,
+}
+
+/// One revision of a Wikidata item, pinned by the sha256 and length of the content Wikidata stores
+/// for it: the item's JSON, as the revisions API gives it. A revision is never edited, so its
+/// content is its identity, as a zip's bytes are a dataset's.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WikidataItem {
+    /// `Q<digits>`; unique in the record.
+    pub item: String,
+    /// The revision's id, above 0.
+    pub revision: u64,
+    /// The content's sha256, as 64 lowercase hex digits.
+    pub sha256: String,
+    /// The content's length in bytes.
+    pub bytes: u64,
+}
+
+/// Whether `s` is a sha256 as `sources.toml` writes one: 64 lowercase hex digits.
+fn is_sha256(s: &str) -> bool {
+    s.len() == 64
+        && s.chars()
+            .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
 }
 
 impl Sources {
@@ -71,12 +98,12 @@ impl Sources {
     fn check(&self) -> Result<(), String> {
         for (key, p) in &self.publisher {
             for (field, value) in [
-                ("name", &p.name),
-                ("license", &p.license),
-                ("terms", &p.terms),
-                ("citation", &p.citation),
+                ("name", Some(&p.name)),
+                ("license", Some(&p.license)),
+                ("terms", Some(&p.terms)),
+                ("citation", p.citation.as_ref()),
             ] {
-                if value.trim().is_empty() {
+                if value.is_some_and(|v| v.trim().is_empty()) {
                     return Err(format!("publisher {key}: {field} is empty"));
                 }
             }
@@ -122,11 +149,7 @@ impl Sources {
             if !d.url.starts_with("https://") {
                 return Err(format!("dataset {id}: url is not https"));
             }
-            let sha_ok = d.sha256.len() == 64
-                && d.sha256
-                    .chars()
-                    .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c));
-            if !sha_ok {
+            if !is_sha256(&d.sha256) {
                 return Err(format!(
                     "dataset {id}: sha256 is not 64 lowercase hex digits"
                 ));
@@ -135,9 +158,38 @@ impl Sources {
                 return Err(format!("dataset {id}: bytes is 0"));
             }
         }
+        if !self.wikidata.is_empty() && !self.publisher.contains_key(WIKIDATA) {
+            return Err(format!(
+                "a [[wikidata]] item comes under [publisher.{WIKIDATA}], which the record lacks"
+            ));
+        }
+        let mut items = BTreeSet::new();
+        for w in &self.wikidata {
+            let item = &w.item;
+            if !crate::is_wikidata_item(item) {
+                return Err(format!("wikidata {item:?}: an item is Q<digits>"));
+            }
+            if !items.insert(item.as_str()) {
+                return Err(format!("wikidata {item}: listed twice"));
+            }
+            if w.revision == 0 {
+                return Err(format!("wikidata {item}: revision is 0"));
+            }
+            if !is_sha256(&w.sha256) {
+                return Err(format!(
+                    "wikidata {item}: sha256 is not 64 lowercase hex digits"
+                ));
+            }
+            if w.bytes == 0 {
+                return Err(format!("wikidata {item}: bytes is 0"));
+            }
+        }
         Ok(())
     }
 }
+
+/// The publisher every `[[wikidata]]` item comes under.
+pub const WIKIDATA: &str = "wikidata";
 
 /// Whether `s` is a day written `YYYY-MM-DD`, with a month 01-12 and a day 01-31.
 fn is_day(s: &str) -> bool {
@@ -184,11 +236,103 @@ bytes = 10
         assert!(err.contains(why), "{err:?} does not say {why:?}");
     }
 
+    /// Wikidata's publisher, which asks for no citation, and one item under it.
+    const WIKIDATA_ITEM: &str = r#"
+[publisher.wikidata]
+name = "Wikidata"
+license = "CC0-1.0"
+terms_url = "https://www.wikidata.org/wiki/Wikidata:Licensing"
+terms_read = "2026-10-16"
+terms = "Public domain."
+
+[[wikidata]]
+item = "Q500"
+revision = 7
+sha256 = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+bytes = 20
+"#;
+
+    /// `GOOD` and `WIKIDATA_ITEM`, with one replacement in the latter, which must occur exactly
+    /// once.
+    fn with_item(old: &str, new: &str) -> String {
+        assert_eq!(WIKIDATA_ITEM.matches(old).count(), 1, "{old:?}");
+        format!("{GOOD}{}", WIKIDATA_ITEM.replace(old, new))
+    }
+
     #[test]
     fn a_good_record_loads() {
         let s = Sources::parse(GOOD).unwrap();
         assert_eq!(s.dataset[0].bytes, 10);
         assert_eq!(s.publisher["p"].license, "CC0-1.0");
+        assert!(s.wikidata.is_empty());
+        let s = Sources::parse(&with_item("bytes = 20", "bytes = 20")).unwrap();
+        assert_eq!(
+            (s.wikidata[0].item.as_str(), s.wikidata[0].revision),
+            ("Q500", 7)
+        );
+        assert_eq!(s.publisher["wikidata"].citation, None);
+    }
+
+    /// A publisher whose terms ask for no citation has none; one that has a citation does not
+    /// leave it empty.
+    #[test]
+    fn a_publisher_s_citation_is_one_it_asks_for() {
+        assert_eq!(
+            Sources::parse(GOOD).unwrap().publisher["p"]
+                .citation
+                .as_deref(),
+            Some("P, 2026.")
+        );
+        refused(
+            &with("citation = \"P, 2026.\"", "citation = \" \""),
+            "publisher p: citation is empty",
+        );
+    }
+
+    #[test]
+    fn a_wikidata_item_is_pinned_by_its_revision_s_sha256_and_length() {
+        let sha = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+        refused(
+            &with_item(sha, &sha.to_uppercase()),
+            "wikidata Q500: sha256 is not 64",
+        );
+        refused(
+            &with_item(sha, &sha[1..]),
+            "wikidata Q500: sha256 is not 64",
+        );
+        refused(
+            &with_item("bytes = 20", "bytes = 0"),
+            "wikidata Q500: bytes is 0",
+        );
+        refused(
+            &with_item("revision = 7", "revision = 0"),
+            "wikidata Q500: revision is 0",
+        );
+        refused(&with_item("revision = 7\n", ""), "missing field `revision`");
+        refused(
+            &with_item("bytes = 20", "bytes = 20\nurl = \"https://example.org\""),
+            "unknown field `url`",
+        );
+    }
+
+    #[test]
+    fn a_wikidata_item_is_listed_once_under_wikidata_s_publisher() {
+        for bad in ["q500", "500", "Q", "Q5x"] {
+            refused(
+                &with_item("item = \"Q500\"", &format!("item = \"{bad}\"")),
+                "an item is Q<digits>",
+            );
+        }
+        let second = &WIKIDATA_ITEM[WIKIDATA_ITEM.find("[[wikidata]]").unwrap()..];
+        refused(
+            &format!("{}{second}", with_item("bytes = 20", "bytes = 20")),
+            "wikidata Q500: listed twice",
+        );
+        let alone = format!("{GOOD}{second}");
+        refused(
+            &alone,
+            "comes under [publisher.wikidata], which the record lacks",
+        );
     }
 
     #[test]
@@ -258,5 +402,6 @@ bytes = 10
         let (sources, text) = Sources::load(&root).unwrap();
         assert!(sources.dataset.len() >= 2, "{text}");
         assert!(sources.dataset.iter().any(|d| d.id == "sr-legacy"));
+        assert!(sources.wikidata.len() >= 2, "{text}");
     }
 }

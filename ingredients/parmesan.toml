@@ -1,6 +1,12 @@
 name = "Parmesan"
 aliases = ["parmesan", "parmesan cheese", "parmigiano reggiano", "parmigiano-reggiano"]
 
+# The cow whose milk it is made from.
+[organism]
+taxon = "NCBITaxon_9913"
+fdc_id = 325036
+description = "Cheese, parmesan, grated"
+
 [[form]]
 state = "as_sold"
 fdc_id = 171247

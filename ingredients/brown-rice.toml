@@ -1,6 +1,11 @@
 name = "Brown rice"
 aliases = ["brown rice"]
 
+[organism]
+taxon = "NCBITaxon_4530"
+fdc_id = 2512380
+description = "Rice, brown, long grain, unenriched, raw"
+
 [[form]]
 state = "dry"
 fdc_id = 169703

@@ -1,6 +1,11 @@
 name = "Tomato"
 aliases = ["tomato", "tomatoes"]
 
+[organism]
+taxon = "NCBITaxon_4081"
+fdc_id = 1999634
+description = "Tomato, roma"
+
 [[form]]
 state = "raw"
 fdc_id = 170457

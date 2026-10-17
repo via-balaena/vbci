@@ -221,10 +221,7 @@ impl Diet {
         }
         let mut seen = BTreeSet::new();
         for t in &self.taxa {
-            let id_ok =
-                t.id.strip_prefix("NCBITaxon_")
-                    .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
-            if !id_ok {
+            if !crate::is_ncbi_taxon(&t.id) {
                 return Err((taxa, format!("{:?} is not NCBITaxon_<digits>", t.id)));
             }
             if t.name.trim().is_empty() {

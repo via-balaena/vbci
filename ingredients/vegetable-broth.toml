@@ -1,6 +1,9 @@
 name = "Vegetable broth"
 aliases = ["vegetable broth", "vegetable stock", "veggie broth", "veg stock"]
 
+[organism]
+none = "A broth of several vegetables, so no one organism."
+
 [[form]]
 state = "as_sold"
 fdc_id = 171583
