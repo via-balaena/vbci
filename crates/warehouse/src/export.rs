@@ -102,6 +102,18 @@ pub const EXPORTED: &[Exported] = &[
         key: &["ingredient"],
         references: &[INGREDIENT],
     },
+    Exported {
+        view: "crop",
+        key: &["crop"],
+        references: &[
+            INGREDIENT,
+            Reference {
+                columns: &["ingredient", "state"],
+                view: "ingredient_form",
+                to: &["ingredient", "state"],
+            },
+        ],
+    },
 ];
 
 #[derive(Serialize)]

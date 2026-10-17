@@ -643,7 +643,8 @@ mod tests {
                 "ingredient",
                 "ingredient_alias",
                 "ingredient_form",
-                "ingredient_organism"
+                "ingredient_organism",
+                "crop"
             ]
         );
         assert!(e.table("food_diet").unwrap().rows.len() >= 8000);

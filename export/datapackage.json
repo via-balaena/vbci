@@ -42,6 +42,56 @@
       "version": "2550171690"
     },
     {
+      "title": "Q11678009, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q11678009&oldid=2478966423",
+      "version": "2478966423"
+    },
+    {
+      "title": "Q30056, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q30056&oldid=2547605574",
+      "version": "2547605574"
+    },
+    {
+      "title": "Q23400, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q23400&oldid=2552071035",
+      "version": "2552071035"
+    },
+    {
+      "title": "Q23485, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q23485&oldid=2557408632",
+      "version": "2557408632"
+    },
+    {
+      "title": "Q10998, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q10998&oldid=2557408936",
+      "version": "2557408936"
+    },
+    {
+      "title": "Q81464, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q81464&oldid=2551363088",
+      "version": "2551363088"
+    },
+    {
+      "title": "Q23501, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q23501&oldid=2557409868",
+      "version": "2557409868"
+    },
+    {
+      "title": "Q6540634, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q6540634&oldid=2556981154",
+      "version": "2556981154"
+    },
+    {
+      "title": "Q81375, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q81375&oldid=2544371033",
+      "version": "2544371033"
+    },
+    {
+      "title": "Q131226, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q131226&oldid=2553321145",
+      "version": "2553321145"
+    },
+    {
       "title": "VBCI's records, at the sha256s _lineage gives",
       "path": "https://github.com/via-balaena/vbci"
     }
@@ -63,6 +113,24 @@
     ],
     "wikidata": [
       {
+        "item": "Q10998",
+        "revision": 2557408936,
+        "sha256": "c4456ada5cc72e2cf1791414c042cda1501dd9fbe5ca0b1d3967c7608b242c26",
+        "bytes": 201413
+      },
+      {
+        "item": "Q11678009",
+        "revision": 2478966423,
+        "sha256": "ce2c8d3769d96198334ee8b02e64638969aa42a01fb455105ef42116e1ed1fa9",
+        "bytes": 43627
+      },
+      {
+        "item": "Q131226",
+        "revision": 2553321145,
+        "sha256": "c7cf8923cd05ff939a1e279e8b3bd1e7868f0add2996c28a713feff3bd40a565",
+        "bytes": 108964
+      },
+      {
         "item": "Q132624",
         "revision": 2550171690,
         "sha256": "73959f6d701a96fc7f863072c8e444444c2a396d036412073ea416eac643758e",
@@ -75,6 +143,30 @@
         "bytes": 19857
       },
       {
+        "item": "Q23400",
+        "revision": 2552071035,
+        "sha256": "a6fafd952973af01e0c847573729b29ef3255541795c473096153d983d4263f1",
+        "bytes": 162803
+      },
+      {
+        "item": "Q23485",
+        "revision": 2557408632,
+        "sha256": "8922267a90b06da9b5c1f2a968ff71d6199727c6f9914dcf628bf2e4c0597845",
+        "bytes": 157957
+      },
+      {
+        "item": "Q23501",
+        "revision": 2557409868,
+        "sha256": "467b4a3d37098bef65de5442ea08b7ec8bb95fc9ee7fb2e94164baf855254240",
+        "bytes": 160685
+      },
+      {
+        "item": "Q30056",
+        "revision": 2547605574,
+        "sha256": "dee82c890c608e634e84a6e3108c5ce0c1f8ff45e2beebccfb9b4cc8d6fc2d71",
+        "bytes": 132441
+      },
+      {
         "item": "Q500",
         "revision": 2557102922,
         "sha256": "4deba13eb189c0d324efb84e456347adfb0b9bd3371c69830d736990d68d8537",
@@ -85,9 +177,67 @@
         "revision": 2520829203,
         "sha256": "10679119924247f6f0e39cae26a59b8e66afcaa0fc4415b2edc6d4e2404d2c4d",
         "bytes": 9676
+      },
+      {
+        "item": "Q6540634",
+        "revision": 2556981154,
+        "sha256": "8075cb589851a6549a08e38aef5f3dfc8242d1752c8602ac334faabccb161144",
+        "bytes": 37423
+      },
+      {
+        "item": "Q81375",
+        "revision": 2544371033,
+        "sha256": "451c46eacc32a53d22721e3b5e1f649d7f6154baf5cf4f936089ec8dd96b6164",
+        "bytes": 121736
+      },
+      {
+        "item": "Q81464",
+        "revision": 2551363088,
+        "sha256": "f0eb904efe785882daa963394da14db5da289a7c47ed51b837a52629163dce64",
+        "bytes": 135949
       }
     ],
     "records": [
+      {
+        "path": "crops/carrot.toml",
+        "sha256": "380c0fff964b44befafb3870636aa78231ede763fd83b5f6587adbbc8ba6c6f6"
+      },
+      {
+        "path": "crops/cherry-tomato.toml",
+        "sha256": "c6a41ac27362d586377b52736ab2be5be22710adf2103174d3b2f2801e4259ba"
+      },
+      {
+        "path": "crops/chickpea.toml",
+        "sha256": "327cbafc4feb3d9143673845f611935c8763d31b34b5e73140f92e7d9e6e39bd"
+      },
+      {
+        "path": "crops/cumin.toml",
+        "sha256": "2ce3d9086f24227015918b1b019d0d60f2ad8f4645546d845672e4b0bcff9242"
+      },
+      {
+        "path": "crops/garlic.toml",
+        "sha256": "8a58f3d79143554d054fcec51c77d26ab0096939de627222c49f3613a8033856"
+      },
+      {
+        "path": "crops/lentil.toml",
+        "sha256": "b8b896cf784201b00d34f5819d89d5b7487df03a82ae5a7a4b0e650eb9482444"
+      },
+      {
+        "path": "crops/onion.toml",
+        "sha256": "fcc2c88e166414da4811c5834194345a41885311572804bbdddbdfba4dbd762d"
+      },
+      {
+        "path": "crops/potato.toml",
+        "sha256": "6b8d1d62de7c1dc5c52422b9f6a4ac34e89e0a9f36e86778212696b8b66609a4"
+      },
+      {
+        "path": "crops/spinach.toml",
+        "sha256": "118a9f3bcab91a61f34ed64d5c7dcd74511e246f1894ebc44e4db21a2005aeb5"
+      },
+      {
+        "path": "crops/tomato.toml",
+        "sha256": "e7f1beb7dfb12a6742c0dd6f06c2d9fbfd8c794b7fff5ce58738323bc4136b39"
+      },
       {
         "path": "diet/categories.toml",
         "sha256": "80dcc15d1ed8ad146532d0a7876e7c9fe4eb3475696c5915aeffeb63fb4aecb7"
@@ -174,7 +324,7 @@
       },
       {
         "path": "sources.toml",
-        "sha256": "d4d699c2c89b53628bb893579f59f7932e7f68d0aaf5629e82eddcc5970c8b58"
+        "sha256": "52647cd204c92050559d888868dad6c910de8e461ffdcb9dd37e6f7f22bd6965"
       },
       {
         "path": "units/count.toml",
@@ -135451,6 +135601,97 @@
         ["tofu","NCBITaxon_3847",1999630,null,null,null],
         ["tomato","NCBITaxon_4081",1999634,null,null,null],
         ["vegetable-broth",null,null,null,null,"A broth of several vegetables, so no one organism."]
+      ]
+    },
+    {
+      "name": "crop",
+      "type": "table",
+      "description": "Each crop VBCI knows, the ingredient it yields and the state it is harvested in, and its organism by NCBI Taxonomy id and scientific name, as a pinned Wikidata item gives them. Several crops can yield one ingredient.",
+      "schema": {
+        "fields": [
+          {
+            "name": "crop",
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "ingredient",
+            "type": "string"
+          },
+          {
+            "name": "state",
+            "type": "string",
+            "description": "The state the ingredient is in when harvested: a state the ingredient has a form in."
+          },
+          {
+            "name": "taxon",
+            "type": "string"
+          },
+          {
+            "name": "scientific_name",
+            "type": "string"
+          },
+          {
+            "name": "wikidata",
+            "type": "string",
+            "description": "The Wikidata item of the crop's organism, at the revision sources.toml pins."
+          },
+          {
+            "name": "parent_item",
+            "type": "string",
+            "description": "The Wikidata item the crop's item names as its parent taxon, where the crop's organism is one step below its ingredient's; NULL where the two are one organism."
+          },
+          {
+            "name": "steps_below",
+            "type": "integer",
+            "description": "How many steps the crop's organism is below its ingredient's, by Wikidata's parent taxon: 0 or 1."
+          }
+        ],
+        "primaryKey": [
+          "crop"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "ingredient"
+            ],
+            "reference": {
+              "resource": "ingredient",
+              "fields": [
+                "ingredient"
+              ]
+            }
+          },
+          {
+            "fields": [
+              "ingredient",
+              "state"
+            ],
+            "reference": {
+              "resource": "ingredient_form",
+              "fields": [
+                "ingredient",
+                "state"
+              ]
+            }
+          }
+        ]
+      },
+      "data": [
+        ["crop","name","ingredient","state","taxon","scientific_name","wikidata","parent_item","steps_below"],
+        ["carrot","Carrot","carrot","raw","NCBITaxon_79200","Daucus carota subsp. sativus","Q11678009","Q30056",1],
+        ["cherry-tomato","Cherry tomato","tomato","raw","NCBITaxon_195583","Solanum lycopersicum var. cerasiforme","Q6540634","Q23501",1],
+        ["chickpea","Chickpea","chickpeas","dry","NCBITaxon_3827","Cicer arietinum","Q81375",null,0],
+        ["cumin","Cumin","cumin","dry","NCBITaxon_52462","Cuminum cyminum","Q132624",null,0],
+        ["garlic","Garlic","garlic","raw","NCBITaxon_4682","Allium sativum","Q23400",null,0],
+        ["lentil","Lentil","lentils","dry","NCBITaxon_3864","Lens culinaris","Q131226",null,0],
+        ["onion","Onion","onion","raw","NCBITaxon_4679","Allium cepa","Q23485",null,0],
+        ["potato","Potato","potato","raw","NCBITaxon_4113","Solanum tuberosum","Q10998",null,0],
+        ["spinach","Spinach","spinach","raw","NCBITaxon_3562","Spinacia oleracea","Q81464",null,0],
+        ["tomato","Tomato","tomato","raw","NCBITaxon_4081","Solanum lycopersicum","Q23501",null,0]
       ]
     }
   ]

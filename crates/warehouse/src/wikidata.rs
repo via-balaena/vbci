@@ -1,6 +1,6 @@
 //! Wikidata's items: each pinned revision's content, fetched into the cache under its pin and
-//! refused wherever its bytes differ from the pin in `sources.toml`; the two properties an
-//! ingredient's organism is read from; and how a taxon is read from them.
+//! refused wherever its bytes differ from the pin in `sources.toml`; the four properties organisms
+//! are read from; and how an ingredient's and a crop's taxon are read from them.
 
 use crate::usda::{Fetched, sha256_hex};
 use balaena_records::WikidataItem;
@@ -15,6 +15,20 @@ pub const NCBI_TAXONOMY_ID: &str = "P685";
 
 /// Wikidata's natural product of taxon: the taxon a product, such as a food, comes from.
 pub const NATURAL_PRODUCT_OF_TAXON: &str = "P1582";
+
+/// Wikidata's parent taxon: the taxon one rank above.
+pub const PARENT_TAXON: &str = "P171";
+
+/// Wikidata's taxon name: the scientific name.
+pub const TAXON_NAME: &str = "P225";
+
+/// The properties read, in the order `statements` gives them.
+pub const PROPERTIES: [&str; 4] = [
+    NCBI_TAXONOMY_ID,
+    NATURAL_PRODUCT_OF_TAXON,
+    PARENT_TAXON,
+    TAXON_NAME,
+];
 
 /// Where an item's pinned revision is fetched from: Wikidata's revisions API, whose answer carries
 /// the content Wikidata stores for the revision. Its pages give no plain content for an item
@@ -173,14 +187,14 @@ pub fn read(cache: &Path, w: &WikidataItem) -> Result<String, String> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Statement {
     pub property: &'static str,
-    /// For P685 the id's digits, for P1582 the item it names; None where the statement says some
-    /// value or no value rather than giving one.
+    /// For P685 the id's digits, for P225 the name, for P1582 and P171 the item it names; None
+    /// where the statement says some value or no value rather than giving one.
     pub value: Option<String>,
     /// `preferred`, `normal` or `deprecated`.
     pub rank: String,
 }
 
-/// The statements of P685 and P1582 in an item's content, each property's in its order there.
+/// The statements of each of `PROPERTIES` in an item's content, each property's in its order there.
 /// Refuses content that is not `item`'s, or whose statements are not shaped as Wikidata's are.
 pub fn statements(item: &str, content: &str) -> Result<Vec<Statement>, String> {
     let at = |e: &str| format!("wikidata {item}: {e}");
@@ -189,7 +203,7 @@ pub fn statements(item: &str, content: &str) -> Result<Vec<Statement>, String> {
         return Err(at(&format!("the content is {}'s", v["id"])));
     }
     let mut out = Vec::new();
-    for property in [NCBI_TAXONOMY_ID, NATURAL_PRODUCT_OF_TAXON] {
+    for property in PROPERTIES {
         let Some(claims) = v["claims"].get(property) else {
             continue;
         };
@@ -204,7 +218,7 @@ pub fn statements(item: &str, content: &str) -> Result<Vec<Statement>, String> {
             let value = match snak["snaktype"].as_str() {
                 Some("value") => {
                     let v = &snak["datavalue"]["value"];
-                    let text = if property == NCBI_TAXONOMY_ID {
+                    let text = if property == NCBI_TAXONOMY_ID || property == TAXON_NAME {
                         v.as_str()
                     } else {
                         v["id"].as_str()
@@ -283,6 +297,55 @@ pub fn taxon(
     }
 }
 
+/// The statements of a pinned item, refusing an item `pinned` lacks.
+fn pinned_item<'a>(
+    item: &str,
+    pinned: &'a BTreeMap<String, Vec<Statement>>,
+) -> Result<&'a [Statement], String> {
+    pinned
+        .get(item)
+        .map(Vec::as_slice)
+        .ok_or_else(|| format!("Wikidata item {item} is not pinned in sources.toml"))
+}
+
+/// The NCBI Taxonomy id, as `NCBITaxon_<digits>`, and the scientific name a pinned item gives as its
+/// own: its one P685 and its one P225, each of which it must have.
+pub fn own_taxon(
+    item: &str,
+    pinned: &BTreeMap<String, Vec<Statement>>,
+) -> Result<(String, String), String> {
+    let statements = pinned_item(item, pinned)?;
+    let need = |property: &str| {
+        one(item, statements, property)?
+            .ok_or_else(|| format!("Wikidata item {item} has no {property}"))
+    };
+    Ok((
+        format!("NCBITaxon_{}", need(NCBI_TAXONOMY_ID)?),
+        need(TAXON_NAME)?,
+    ))
+}
+
+/// The item a pinned item names as its one parent taxon (P171), and that item's NCBI Taxonomy id,
+/// its own P685. The parent must be pinned too.
+pub fn parent_taxon(
+    item: &str,
+    pinned: &BTreeMap<String, Vec<Statement>>,
+) -> Result<(String, String), String> {
+    let parent = one(item, pinned_item(item, pinned)?, PARENT_TAXON)?
+        .ok_or_else(|| format!("Wikidata item {item} has no {PARENT_TAXON}"))?;
+    let of = pinned.get(&parent).ok_or_else(|| {
+        format!(
+            "Wikidata item {item}'s {PARENT_TAXON} is {parent}, which sources.toml does not pin"
+        )
+    })?;
+    match one(&parent, of, NCBI_TAXONOMY_ID)? {
+        Some(id) => Ok((parent, format!("NCBITaxon_{id}"))),
+        None => Err(format!(
+            "Wikidata item {parent}, which {item}'s {PARENT_TAXON} names, has no {NCBI_TAXONOMY_ID}"
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -336,6 +399,57 @@ mod tests {
         assert_eq!(got("Q6"), Ok(("NCBITaxon_6".into(), "Q6".into())));
     }
 
+    /// A crop's item gives its own taxon and name, each one value, and names its parent taxon,
+    /// whose own P685 is read; each is refused where it is missing, doubled, or the item not pinned.
+    #[test]
+    fn a_crop_s_item_gives_its_own_taxon_and_its_parent_s() {
+        let name = |n: &str| st(TAXON_NAME, Some(n), "normal");
+        let parent = |q: &str| st(PARENT_TAXON, Some(q), "normal");
+        let p = pinned(&[
+            ("Q1", vec![ncbi("1"), name("A b"), parent("Q2")]),
+            ("Q2", vec![ncbi("2"), name("A")]),
+            ("Q3", vec![name("C")]),
+            ("Q4", vec![ncbi("4")]),
+            ("Q5", vec![ncbi("5"), name("E"), parent("Q2"), parent("Q1")]),
+            ("Q6", vec![ncbi("6"), name("F"), parent("Q99")]),
+            ("Q7", vec![ncbi("7"), name("G"), parent("Q3")]),
+        ]);
+        assert_eq!(
+            own_taxon("Q1", &p),
+            Ok(("NCBITaxon_1".into(), "A b".into()))
+        );
+        assert_eq!(
+            parent_taxon("Q1", &p),
+            Ok(("Q2".into(), "NCBITaxon_2".into()))
+        );
+        for (got, why) in [
+            (
+                own_taxon("Q0", &p),
+                "Wikidata item Q0 is not pinned in sources.toml",
+            ),
+            (own_taxon("Q3", &p), "Wikidata item Q3 has no P685"),
+            (own_taxon("Q4", &p), "Wikidata item Q4 has no P225"),
+            (
+                parent_taxon("Q2", &p).map(|_| (String::new(), String::new())),
+                "Wikidata item Q2 has no P171",
+            ),
+            (
+                parent_taxon("Q5", &p),
+                "Wikidata item Q5 has 2 P171 statements, not one",
+            ),
+            (
+                parent_taxon("Q6", &p),
+                "Wikidata item Q6's P171 is Q99, which sources.toml does not pin",
+            ),
+            (
+                parent_taxon("Q7", &p),
+                "Wikidata item Q3, which Q7's P171 names, has no P685",
+            ),
+        ] {
+            assert_eq!(got, Err(why.to_string()));
+        }
+    }
+
     /// Each place a taxon could be read from more than one way, or not at all, is refused: an item
     /// not pinned, two read statements of a property, one with no value, neither property, a P1582
     /// naming an item not pinned, or one with no P685 of its own. One step only: Q7's P1582 names
@@ -386,9 +500,9 @@ mod tests {
     }
 
     /// An item's content, shaped as Q1375049's revision 2549623412 is, cut down to one P1582
-    /// statement and a property not read (P31), with two P685 statements added: one preferred,
-    /// one with some value and deprecated.
-    const CONTENT: &str = r#"{"type":"item","id":"Q1","labels":{"en":{"language":"en","value":"lemon juice"}},"claims":{"P31":[{"mainsnak":{"snaktype":"value","property":"P31","datavalue":{"value":{"entity-type":"item","numeric-id":5,"id":"Q5"},"type":"wikibase-entityid"}},"type":"statement","rank":"normal"}],"P1582":[{"mainsnak":{"snaktype":"value","property":"P1582","hash":"x","datavalue":{"value":{"entity-type":"item","numeric-id":500,"id":"Q500"},"type":"wikibase-entityid"},"datatype":"wikibase-item"},"type":"statement","id":"Q1$a","rank":"normal","references":[]}],"P685":[{"mainsnak":{"snaktype":"value","property":"P685","datavalue":{"value":"2708","type":"string"}},"type":"statement","rank":"preferred"},{"mainsnak":{"snaktype":"somevalue","property":"P685"},"type":"statement","rank":"deprecated"}]},"sitelinks":{}}"#;
+    /// statement and a property not read (P31), with two P685 statements added, one preferred and
+    /// one with some value and deprecated, and a P171 and a P225.
+    const CONTENT: &str = r#"{"type":"item","id":"Q1","labels":{"en":{"language":"en","value":"lemon juice"}},"claims":{"P31":[{"mainsnak":{"snaktype":"value","property":"P31","datavalue":{"value":{"entity-type":"item","numeric-id":5,"id":"Q5"},"type":"wikibase-entityid"}},"type":"statement","rank":"normal"}],"P1582":[{"mainsnak":{"snaktype":"value","property":"P1582","hash":"x","datavalue":{"value":{"entity-type":"item","numeric-id":500,"id":"Q500"},"type":"wikibase-entityid"},"datatype":"wikibase-item"},"type":"statement","id":"Q1$a","rank":"normal","references":[]}],"P685":[{"mainsnak":{"snaktype":"value","property":"P685","datavalue":{"value":"2708","type":"string"}},"type":"statement","rank":"preferred"},{"mainsnak":{"snaktype":"somevalue","property":"P685"},"type":"statement","rank":"deprecated"}],"P171":[{"mainsnak":{"snaktype":"value","property":"P171","datavalue":{"value":{"entity-type":"item","numeric-id":2,"id":"Q2"},"type":"wikibase-entityid"}},"type":"statement","rank":"normal"}],"P225":[{"mainsnak":{"snaktype":"value","property":"P225","datavalue":{"value":"Citrus × limon","type":"string"}},"type":"statement","rank":"normal"}]},"sitelinks":{}}"#;
 
     #[test]
     fn statements_are_read_as_wikidata_writes_them() {
@@ -398,6 +512,8 @@ mod tests {
                 st(NCBI_TAXONOMY_ID, Some("2708"), "preferred"),
                 st(NCBI_TAXONOMY_ID, None, "deprecated"),
                 st(NATURAL_PRODUCT_OF_TAXON, Some("Q500"), "normal"),
+                st(PARENT_TAXON, Some("Q2"), "normal"),
+                st(TAXON_NAME, Some("Citrus × limon"), "normal"),
             ])
         );
         assert_eq!(
