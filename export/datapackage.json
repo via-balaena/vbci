@@ -318,7 +318,7 @@
       },
       {
         "path": "diet/exceptions.toml",
-        "sha256": "2e5fae8a719363722b42b72ccc3a5ded1d677c2fdc7ebaa3a59559e077b1e7dd"
+        "sha256": "b485793483964f473873d093c88fa24f493e83d9daa76ef7abcd026dec050128"
       },
       {
         "path": "diet/rules.toml",
@@ -5797,7 +5797,7 @@
         [172800,"sr-legacy","Taco shells, baked","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172801,"sr-legacy","Toaster pastries, brown-sugar-cinnamon","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172802,"sr-legacy","Wonton wrappers (includes egg roll wrappers)","Baked Products","unknown","category: mixed","unknown","category: mixed"],
-        [172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate","Baked Products","yes","exception","yes","exception"],
+        [172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172804,"sr-legacy","Leavening agents, baking powder, double-acting, straight phosphate","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172805,"sr-legacy","Leavening agents, baking powder, low-sodium","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172806,"sr-legacy","Bread, crumbs, dry, grated, seasoned","Baked Products","unknown","category: mixed","unknown","category: mixed"],

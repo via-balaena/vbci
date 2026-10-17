@@ -200,6 +200,13 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    read 2026-10-17: they exclude "Any food or ingredient made with processing aids created from"
    "Animal flesh or body parts", and bone char is made from animal bones. The cost: a recipe with
    sugar is vegan unknown unless another line makes it no.
+5. **Baking powder's answers are unknown** (decided with Jon: "your recommendation"). USDA's
+   "Leavening agents, baking powder, double-acting, sodium aluminum sulfate" gives its acid salt but
+   not the filler that its 27.7 g of carbohydrate in 100 g shows, and an exception sets only what a
+   food's name gives evidence for, so its category's unknown stands, as sugar's does. Passed over:
+   yes, on what baking powders usually hold, a starch, which USDA's name does not say. The cost: a
+   recipe with baking powder is unknown unless another line makes it no; the 1,461 recipes name it
+   155 times, and the one that answered vegan yes, "Self-Rising Flour", is now unknown.
 
 ### Layers
 
@@ -255,7 +262,7 @@ Each step is one pull request, done when its check passes.
    above. USDA's portions and measure units come with step 7.
 5. **Diet status per food,** vegan and vegetarian, by the definitions decided above, each answer
    yes, no or unknown, from records reviewed by pull request: the first that applies of an exception
-   for it (`diet/exceptions.toml`, 71 foods, each with its reason; 74 from step 16), a naming rule
+   for it (`diet/exceptions.toml`, 71 foods, each with its reason; 73 from step 16), a naming rule
    within its
    category (`diet/rules.toml`, 14 rules, such as names starting "Cheese" in Dairy and Egg Products:
    vegetarian unknown), the animal organism a Foundation food records (`diet/taxa.toml`, from USDA's
@@ -403,13 +410,13 @@ The second arc, farm reference data, began on 2026-10-16.
     milk and black pepper harvested, black pepper dry, as cumin is; butter made from milk; the rest
     made from what no ingredient is; and parmesan, made from cow's milk, is now made from milk.
     Aliases are the recipes' own spellings, less "kosher salt" and "sea salt", lighter per teaspoon
-    than table salt, and "salted butter", saltier. Water, baking soda and baking powder are vegan
-    and vegetarian by exceptions, the first that raise a vegan answer to yes (the exceptions of two
-    light butters already raise a vegetarian one); granulated sugar stays vegan unknown (decided
-    above). Measured on 2026-10-17 with the CLI built from this step, on the recipes: of 13,858
-    lines, those that reach an ingredient went from 1,437 to 5,635, and those with grams from 1,253
-    (1,228 before step 15, and the 25 it weighs) to 4,789; the recipes answering vegan no went from
-    58 to 611. Done, with the tests in the rules above.
+    than table salt, and "salted butter", saltier. Water and baking soda are vegan and vegetarian by
+    exceptions, the first that raise a vegan answer to yes (the exceptions of two light butters
+    already raise a vegetarian one); granulated sugar stays vegan unknown and baking powder unknown
+    (decided above). Measured on 2026-10-17 with the CLI built from this step, on the recipes: of
+    13,858 lines, those that reach an ingredient went from 1,437 to 5,635, and those with grams from
+    1,253 (1,228 before step 15, and the 25 it weighs) to 4,789; the recipes answering vegan no went
+    from 58 to 611. Done, with the tests in the rules above.
 **Later:** the rest of farm reference data. A grower's weight per bunch or head comes from harvests
 that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search found
 none stored in farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff. Harvests are operational

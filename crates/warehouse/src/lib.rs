@@ -3701,10 +3701,11 @@ codes = ["269", "269.3"]
             ("Beans, baked, canned, with franks", "no", "no"),
             ("Beverages, water, tap, drinking", "yes", "yes"),
             ("Leavening agents, baking soda", "yes", "yes"),
+            // Unknown, decided with Jon, 2026-10-17: its name does not give its filler.
             (
                 "Leavening agents, baking powder, double-acting, sodium aluminum sulfate",
-                "yes",
-                "yes",
+                "unknown",
+                "unknown",
             ),
             // Vegan unknown, decided with Jon, 2026-10-17: its name does not say cane or beet.
             // Vegetarian unknown by its category, mixed; bone char would be a processing aid the

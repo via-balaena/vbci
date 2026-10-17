@@ -465,10 +465,3 @@ description = "Leavening agents, baking soda"
 vegan = "yes"
 vegetarian = "yes"
 why = "Its name gives baking soda, sodium bicarbonate, a mineral salt, which is no animal product."
-
-[[food]]
-fdc_id = 172803
-description = "Leavening agents, baking powder, double-acting, sodium aluminum sulfate"
-vegan = "yes"
-vegetarian = "yes"
-why = "Its name gives sodium aluminum sulfate, a mineral salt, as its acid; it does not name the filler that USDA's 27.7 g of carbohydrate in 100 g shows."
