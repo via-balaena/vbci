@@ -1,7 +1,7 @@
 [package]
 name = "balaena-warehouse"
 version = "0.0.0"
-description = "VBCI's warehouse in DuckDB, rebuilt from the records and USDA's pinned zips on every load"
+description = "VBCI's warehouse in DuckDB, rebuilt from the records, USDA's pinned zips and Wikidata's pinned revisions on every load"
 publish = false
 edition.workspace = true
 license.workspace = true

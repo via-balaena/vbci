@@ -1,5 +1,5 @@
-//! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
-//! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
+//! VBCI's warehouse, in DuckDB: rebuilt from the records, USDA's pinned zips and Wikidata's pinned
+//! revisions on every load, so it can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
 pub mod export;
 pub mod portions;
@@ -21,7 +21,7 @@ pub fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// Where USDA's zips are cached: `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else
+/// Where USDA's zips and Wikidata's revisions are cached: `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else
 /// `$HOME/.cache/vbci`.
 pub fn cache_dir() -> Result<PathBuf, String> {
     cache_dir_from(|key| env::var(key).ok().filter(|v| !v.is_empty()))
@@ -2830,7 +2830,7 @@ codes = ["269", "269.3"]
 
     /// crates/core reads back each view the export carries as gold holds it: the same columns,
     /// each of the type its DuckDB type is written as, and the same rows in key order, every value
-    /// equal; and the sha256s of the zips and records the warehouse loaded.
+    /// equal; and the sha256s of the zips, Wikidata revisions and records the warehouse loaded.
     #[test]
     fn the_export_reads_back_as_gold() {
         use balaena_core::{Export, Type, Value};
@@ -2914,6 +2914,20 @@ codes = ["269", "269.3"]
                 "SELECT concat_ws(' ', dataset, url, sha256, bytes) FROM bronze.usda_zip ORDER BY dataset"
             )
         );
+        let revisions: Vec<String> = read
+            .lineage
+            .wikidata
+            .iter()
+            .map(|r| format!("{} {} {} {}", r.item, r.revision, r.sha256, r.bytes))
+            .collect();
+        assert_eq!(
+            revisions,
+            strings(
+                &w,
+                "SELECT concat_ws(' ', item, revision, sha256, bytes) FROM bronze.wikidata_revision ORDER BY item"
+            )
+        );
+        assert!(revisions.len() >= 2, "{revisions:?}");
         let records: Vec<String> = read
             .lineage
             .records

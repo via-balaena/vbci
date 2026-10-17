@@ -320,8 +320,8 @@ fn placeholder(view: &str) -> String {
 }
 
 /// `export/datapackage.json`, as the warehouse writes it: every view `EXPORTED` names, with the
-/// sha256s of the zips and records loaded. Refused while some publisher's license is not CC0's,
-/// as the file is licensed as CC0 whole.
+/// sha256s of the zips, Wikidata revisions and records loaded. Refused while some publisher's
+/// license is not CC0's, as the file is licensed as CC0 whole.
 pub fn export(conn: &Connection, sources: &Sources) -> Result<String, String> {
     for (key, p) in &sources.publisher {
         if p.license != LICENSE {

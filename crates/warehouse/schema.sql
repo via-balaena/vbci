@@ -7,9 +7,10 @@
 --           silver.usda_rejected with its reason; any other value that does not cast stops the load
 --   gold    views that answer questions; never stored, always derived
 --
--- The warehouse is rebuilt from the records and the pinned zips on every load, so it can be deleted
--- at any time. Every table and view says what it is in a COMMENT ON, which docs/data-catalogue.md
--- is generated from (`cargo run -p balaena-warehouse -- catalogue`).
+-- The warehouse is rebuilt from the records, the pinned zips and the pinned Wikidata revisions on
+-- every load, so it can be deleted at any time. Every table and view says what it is in a COMMENT
+-- ON, which docs/data-catalogue.md is generated from
+-- (`cargo run -p balaena-warehouse -- catalogue`).
 --
 -- Each CSV in a zip becomes a table bronze.usda_<name>, created by the loader: one row for each of
 -- the CSV's rows, every column text, and a `dataset` column naming the zip it came from.

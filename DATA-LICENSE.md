@@ -20,10 +20,10 @@ A test in `crates/repo` holds this list to the records layer that `docs/architec
 
 ## The export
 
-`export/datapackage.json` is generated from the records above and USDA's data, both CC0, and is
-CC0 too: its descriptor says so, and the warehouse does not write it while a publisher in
-`sources.toml` licenses its data otherwise. It lists FoodData Central's datasets as its sources,
-with USDA's suggested citation.
+`export/datapackage.json` is generated from the records above, USDA's data and Wikidata's, all
+CC0, and is CC0 too: its descriptor says so, and the warehouse does not write it while a publisher
+in `sources.toml` licenses its data otherwise. It lists FoodData Central's datasets and the pinned
+Wikidata revisions as its sources, with USDA's suggested citation; Wikidata asks for none.
 
 ## Contributions
 
