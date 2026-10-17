@@ -318,7 +318,7 @@
       },
       {
         "path": "diet/exceptions.toml",
-        "sha256": "fec938d2d60027062f16d631580be17263a7c413a60146c9bdead42c19cbca96"
+        "sha256": "8cd842201361afdd301efa9a32a97def0e35d886342ab9f076830b66005fc1f6"
       },
       {
         "path": "diet/rules.toml",
@@ -5797,7 +5797,7 @@
         [172800,"sr-legacy","Taco shells, baked","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172801,"sr-legacy","Toaster pastries, brown-sugar-cinnamon","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172802,"sr-legacy","Wonton wrappers (includes egg roll wrappers)","Baked Products","unknown","category: mixed","unknown","category: mixed"],
-        [172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate","Baked Products","unknown","category: mixed","unknown","category: mixed"],
+        [172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate","Baked Products","yes","exception","yes","exception"],
         [172804,"sr-legacy","Leavening agents, baking powder, double-acting, straight phosphate","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172805,"sr-legacy","Leavening agents, baking powder, low-sodium","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [172806,"sr-legacy","Bread, crumbs, dry, grated, seasoned","Baked Products","unknown","category: mixed","unknown","category: mixed"],
@@ -6641,7 +6641,7 @@
         [173644,"sr-legacy","Chicken, stewing, light meat, meat only, cooked, stewed","Poultry Products","no","category: flesh","no","category: flesh"],
         [173645,"sr-legacy","Chicken, capons, meat and skin, raw","Poultry Products","no","category: flesh","no","category: flesh"],
         [173646,"sr-legacy","Chicken, capons, meat and skin, cooked, roasted","Poultry Products","no","category: flesh","no","category: flesh"],
-        [173647,"sr-legacy","Beverages, water, tap, drinking","Beverages","unknown","category: mixed","unknown","category: mixed"],
+        [173647,"sr-legacy","Beverages, water, tap, drinking","Beverages","yes","exception","yes","exception"],
         [173648,"sr-legacy","Beverages, coffee substitute, cereal grain beverage, powder, prepared with whole milk","Beverages","unknown","category: mixed","unknown","category: mixed"],
         [173649,"sr-legacy","Beverages, Dairy drink mix, chocolate, reduced calorie, with low-calorie sweeteners, powder","Beverages","unknown","category: mixed","unknown","category: mixed"],
         [173650,"sr-legacy","Beverages, dairy drink mix, chocolate, reduced calorie, with aspartame, powder, prepared with water and ice","Beverages","unknown","category: mixed","unknown","category: mixed"],
@@ -8034,7 +8034,7 @@
         [175037,"sr-legacy","Tortillas, ready-to-bake or -fry, flour, refrigerated","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175038,"sr-legacy","Waffles, plain, frozen, ready-to-heat","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175039,"sr-legacy","Waffles, plain, prepared from recipe","Baked Products","unknown","category: mixed","unknown","category: mixed"],
-        [175040,"sr-legacy","Leavening agents, baking soda","Baked Products","unknown","category: mixed","unknown","category: mixed"],
+        [175040,"sr-legacy","Leavening agents, baking soda","Baked Products","yes","exception","yes","exception"],
         [175041,"sr-legacy","Leavening agents, cream of tartar","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175042,"sr-legacy","Leavening agents, yeast, baker's, compressed","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175043,"sr-legacy","Leavening agents, yeast, baker's, active dry","Baked Products","unknown","category: mixed","unknown","category: mixed"],

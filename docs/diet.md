@@ -16,16 +16,16 @@ food only as far as its USDA name shows what is in it.
 
 | answer | vegan | vegetarian |
 |---|---|---|
-| yes | 1847 | 2087 |
+| yes | 1850 | 2090 |
 | no | 2937 | 2599 |
-| unknown | 3009 | 3107 |
+| unknown | 3006 | 3104 |
 
 | decided by | vegan | vegetarian |
 |---|---|---|
-| an exception | 61 | 24 |
+| an exception | 64 | 27 |
 | a naming rule | 118 | 193 |
 | an animal organism | 0 | 0 |
-| the category | 7614 | 7576 |
+| the category | 7611 | 7573 |
 
 ## Foundation Foods 2026-04-30 (`foundation`): 469 foods
 
@@ -64,4 +64,4 @@ for a matched food still overrides the rule.
 | Vegetables and Vegetable Products | Potatoes, au gratin | unknown | unknown | 4 |
 | Vegetables and Vegetable Products | Potatoes, scalloped | unknown | - | 4 |
 
-71 foods have an exception, each with its reason, in `diet/exceptions.toml`.
+74 foods have an exception, each with its reason, in `diet/exceptions.toml`.
