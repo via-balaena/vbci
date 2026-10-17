@@ -57,13 +57,14 @@ jobs:
       # warehouse, turned on float_roundtrip), and each built DuckDB: main's run 38220150139 spent
       # 7 min 20 s of its test step building DuckDB again.
       - run: cargo build --workspace --bins --tests --locked
-      # The warehouse's tests read USDA's zips from the cache; fetching refuses bytes that differ
-      # from the sha256 sources.toml pins, so a cached zip is checked again on every run.
+      # The warehouse's tests read USDA's zips and the pinned Wikidata revisions from the cache,
+      # which keeps the name it had when it held the zips alone; fetching refuses bytes that differ
+      # from the sha256 sources.toml pins, so what is cached is checked again on every run.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/vbci
           key: usda-${{ hashFiles('sources.toml') }}
           restore-keys: usda-
-      - name: Fetch the zips sources.toml pins, with the binary the tests were built with
+      - name: Fetch what sources.toml pins, with the binary the tests were built with
         run: target/debug/balaena-warehouse fetch
       - run: cargo test --workspace --locked

@@ -2510,6 +2510,41 @@ codes = ["269", "269.3"]
         assert_eq!(n(&format!("{kept} INTERSECT {rejected}")), 0);
     }
 
+    /// bronze.wikidata_revision holds each item `sources.toml` pins, at its revision, with content
+    /// whose length and sha256 are the pin's, and no other item.
+    #[test]
+    fn every_pinned_wikidata_revision_is_in_bronze_as_pinned() {
+        let w = warehouse();
+        let (sources, _) = Sources::load(&repo_root()).unwrap();
+        assert!(sources.wikidata.len() >= 2);
+        for pin in &sources.wikidata {
+            let (revision, sha256, bytes, content): (i64, String, i64, String) = w
+                .query_row(
+                    "SELECT revision, sha256, bytes, content FROM bronze.wikidata_revision WHERE item = ?",
+                    params![pin.item],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )
+                .unwrap_or_else(|e| panic!("{}: {e}", pin.item));
+            assert_eq!(
+                (revision as u64, sha256.as_str(), bytes as u64),
+                (pin.revision, pin.sha256.as_str(), pin.bytes),
+                "{}",
+                pin.item
+            );
+            assert_eq!(content.len() as u64, pin.bytes, "{}", pin.item);
+            assert_eq!(
+                usda::sha256_hex(content.as_bytes()),
+                pin.sha256,
+                "{}",
+                pin.item
+            );
+        }
+        assert_eq!(
+            count(&w, "SELECT count(*) FROM bronze.wikidata_revision") as usize,
+            sources.wikidata.len()
+        );
+    }
+
     /// The red lentil soup's ingredients read their organisms from the pinned data: lemon juice and
     /// cumin from Wikidata through a natural product of taxon, red lentils from lentils' Foundation
     /// food, parmesan from its cow's, and vegetable broth has none. Every ingredient has a row.
