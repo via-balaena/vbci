@@ -119,7 +119,7 @@ API, each publisher's own page for its license, and GitHub's repository search. 
 |---|---|---|---|---|
 | USDA's "NCBI Taxon" | Foundation's `food_attribute.csv` names each food's own organism beside its group: 359 of the 2026-04-30 release's 469 foods, 142 taxa, and NA for 6 more | CC0, by USDA's API guide (quoted in `sources.toml`) | step 11's organisms, first | scratch check |
 | Wikidata | items for foods and for taxa: a food's natural product of taxon (P1582) names a taxon's item, which carries its NCBI taxonomy ID (P685) and a GBIF taxon ID (P846) | CC0 for structured data | step 11's organisms where USDA has none, each item pinned to a revision | wikidata.org/wiki/Wikidata:Licensing, **re-read** (license sentence) |
-| NCBI Taxonomy | the ids USDA and Wikidata use; monthly dumps, `new_taxdump_<date>.zip`, 155 MB on 2026-10-01 | NCBI "places no restrictions on the use or distribution of the data contained therein" | its ids; the dump only if a crop's organism must be held to its ingredient's lineage | ncbi.nlm.nih.gov/home/about/policies, **re-read** (sentence); ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive, **re-read** (listing) |
+| NCBI Taxonomy | the ids USDA and Wikidata use; monthly dumps, `new_taxdump_<date>.zip`, 155 MB on 2026-10-01 | NCBI "places no restrictions on the use or distribution of the data contained therein" | its ids; not its dump, which is not CC0 (decided 2026-10-16, "Crops" below) | ncbi.nlm.nih.gov/home/about/policies, **re-read** (sentence); ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive, **re-read** (listing) |
 | GBIF Backbone Taxonomy | GBIF's taxonomy, DOI 10.15468/39omei, last published 2023-08-28 | CC BY 4.0 | nothing: not CC0 (decided with Jon, 2026-10-16) | api.gbif.org/v1/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c, **re-read** (license, dates) |
 
 Eleven of the twelve NCBI ids step 11's ingredients read from USDA, all but soy's, were looked up in
@@ -130,3 +130,23 @@ read by their descriptions only, found DIY builds and hardware controllers, a pr
 yield, one measuring plant height by camera, and two with no description; no description says it
 keeps crop, harvest or unit records. The 2026-10-11 search above did
 not look for aeroponics: Jon's word then was "aquaponic", corrected to "aeroponic" on 2026-10-16.
+
+## Crops
+
+For plan step 12. Searched on 2026-10-16 without agents: the OpenFarm rescue's files at its last
+commit, read with a scratch script; Growstuff's schema; Wikidata through its SPARQL endpoint; NCBI's
+lineage through its E-utilities and its dated dump. A source marked **re-read** was read that day
+for what the mark names.
+
+| source | what it is | license | what VBCI takes | source |
+|---|---|---|---|---|
+| OpenFarm rescue | 340 crop records rebuilt from the Wayback Machine after OpenFarm.cc shut down in April 2025, each with the capture it came from; growing fields (sun, spacing, sowing); its author calls it "a useful scaffold, not an authority" | CC0-1.0 | nothing yet: its growing fields have no reader. Step 12's crops were chosen by VBCI's ingredients, and the rescue was checked for them | github.com/thefullnacho/openfarm-crops-rescue at 754cfd75, **re-read** (license, README, crops.json) |
+| Growstuff's crop model | a crop nests under a parent crop (`parent_id`); its scientific names carry a GBIF key, rank and Wikidata id; it has alternate names by language, and a `public_food_key` into the Australian Food Classification | AGPL-3.0 code; API data CC BY-SA 3.0 | the shape: a crop names the food it yields | github.com/Growstuff/growstuff, `db/schema.rb` at 02f5f95b, **re-read** (tables) |
+| NCBI Taxonomy dump | `taxdmp_2026-10-01.zip`, 79,650,311 bytes: `nodes.dmp`, 3.0 million lines, gives each id's parent and rank, and `names.dmp`, 5.2 million lines, its names | NCBI "places no restrictions on the use or distribution of the data", which is not CC0 | nothing: not pinned (`docs/architecture.md`, decided 2026-10-16) | ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump_archive, **re-read** (listing, download) |
+
+Of the rescue's 305 records with a scientific name, 237 are distinct once case, spacing, parentheses
+and the hybrid sign are made one; by an exact match on Wikidata's taxon name, 178 name one taxon
+item with an NCBI id, and 37 name none. Its carrot "var. sativus" names an item with no NCBI id;
+NCBI's name is "Daucus carota subsp. sativus". Searched by name, it has crops for 11 of the 13
+organisms of VBCI's plant ingredients, none for lentil or rice. Its other records include named
+cultivars with no scientific name and a few duplicates (carrot and carrots).
