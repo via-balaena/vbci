@@ -1,0 +1,15 @@
+name = "Milk"
+aliases = ["milk", "whole milk"]
+
+[organism]
+taxon = "NCBITaxon_9913"
+fdc_id = 746782
+description = "Milk, whole, 3.25% milkfat, with added vitamin D"
+
+[origin]
+harvested = true
+
+[[form]]
+state = "as_sold"
+fdc_id = 171265
+description = "Milk, whole, 3.25% milkfat, with added vitamin D"

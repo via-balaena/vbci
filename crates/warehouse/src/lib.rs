@@ -3668,7 +3668,7 @@ codes = ["269", "269.3"]
     #[test]
     fn the_diet_fixtures_hold() {
         let w = warehouse();
-        let fixtures: [(&str, &str, &str); 18] = [
+        let fixtures: [(&str, &str, &str); 22] = [
             ("Mushrooms, oyster, raw", "yes", "yes"),
             ("Mushroom, oyster", "yes", "yes"),
             ("Mushroom, king oyster", "yes", "yes"),
@@ -3699,6 +3699,18 @@ codes = ["269", "269.3"]
             ),
             ("Cheese, parmesan, grated", "no", "unknown"),
             ("Beans, baked, canned, with franks", "no", "no"),
+            ("Beverages, water, tap, drinking", "yes", "yes"),
+            ("Leavening agents, baking soda", "yes", "yes"),
+            // Unknown, decided with Jon, 2026-10-17: its name does not give its filler.
+            (
+                "Leavening agents, baking powder, double-acting, sodium aluminum sulfate",
+                "unknown",
+                "unknown",
+            ),
+            // Vegan unknown, decided with Jon, 2026-10-17: its name does not say cane or beet.
+            // Vegetarian unknown by its category, mixed; bone char would be a processing aid the
+            // Vegetarian Society's criteria exclude.
+            ("Sugars, granulated", "unknown", "unknown"),
         ];
         for (name, vegan, vegetarian) in fixtures {
             let got = strings(

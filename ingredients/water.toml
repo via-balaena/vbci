@@ -1,0 +1,13 @@
+name = "Water"
+aliases = ["water", "cold water", "warm water", "hot water", "ice water", "lukewarm water", "boiling water"]
+
+[organism]
+none = "Not from an organism."
+
+[origin]
+none = "Drawn from a tap or a spring, not grown or made from a food."
+
+[[form]]
+state = "as_sold"
+fdc_id = 173647
+description = "Beverages, water, tap, drinking"

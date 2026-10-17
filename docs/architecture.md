@@ -58,7 +58,7 @@ recipes and diets, rebuilt from pinned sources and reviewed records.
 | Which Foundation food or Wikidata item an ingredient's organism is read from is a review's choice: red lentils read "Lentils, dry" and tofu a soy milk, as Foundation foods have neither of their own; parmesan reads its own Foundation food, whose NCBI Taxon is the cow's. Many ingredients can share one organism, and one organism can be several crops (USDA gives broccoli, kale and collards one taxon), so an organism does not say which ingredient a crop is. | nothing: review. `docs/ingredients.md` shows each ingredient's organism and where it was read from. That USDA gives the three crops one taxon: `one_organism_can_be_several_crops`. |
 | An ingredient says in an `[origin]` table what it is made from: `harvested = true`, for a food as harvested, made from nothing; `made_from`, the ids of the ingredients it is made from, each once; or `none`, saying why, where what it is made from is no ingredient (decided 2026-10-17, Jon: "your call": the record says, and a review decides). `harvested` is never false. | `an_ingredient_says_what_it_is_made_from` |
 | Each ingredient an ingredient is made from is in `ingredients/`, and has its organism where it has one; none leads back to it, directly or through others; a harvested ingredient has an organism. | `what_an_ingredient_is_made_from_is_there_shares_its_organism_and_leads_elsewhere`; silver's keys hold only that each is an ingredient and not the ingredient itself, `each_ingredient_s_origin_is_loaded_and_its_keys_hold` |
-| Whether an ingredient is harvested, and what it is made from, is a review's choice, by this line: peeling or trimming what is picked, dug, cut or threshed leaves it as harvested (a lemon, whose USDA food is "Lemons, raw, without peel"); milling (hulling, dehulling and splitting among it), pressing, juicing or curdling makes another food; cooking, canning or freezing one ingredient gives a state of its forms. So red lentils, sold with the seed coat taken off (as reported, `docs/prior-art.md`), are made from lentils; olive oil, pressed from olives as picked, and brown rice, hulled from paddy rice, name none, as USDA has no food for either as harvested. An alias is not held to the line: cumin's "ground cumin" names the seed's food. | nothing: review. `docs/ingredients.md` shows each ingredient's origin. |
+| Whether an ingredient is harvested, and what it is made from, is a review's choice, by this line: peeling or trimming what is picked, dug, cut or threshed leaves it as harvested (a lemon, whose USDA food is "Lemons, raw, without peel"); eggs as laid and milk as drawn are harvested too (from step 16); milling (hulling, dehulling and splitting among it), pressing, juicing, curdling or churning makes another food; cooking, canning, freezing, drying, pasteurizing or fortifying one ingredient gives a state of its forms. So red lentils, sold with the seed coat taken off (as reported, `docs/prior-art.md`), are made from lentils; olive oil, pressed from olives as picked, and brown rice, hulled from paddy rice, name none, as USDA has no food for either as harvested. An alias is not held to the line: cumin's "ground cumin" names the seed's food. | nothing: review. `docs/ingredients.md` shows each ingredient's origin. |
 | A crop is a file `crops/<id>.toml`, its id as an ingredient's is; it has a name, the Wikidata item of its organism (`Q<digits>`) with the NCBI Taxonomy id (`NCBITaxon_<digits>`) and the scientific name that item gives, and the ingredient it yields, by its id, with the state it is harvested in, raw or dry. | `a_good_crop_loads`, `a_crop_is_named_by_its_file`, `a_crop_names_its_organism_and_its_ingredient_by_their_ids`, `a_crop_is_harvested_raw_or_dry`, `the_crops_on_disk_load` |
 | A crop's organism is its item's own P685, and its scientific name the item's own P225, each one statement. It is its ingredient's organism, or one step below it: the item's one P171 (parent taxon) names a pinned item whose own P685 is the ingredient's organism (decided 2026-10-16, Jon: "your call": Wikidata's parent taxon, not NCBI's dump, as the export is CC0 whole). | `a_crop_s_item_gives_its_own_taxon_and_its_parent_s`, `each_crop_s_organism_is_its_ingredient_s_or_one_step_below` |
 | The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks either; whose ingredient is not in `ingredients/`, has no organism, is not harvested, or has no form in the crop's state; and whose organism is neither its ingredient's nor one step below it: a parent taxon with another organism, two steps down, no parent taxon, or one not pinned. | `the_load_refuses_a_crop_its_organism_does_not_fit`, and on the pinned data, `the_crops_read_their_organisms_from_their_items` |
@@ -176,15 +176,37 @@ which reads `export/datapackage.json` and analyses a recipe against it; the comm
    `@garlic cloves{2}` or `@garlic clove{1}`, which had no grams, as garlic has no portion of one
    whole item. Of the 174 lines whose name, read from the recipe's text, has two or more words and
    ends in a count unit's name, 12 have a name holding a comma, "with", "from" or a parenthesis,
-   whose last word need not be what is counted ("celery rib with leaves", "potatoes, cut into
-   1-inch pieces"); none of VBCI's 49 aliases holds one. Whether each of the other 162, in 52
-   names, reads right is a reading of the name: "bay leaves" and "thyme sprigs" do; in "ground
-   cloves" and "whole dried cloves" the word is the spice, and each of the 11 lines of "ground
-   cloves" had a unit, while the one of "whole dried cloves" was a bare count. Passed over: each
-   alias naming its unit in its ingredient's record, which would rule out a misreading at the cost
-   of a field in the alias, a plain string in every record. ingredient-parser's tests hold that "2
-   garlic cloves" has "cloves" as its unit. The cost: an alias's unit holds without anyone typing
+   whose last word need not be what is counted ("celery rib with leaves", "potatoes, cut into 1-inch
+   pieces"); none of VBCI's 49 aliases holds one, nor do the 35 step 16 adds. Whether each of the
+   other 162, in 52 names, reads right is a reading of the name: "bay leaves" and "thyme sprigs" do;
+   in "ground cloves" and "whole dried cloves" the word is the spice, and each of the 11 lines of
+   "ground cloves" had a unit, while the one of "whole dried cloves" was a bare count. Passed over:
+   each alias naming its unit in its ingredient's record, which would rule out a misreading at the
+   cost of a field in the alias, a plain string in every record. ingredient-parser's tests hold that
+   "2 garlic cloves" has "cloves" as its unit. The cost: an alias's unit holds without anyone typing
    it, so it is right only as far as a review of the alias sees it.
+4. **Granulated sugar's vegan answer is unknown** (decided with Jon: "your recommendation"). USDA's
+   "Sugars, granulated" does not say whether it is cane sugar or beet sugar, and cane sugar in the
+   US and Canada may be filtered through bone char: a reply on The Vegan Society's blog, by a
+   commenter the page does not identify, "it's in the US and Canada that cane sugar is filtered
+   through bone char, but not all of it" (2015), and a post on its blog by Sarah Cook, whose views
+   the blog says are not necessarily the Society's, "the vast majority of sugar in the UK is not
+   bleached with bone char so most of the big brands are fine. However, you might want to use
+   unbleached sugar to be on the safe side if you are not sure where the sugar comes from" (2016),
+   both read 2026-10-17. An exception sets only what a food's name gives evidence for, so its
+   category's unknown stands. Passed over: yes, on the post's "most of the big brands are fine",
+   which is of UK sugar, while USDA's foods are American. Its vegetarian answer, unknown by its
+   category, is unknown for the same reason, by my reading of the Vegetarian Society's criteria,
+   read 2026-10-17: they exclude "Any food or ingredient made with processing aids created from"
+   "Animal flesh or body parts", and bone char is made from animal bones. The cost: a recipe with
+   sugar is vegan unknown unless another line makes it no.
+5. **Baking powder's answers are unknown** (decided with Jon: "your recommendation"). USDA's
+   "Leavening agents, baking powder, double-acting, sodium aluminum sulfate" gives its acid salt but
+   not the filler that its 27.7 g of carbohydrate in 100 g shows, and an exception sets only what a
+   food's name gives evidence for, so its category's unknown stands, as sugar's does. Passed over:
+   yes, on what baking powders usually hold, a starch, which USDA's name does not say. The cost: a
+   recipe with baking powder is unknown unless another line makes it no; the 1,461 recipes name it
+   155 times, and the one that answered vegan yes, "Self-Rising Flour", is now unknown.
 
 ### Layers
 
@@ -240,7 +262,8 @@ Each step is one pull request, done when its check passes.
    above. USDA's portions and measure units come with step 7.
 5. **Diet status per food,** vegan and vegetarian, by the definitions decided above, each answer
    yes, no or unknown, from records reviewed by pull request: the first that applies of an exception
-   for it (`diet/exceptions.toml`, 71 foods, each with its reason), a naming rule within its
+   for it (`diet/exceptions.toml`, 71 foods, each with its reason; 73 from step 16), a naming rule
+   within its
    category (`diet/rules.toml`, 14 rules, such as names starting "Cheese" in Dairy and Egg Products:
    vegetarian unknown), the animal organism a Foundation food records (`diet/taxa.toml`, from USDA's
    NCBI taxon attribute), and its category's class (`diet/categories.toml`, all 28 categories). An
@@ -377,23 +400,46 @@ The second arc, farm reference data, began on 2026-10-16.
     times, and neither today's matching nor two by words narrowed any. Done, with the tests in
     the rules above.
 
+16. **Staples.** Eleven ingredients that recipes name most and VBCI lacked, chosen by how often the
+    1,461 public Cooklang recipes name them: salt, sugar, butter, black pepper, flour, eggs, water,
+    vanilla extract, milk, baking powder and baking soda. Each is linked to an SR Legacy food. Their
+    organisms follow step 11's order: butter and milk the cow, eggs the chicken and flour wheat,
+    from Foundation foods; black pepper and vanilla from Wikidata, vanilla through the vanilla
+    bean's item, as no item for vanilla extract names a taxon (four more pins, 20 in all); salt,
+    sugar, water, baking powder and baking soda none. Their origins follow step 13's line: eggs,
+    milk and black pepper harvested, black pepper dry, as cumin is; butter made from milk; the rest
+    made from what no ingredient is; and parmesan, made from cow's milk, is now made from milk.
+    Aliases are the recipes' own spellings, less "kosher salt" and "sea salt", lighter per teaspoon
+    than table salt, and "salted butter", saltier. Water and baking soda are vegan and vegetarian by
+    exceptions, the first that raise a vegan answer to yes (the exceptions of two light butters
+    already raise a vegetarian one); granulated sugar stays vegan unknown and baking powder unknown
+    (decided above). Measured on 2026-10-17 with the CLI built from this step, on the recipes: of
+    13,858 lines, those that reach an ingredient went from 1,437 to 5,635, and those with grams from
+    1,253 (1,228 before step 15, and the 25 it weighs) to 4,789; the recipes answering vegan no went
+    from 58 to 611. Done, with the tests in the rules above.
 **Later:** the rest of farm reference data. A grower's weight per bunch or head comes from harvests
 that record both a count and a weight, so it is measured, not typed; the 2026-10-11 search found
 none stored in farmOS, Open Food Network, LiteFarm, FarmBot or Growstuff. Harvests are operational
 data, so they wait for its design. Interchange through farmOS's JSON:API and the Data Food
 Consortium's, which Open Food Network uses. Growstuff's crops carry GBIF and Wikidata ids and nest
 under a parent crop, and AGROVOC links GBIF. A crop more than one step below its ingredient's
-organism, such as a cultivar under a variety, is refused until a rule for it is decided. Olive
-and rice crops wait for a USDA food for each as harvested. Cooked carrot's one portion of a whole
-carrot reads "carrot", which no unit reads, so a bare count of cooked carrot has no grams. A note
-narrows a line's portions only where its words are in their texts as one run in their order:
-`@onion{1}(large, chopped)` gets every size, and `@onion{1}(2)` names "medium (2-1/2" dia)".
-In the 1,461 recipes, the largest groups of lines of VBCI's ingredients still without grams, after
-the 64 with no amount, were cans by their size or in `can` (`15-oz can`; 33), lemon juice by the
-lemon (`1/2 lemon`, or a bare count; 19) and `lbs` (11), which cooklang's bundled units do not
-know; each came from one collection. A size given as a line's unit wins over its name's unit:
+organism, such as a cultivar under a variety, is refused until a rule for it is decided. Olive and
+rice crops wait for a USDA food for each as harvested. Cooked carrot's one portion of a whole carrot
+reads "carrot", which no unit reads, so a bare count of cooked carrot has no grams. A note narrows a
+line's portions only where its words are in their texts as one run in their order:
+`@onion{1}(large, chopped)` gets every size, and `@onion{1}(2)` names "medium (2-1/2" dia)". In the
+1,461 recipes, the largest groups of lines of VBCI's ingredients still without grams, after the 64
+with no amount, were cans by their size or in `can` (`15-oz can`; 33), lemon juice by the lemon
+(`1/2 lemon`, or a bare count; 19) and `lbs` (11), which cooklang's bundled units do not know; each
+came from one collection. A size given as a line's unit wins over its name's unit:
 `@garlic cloves{2%large}` has no grams, as garlic has no portion in `large`; and the corpus wrote
-garlic's unit as `large cloves` or `large clove` 8 times, which no unit reads.
+garlic's unit as `large cloves` or `large clove` 8 times, which no unit reads. Of the staples' 662
+lines still without grams, 491 have no amount, salt's and black pepper's most (226 and 199); 71 are
+salt in a `pinch`, which USDA's salt has no portion in, and 24 butter in a `stick` or `sticks`,
+which no count unit reads, though USDA gives a stick of butter, 113 g. "kosher salt", "sea salt" and
+"salted butter" wait for foods of their own; "pepper" reads as black pepper, so `@pepper{1}`, a bell
+pepper, has no grams; and "large eggs" counts small, medium and large eggs, as "eggs", its last
+word, names no count unit; USDA's extra large (56 g) and jumbo (63 g) eggs are read by no unit.
 
 ### Grades
 

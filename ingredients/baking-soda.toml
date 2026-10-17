@@ -1,0 +1,13 @@
+name = "Baking soda"
+aliases = ["baking soda"]
+
+[organism]
+none = "Sodium bicarbonate, a mineral salt, not from an organism."
+
+[origin]
+none = "Manufactured, not grown or made from a food."
+
+[[form]]
+state = "as_sold"
+fdc_id = 175040
+description = "Leavening agents, baking soda"

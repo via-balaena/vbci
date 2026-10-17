@@ -1,0 +1,13 @@
+name = "Salt"
+aliases = ["salt", "table salt"]
+
+[organism]
+none = "A mineral, not from an organism."
+
+[origin]
+none = "Evaporated from brine or mined, which no ingredient is."
+
+[[form]]
+state = "as_sold"
+fdc_id = 173468
+description = "Salt, table"

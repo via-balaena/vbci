@@ -200,3 +200,14 @@ A source marked **re-read** was read that day for what the mark names.
 | Public Cooklang recipes | three collections at one commit each: cooklang/recipes (36 recipes), nicholaswilde/recipes (1,276) and dubadub/cookbook (149); 24 of the 1,461 do not parse | nicholaswilde/recipes Apache-2.0; the other two state none | nothing: measured, not copied. Of 13,858 lines, 292 have a note, 28 of them on one of VBCI's ingredients; a note met portions that disagree 9 times. 25 were bare counts of garlic written `@garlic cloves{2}` or `@garlic clove{1}` (step 15) | github.com/cooklang/recipes at 95608fe1, github.com/nicholaswilde/recipes at 261d873d, github.com/dubadub/cookbook at 93c02a1b, **re-read** (license, counts) |
 | ingredient-parser | parses an ingredient line into name, amount, unit and more | MIT, as "Linking recipes to USDA data" above gives it | the reading of step 15: its tests hold that "2 garlic cloves" has "cloves" as its unit, and that "1 tsp cloves" has cloves as its name | github.com/strangetom/ingredient-parser at 8cac3497, `tests/parser/test_cloves.py`, **re-read** (the tests) |
 | USDA's portions | one whole item's portions: for VBCI's carrot, onion, potato and tomato in small, medium and large, and for its lemon in "fruit"; some name the food itself, as cooked carrot's "carrot" and Foundation's yellow onion's "Onion" do | CC0 | step 14's grams, read through the count units marked whole | scratch check of both pinned zips |
+
+## Staples
+
+For plan step 16. Read on 2026-10-17 without agents: The Vegan Society's pages that a web search of
+vegansociety.com found for sugar and bone char, read for the sentences quoted. Which staples to
+add came from the public Cooklang recipes in "Bare counts" above.
+
+| source | what it is | license | what VBCI takes | source |
+|---|---|---|---|---|
+| The Vegan Society, "All you need to know about successful vegan baking" | a blog post by Sarah Cook, 2016: "the vast majority of sugar in the UK is not bleached with bone char so most of the big brands are fine. However, you might want to use unbleached sugar to be on the safe side if you are not sure where the sugar comes from", and "Flour is suitable for vegans. All flour." | not read: VBCI quotes it and takes no data | why granulated sugar stays vegan unknown (`docs/architecture.md`, decided 2026-10-17) | vegansociety.com/news/blog/all-you-need-know-about-successful-vegan-baking, **re-read** (the sentences) |
+| The Vegan Society, "How to avoid buying non-vegan products" | a blog post by Sarah Hoyle, 2015; a reply in its comments by "ali.ryland", whom the page does not identify as the Society's: "it's in the US and Canada that cane sugar is filtered through bone char, but not all of it" | not read: VBCI quotes it and takes no data | the same | vegansociety.com/news/blog/how-avoid-buying-non-vegan-products, **re-read** (the reply) |

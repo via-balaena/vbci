@@ -1,0 +1,14 @@
+name = "Black pepper"
+aliases = ["black pepper", "pepper", "ground black pepper", "freshly ground black pepper", "freshly ground pepper", "ground pepper"]
+
+[organism]
+taxon = "NCBITaxon_13216"
+wikidata = "Q22915010"
+
+[origin]
+harvested = true
+
+[[form]]
+state = "dry"
+fdc_id = 170931
+description = "Spices, pepper, black"

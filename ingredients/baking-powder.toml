@@ -1,0 +1,13 @@
+name = "Baking powder"
+aliases = ["baking powder"]
+
+[organism]
+none = "Leavening salts and a filler, 27.7 g of carbohydrate in 100 g by USDA, whose source its name does not give."
+
+[origin]
+none = "Mixed from leavening salts and a filler; USDA's name gives sodium aluminum sulfate alone."
+
+[[form]]
+state = "as_sold"
+fdc_id = 172803
+description = "Leavening agents, baking powder, double-acting, sodium aluminum sulfate"

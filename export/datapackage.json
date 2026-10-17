@@ -102,6 +102,26 @@
       "version": "2545415117"
     },
     {
+      "title": "Q22915010, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q22915010&oldid=2539241356",
+      "version": "2539241356"
+    },
+    {
+      "title": "Q43084, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q43084&oldid=2550048160",
+      "version": "2550048160"
+    },
+    {
+      "title": "Q12008959, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q12008959&oldid=2308825522",
+      "version": "2308825522"
+    },
+    {
+      "title": "Q7224923, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q7224923&oldid=2553160384",
+      "version": "2553160384"
+    },
+    {
       "title": "VBCI's records, at the sha256s _lineage gives",
       "path": "https://github.com/via-balaena/vbci"
     }
@@ -147,6 +167,12 @@
         "bytes": 43627
       },
       {
+        "item": "Q12008959",
+        "revision": 2308825522,
+        "sha256": "2532c6411660e7da24f688ffe0a7501e7ed677080dcd2521546efedf30f0372e",
+        "bytes": 3928
+      },
+      {
         "item": "Q131226",
         "revision": 2553321145,
         "sha256": "c7cf8923cd05ff939a1e279e8b3bd1e7868f0add2996c28a713feff3bd40a565",
@@ -163,6 +189,12 @@
         "revision": 2549623412,
         "sha256": "4e2040a786b7644866699875f6024758f83631ec7ffd7ff6d27504a82db2390e",
         "bytes": 19857
+      },
+      {
+        "item": "Q22915010",
+        "revision": 2539241356,
+        "sha256": "890141f15265d5fbb60264e7efaa0f1d52a6f03b679be4a7a4286282e082a0d6",
+        "bytes": 9478
       },
       {
         "item": "Q23400",
@@ -189,6 +221,12 @@
         "bytes": 132441
       },
       {
+        "item": "Q43084",
+        "revision": 2550048160,
+        "sha256": "d724a07586f7e9bd22d43384acc917b79ec949357349e0b215c415d6e9c23d2b",
+        "bytes": 105639
+      },
+      {
         "item": "Q500",
         "revision": 2557102922,
         "sha256": "4deba13eb189c0d324efb84e456347adfb0b9bd3371c69830d736990d68d8537",
@@ -205,6 +243,12 @@
         "revision": 2556981154,
         "sha256": "8075cb589851a6549a08e38aef5f3dfc8242d1752c8602ac334faabccb161144",
         "bytes": 37423
+      },
+      {
+        "item": "Q7224923",
+        "revision": 2553160384,
+        "sha256": "b14b1fb7ab120c6ed16c1032cb56bb4ed1f6d1bf9d4a8d85f2ab6f6e745f30e0",
+        "bytes": 78518
       },
       {
         "item": "Q81375",
@@ -274,7 +318,7 @@
       },
       {
         "path": "diet/exceptions.toml",
-        "sha256": "fec938d2d60027062f16d631580be17263a7c413a60146c9bdead42c19cbca96"
+        "sha256": "b485793483964f473873d093c88fa24f493e83d9daa76ef7abcd026dec050128"
       },
       {
         "path": "diet/rules.toml",
@@ -285,8 +329,24 @@
         "sha256": "4b993b0859a7dff45a4fa818fec80641a3f78f4f7e7148ee5bc783ed56fdebbd"
       },
       {
+        "path": "ingredients/baking-powder.toml",
+        "sha256": "19ecac998afde9d3d3b8f51eb94ee00d6948e4310514acc19e6cc07bcc5bcf92"
+      },
+      {
+        "path": "ingredients/baking-soda.toml",
+        "sha256": "a72da678fa06f37ddc686111a354e6a8f89ab7a38bc98cd71100fe19c5c46d67"
+      },
+      {
+        "path": "ingredients/black-pepper.toml",
+        "sha256": "82977d31dd4075288a2cc7fd5c109286925f012a4fa2f1b877ace7c2329b531a"
+      },
+      {
         "path": "ingredients/brown-rice.toml",
         "sha256": "9b468078bc70750393d7c9fcb872833a1d5a5661a792343c7f597146480252fe"
+      },
+      {
+        "path": "ingredients/butter.toml",
+        "sha256": "4c006cf20ddb17db76bb394afd1ff86aed74cd9d9b58f6d8a1fc88e8a302af6f"
       },
       {
         "path": "ingredients/carrot.toml",
@@ -299,6 +359,14 @@
       {
         "path": "ingredients/cumin.toml",
         "sha256": "9506d1bf6f69ea31ec4bce545442184a238a0e2158f68bd3a9250f7e0150abef"
+      },
+      {
+        "path": "ingredients/eggs.toml",
+        "sha256": "c968d8fdfcdf5fe2cf8b06a8c9728e17ed937ef129ca30510ed73b1365df4cbf"
+      },
+      {
+        "path": "ingredients/flour.toml",
+        "sha256": "2e594083d5b8bab3a9f2231ef1db8eeb04aa8ee05ff94836ecef39462e0be0b9"
       },
       {
         "path": "ingredients/garlic.toml",
@@ -317,6 +385,10 @@
         "sha256": "a87a89cf8cc6dcd9221a7629f28b6282042fd0d19a0a959c9248408bff393ff8"
       },
       {
+        "path": "ingredients/milk.toml",
+        "sha256": "af00a3c65c5fb50860edd013aaa23ae9f537a6fb159a82c6ded5fa55754f0561"
+      },
+      {
         "path": "ingredients/olive-oil.toml",
         "sha256": "7af1b457468e8e5a2722a971e61bda5693fb44ad711e66b8fae6f1c206ac5385"
       },
@@ -326,7 +398,7 @@
       },
       {
         "path": "ingredients/parmesan.toml",
-        "sha256": "684fdc847ec2fa8838eb9a7bce87774c423a86ba98afbeec19594a24b7db60fc"
+        "sha256": "d776e735f52d9b25f672511455e7c79f20468d20aa0ebc80363be7255678c355"
       },
       {
         "path": "ingredients/potato.toml",
@@ -337,12 +409,20 @@
         "sha256": "cc0bcdb256a9d847e923a9a8d2db3fb957d606a044e15df77ffb3f973093fd16"
       },
       {
+        "path": "ingredients/salt.toml",
+        "sha256": "dd94701f7cbf07374363fc514130e77261541ff88c1e8cda2087f70995e27cec"
+      },
+      {
         "path": "ingredients/soybeans.toml",
         "sha256": "3e389b8f514e005841c5e8f0249cf78aec13b1563726ec6e70c0ce34052bcc80"
       },
       {
         "path": "ingredients/spinach.toml",
         "sha256": "0f6139d30e95b9a8e4d1df6f5cff1bf6e685c28cf36b6d2c433c17029d4c6a2e"
+      },
+      {
+        "path": "ingredients/sugar.toml",
+        "sha256": "0947436ef4bb6d2be1d0025ad8c058e84313814872307cff25bfca2e0bc47abb"
       },
       {
         "path": "ingredients/tofu.toml",
@@ -353,8 +433,16 @@
         "sha256": "ff23d08c6a9a9439b76dffe7586b97bc906714a2728ace647415f91c019c4d59"
       },
       {
+        "path": "ingredients/vanilla.toml",
+        "sha256": "b863ce24873e2a4fc5a4fe8a685d36d44bd46801fda5926a89a6d5ff708e52dd"
+      },
+      {
         "path": "ingredients/vegetable-broth.toml",
         "sha256": "f85045ab9439dec09a6a55862852c49493d45f380323f84feb02405c04ad7d5e"
+      },
+      {
+        "path": "ingredients/water.toml",
+        "sha256": "63b7eb86a86e4d31292262087a1e50c010f30e65c7b8684e32647ba1e3ed598f"
       },
       {
         "path": "nutrients.toml",
@@ -362,7 +450,7 @@
       },
       {
         "path": "sources.toml",
-        "sha256": "43a5c3c479996b153ad70dea78078fe318158d3b468c6b21665fbe157f6f9164"
+        "sha256": "0ff4a7db30f732a5084deb5734f47a4f55ad68b52dfcde48d4c66e7e720073fe"
       },
       {
         "path": "units/count.toml",
@@ -6553,7 +6641,7 @@
         [173644,"sr-legacy","Chicken, stewing, light meat, meat only, cooked, stewed","Poultry Products","no","category: flesh","no","category: flesh"],
         [173645,"sr-legacy","Chicken, capons, meat and skin, raw","Poultry Products","no","category: flesh","no","category: flesh"],
         [173646,"sr-legacy","Chicken, capons, meat and skin, cooked, roasted","Poultry Products","no","category: flesh","no","category: flesh"],
-        [173647,"sr-legacy","Beverages, water, tap, drinking","Beverages","unknown","category: mixed","unknown","category: mixed"],
+        [173647,"sr-legacy","Beverages, water, tap, drinking","Beverages","yes","exception","yes","exception"],
         [173648,"sr-legacy","Beverages, coffee substitute, cereal grain beverage, powder, prepared with whole milk","Beverages","unknown","category: mixed","unknown","category: mixed"],
         [173649,"sr-legacy","Beverages, Dairy drink mix, chocolate, reduced calorie, with low-calorie sweeteners, powder","Beverages","unknown","category: mixed","unknown","category: mixed"],
         [173650,"sr-legacy","Beverages, dairy drink mix, chocolate, reduced calorie, with aspartame, powder, prepared with water and ice","Beverages","unknown","category: mixed","unknown","category: mixed"],
@@ -7946,7 +8034,7 @@
         [175037,"sr-legacy","Tortillas, ready-to-bake or -fry, flour, refrigerated","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175038,"sr-legacy","Waffles, plain, frozen, ready-to-heat","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175039,"sr-legacy","Waffles, plain, prepared from recipe","Baked Products","unknown","category: mixed","unknown","category: mixed"],
-        [175040,"sr-legacy","Leavening agents, baking soda","Baked Products","unknown","category: mixed","unknown","category: mixed"],
+        [175040,"sr-legacy","Leavening agents, baking soda","Baked Products","yes","exception","yes","exception"],
         [175041,"sr-legacy","Leavening agents, cream of tartar","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175042,"sr-legacy","Leavening agents, yeast, baker's, compressed","Baked Products","unknown","category: mixed","unknown","category: mixed"],
         [175043,"sr-legacy","Leavening agents, yeast, baker's, active dry","Baked Products","unknown","category: mixed","unknown","category: mixed"],
@@ -135492,24 +135580,35 @@
       },
       "data": [
         ["ingredient","name","wikidata"],
+        ["baking-powder","Baking powder",null],
+        ["baking-soda","Baking soda",null],
+        ["black-pepper","Black pepper",null],
         ["brown-rice","Brown rice",null],
+        ["butter","Butter",null],
         ["carrot","Carrot",null],
         ["chickpeas","Chickpeas",null],
         ["cumin","Cumin",null],
+        ["eggs","Eggs",null],
+        ["flour","Flour",null],
         ["garlic","Garlic",null],
         ["lemon","Lemon",null],
         ["lemon-juice","Lemon juice",null],
         ["lentils","Lentils",null],
+        ["milk","Milk",null],
         ["olive-oil","Olive oil",null],
         ["onion","Onion",null],
         ["parmesan","Parmesan",null],
         ["potato","Potato",null],
         ["red-lentils","Red lentils",null],
+        ["salt","Salt",null],
         ["soybeans","Soybeans",null],
         ["spinach","Spinach",null],
+        ["sugar","Sugar",null],
         ["tofu","Tofu",null],
         ["tomato","Tomato",null],
-        ["vegetable-broth","Vegetable broth",null]
+        ["vanilla","Vanilla extract",null],
+        ["vegetable-broth","Vegetable broth",null],
+        ["water","Water",null]
       ]
     },
     {
@@ -135546,31 +135645,53 @@
       },
       "data": [
         ["alias","ingredient"],
+        ["all purpose flour","flour"],
+        ["all-purpose flour","flour"],
+        ["baking powder","baking-powder"],
+        ["baking soda","baking-soda"],
         ["bean curd","tofu"],
+        ["black pepper","black-pepper"],
+        ["boiling water","water"],
         ["brown lentils","lentils"],
         ["brown rice","brown-rice"],
+        ["butter","butter"],
         ["carrot","carrot"],
         ["carrots","carrot"],
         ["chickpea","chickpeas"],
         ["chickpeas","chickpeas"],
+        ["cold water","water"],
         ["cumin","cumin"],
         ["cumin seed","cumin"],
         ["cumin seeds","cumin"],
+        ["egg","eggs"],
+        ["eggs","eggs"],
         ["firm tofu","tofu"],
+        ["flour","flour"],
         ["fresh lemon juice","lemon-juice"],
+        ["freshly ground black pepper","black-pepper"],
+        ["freshly ground pepper","black-pepper"],
         ["garbanzo beans","chickpeas"],
         ["garbanzos","chickpeas"],
         ["garlic","garlic"],
         ["garlic clove","garlic"],
         ["garlic cloves","garlic"],
+        ["granulated sugar","sugar"],
         ["green lentils","lentils"],
+        ["ground black pepper","black-pepper"],
         ["ground cumin","cumin"],
+        ["ground pepper","black-pepper"],
+        ["hot water","water"],
+        ["ice water","water"],
+        ["large egg","eggs"],
+        ["large eggs","eggs"],
         ["lemon","lemon"],
         ["lemon juice","lemon-juice"],
         ["lemons","lemon"],
         ["lentil","lentils"],
         ["lentils","lentils"],
+        ["lukewarm water","water"],
         ["masoor dal","red-lentils"],
+        ["milk","milk"],
         ["olive oil","olive-oil"],
         ["onion","onion"],
         ["onions","onion"],
@@ -135578,23 +135699,36 @@
         ["parmesan cheese","parmesan"],
         ["parmigiano reggiano","parmesan"],
         ["parmigiano-reggiano","parmesan"],
+        ["pepper","black-pepper"],
         ["pink lentils","red-lentils"],
+        ["plain flour","flour"],
         ["potato","potato"],
         ["potatoes","potato"],
+        ["pure vanilla extract","vanilla"],
         ["red lentil","red-lentils"],
         ["red lentils","red-lentils"],
+        ["salt","salt"],
         ["soy beans","soybeans"],
         ["soybean","soybeans"],
         ["soybeans","soybeans"],
         ["spinach","spinach"],
         ["split red lentils","red-lentils"],
+        ["sugar","sugar"],
+        ["table salt","salt"],
         ["tofu","tofu"],
         ["tomato","tomato"],
         ["tomatoes","tomato"],
+        ["unsalted butter","butter"],
+        ["vanilla","vanilla"],
+        ["vanilla extract","vanilla"],
         ["veg stock","vegetable-broth"],
         ["vegetable broth","vegetable-broth"],
         ["vegetable stock","vegetable-broth"],
-        ["veggie broth","vegetable-broth"]
+        ["veggie broth","vegetable-broth"],
+        ["warm water","water"],
+        ["water","water"],
+        ["white sugar","sugar"],
+        ["whole milk","milk"]
       ]
     },
     {
@@ -135717,8 +135851,12 @@
       },
       "data": [
         ["ingredient","state","is_default","fdc_id","dataset","description","foodon","nutrients"],
+        ["baking-powder","as_sold",true,172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate",null,15],
+        ["baking-soda","as_sold",true,175040,"sr-legacy","Leavening agents, baking soda",null,15],
+        ["black-pepper","dry",true,170931,"sr-legacy","Spices, pepper, black",null,16],
         ["brown-rice","cooked",false,169704,"sr-legacy","Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)",null,16],
         ["brown-rice","dry",true,169703,"sr-legacy","Rice, brown, long-grain, raw (Includes foods for USDA's Food Distribution Program)",null,16],
+        ["butter","as_sold",true,173430,"sr-legacy","Butter, without salt",null,16],
         ["carrot","canned",false,170396,"sr-legacy","Carrots, canned, regular pack, drained solids",null,15],
         ["carrot","cooked",false,170394,"sr-legacy","Carrots, cooked, boiled, drained, without salt",null,15],
         ["carrot","frozen",false,169983,"sr-legacy","Carrots, frozen, unprepared (Includes foods for USDA's Food Distribution Program)",null,15],
@@ -135727,12 +135865,15 @@
         ["chickpeas","cooked",false,173757,"sr-legacy","Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt",null,15],
         ["chickpeas","dry",true,173756,"sr-legacy","Chickpeas (garbanzo beans, bengal gram), mature seeds, raw",null,15],
         ["cumin","dry",true,170923,"sr-legacy","Spices, cumin seed",null,15],
+        ["eggs","raw",true,171287,"sr-legacy","Egg, whole, raw, fresh",null,16],
+        ["flour","as_sold",true,168894,"sr-legacy","Wheat flour, white, all-purpose, enriched, bleached",null,15],
         ["garlic","raw",true,169230,"sr-legacy","Garlic, raw",null,15],
         ["lemon","raw",true,167746,"sr-legacy","Lemons, raw, without peel",null,15],
         ["lemon-juice","canned",false,167748,"sr-legacy","Lemon juice from concentrate, canned or bottled",null,15],
         ["lemon-juice","raw",true,167747,"sr-legacy","Lemon juice, raw",null,16],
         ["lentils","cooked",false,172421,"sr-legacy","Lentils, mature seeds, cooked, boiled, without salt",null,15],
         ["lentils","dry",true,172420,"sr-legacy","Lentils, raw",null,15],
+        ["milk","as_sold",true,171265,"sr-legacy","Milk, whole, 3.25% milkfat, with added vitamin D",null,15],
         ["olive-oil","as_sold",true,171413,"sr-legacy","Oil, olive, salad or cooking",null,15],
         ["onion","cooked",false,170001,"sr-legacy","Onions, cooked, boiled, drained, without salt",null,15],
         ["onion","raw",true,170000,"sr-legacy","Onions, raw",null,15],
@@ -135740,17 +135881,21 @@
         ["potato","cooked",false,170440,"sr-legacy","Potatoes, boiled, cooked without skin, flesh, without salt",null,15],
         ["potato","raw",true,170028,"sr-legacy","Potatoes, white, flesh and skin, raw",null,15],
         ["red-lentils","dry",true,174284,"sr-legacy","Lentils, pink or red, raw",null,14],
+        ["salt","as_sold",true,173468,"sr-legacy","Salt, table",null,15],
         ["soybeans","cooked",false,174271,"sr-legacy","Soybeans, mature cooked, boiled, without salt",null,15],
         ["soybeans","dry",true,174270,"sr-legacy","Soybeans, mature seeds, raw",null,15],
         ["spinach","canned",false,169286,"sr-legacy","Spinach, canned, regular pack, drained solids",null,15],
         ["spinach","cooked",false,168463,"sr-legacy","Spinach, cooked, boiled, drained, without salt",null,15],
         ["spinach","frozen",false,169287,"sr-legacy","Spinach, frozen, chopped or leaf, unprepared (Includes foods for USDA's Food Distribution Program)",null,15],
         ["spinach","raw",true,168462,"sr-legacy","Spinach, raw",null,15],
+        ["sugar","as_sold",true,169655,"sr-legacy","Sugars, granulated",null,15],
         ["tofu","raw",true,172475,"sr-legacy","Tofu, raw, firm, prepared with calcium sulfate",null,14],
         ["tomato","canned",false,170051,"sr-legacy","Tomatoes, red, ripe, canned, packed in tomato juice",null,15],
         ["tomato","cooked",false,170050,"sr-legacy","Tomatoes, red, ripe, cooked",null,15],
         ["tomato","raw",true,170457,"sr-legacy","Tomatoes, red, ripe, raw, year round average",null,15],
-        ["vegetable-broth","as_sold",true,171583,"sr-legacy","Soup, vegetable broth, ready to serve",null,16]
+        ["vanilla","as_sold",true,173471,"sr-legacy","Vanilla extract",null,15],
+        ["vegetable-broth","as_sold",true,171583,"sr-legacy","Soup, vegetable broth, ready to serve",null,16],
+        ["water","as_sold",true,173647,"sr-legacy","Beverages, water, tap, drinking",null,15]
       ]
     },
     {
@@ -135808,24 +135953,35 @@
       },
       "data": [
         ["ingredient","taxon","fdc_id","wikidata","taxon_item","none"],
+        ["baking-powder",null,null,null,null,"Leavening salts and a filler, 27.7 g of carbohydrate in 100 g by USDA, whose source its name does not give."],
+        ["baking-soda",null,null,null,null,"Sodium bicarbonate, a mineral salt, not from an organism."],
+        ["black-pepper","NCBITaxon_13216",null,"Q22915010","Q43084",null],
         ["brown-rice","NCBITaxon_4530",2512380,null,null,null],
+        ["butter","NCBITaxon_9913",789828,null,null,null],
         ["carrot","NCBITaxon_4039",2258586,null,null,null],
         ["chickpeas","NCBITaxon_3827",2644282,null,null,null],
         ["cumin","NCBITaxon_52462",null,"Q57328174","Q132624",null],
+        ["eggs","NCBITaxon_9031",748967,null,null,null],
+        ["flour","NCBITaxon_4564",789890,null,null,null],
         ["garlic","NCBITaxon_4682",1104647,null,null,null],
         ["lemon","NCBITaxon_2708",null,"Q1093742","Q500",null],
         ["lemon-juice","NCBITaxon_2708",null,"Q1375049","Q500",null],
         ["lentils","NCBITaxon_3864",2644283,null,null,null],
+        ["milk","NCBITaxon_9913",746782,null,null,null],
         ["olive-oil","NCBITaxon_4146",748608,null,null,null],
         ["onion","NCBITaxon_4679",790646,null,null,null],
         ["parmesan","NCBITaxon_9913",325036,null,null,null],
         ["potato","NCBITaxon_4113",2346401,null,null,null],
         ["red-lentils","NCBITaxon_3864",2644283,null,null,null],
+        ["salt",null,null,null,null,"A mineral, not from an organism."],
         ["soybeans","NCBITaxon_3847",1999630,null,null,null],
         ["spinach","NCBITaxon_3562",1999633,null,null,null],
+        ["sugar",null,null,null,null,"Refined from sugarcane or sugar beet, and USDA's name does not say which."],
         ["tofu","NCBITaxon_3847",1999630,null,null,null],
         ["tomato","NCBITaxon_4081",1999634,null,null,null],
-        ["vegetable-broth",null,null,null,null,"A broth of several vegetables, so no one organism."]
+        ["vanilla","NCBITaxon_51239",null,"Q12008959","Q7224923",null],
+        ["vegetable-broth",null,null,null,null,"A broth of several vegetables, so no one organism."],
+        ["water",null,null,null,null,"Not from an organism."]
       ]
     },
     {
@@ -135868,24 +136024,35 @@
       },
       "data": [
         ["ingredient","origin","none"],
+        ["baking-powder","none","Mixed from leavening salts and a filler; USDA's name gives sodium aluminum sulfate alone."],
+        ["baking-soda","none","Manufactured, not grown or made from a food."],
+        ["black-pepper","harvested",null],
         ["brown-rice","none","Hulled from paddy rice, the grain as harvested, which no USDA food is."],
+        ["butter","made_from",null],
         ["carrot","harvested",null],
         ["chickpeas","harvested",null],
         ["cumin","harvested",null],
+        ["eggs","harvested",null],
+        ["flour","none","Milled from wheat, which no ingredient is."],
         ["garlic","harvested",null],
         ["lemon","harvested",null],
         ["lemon-juice","made_from",null],
         ["lentils","harvested",null],
+        ["milk","harvested",null],
         ["olive-oil","none","Pressed from olives as picked, which no USDA food is: USDA's olives are canned, pickled or stuffed."],
         ["onion","harvested",null],
-        ["parmesan","none","Made from cow's milk, which no VBCI ingredient is."],
+        ["parmesan","made_from",null],
         ["potato","harvested",null],
         ["red-lentils","made_from",null],
+        ["salt","none","Evaporated from brine or mined, which no ingredient is."],
         ["soybeans","harvested",null],
         ["spinach","harvested",null],
+        ["sugar","none","Refined from sugarcane or sugar beet, which no ingredient is."],
         ["tofu","made_from",null],
         ["tomato","harvested",null],
-        ["vegetable-broth","none","Made from several vegetables, which USDA's name for the broth does not say."]
+        ["vanilla","none","Extracted from vanilla beans in ethanol and water; vanilla beans and ethanol are no ingredient."],
+        ["vegetable-broth","none","Made from several vegetables, which USDA's name for the broth does not say."],
+        ["water","none","Drawn from a tap or a spring, not grown or made from a food."]
       ]
     },
     {
@@ -135938,7 +136105,9 @@
       },
       "data": [
         ["ingredient","position","made_from"],
+        ["butter",1,"milk"],
         ["lemon-juice",1,"lemon"],
+        ["parmesan",1,"milk"],
         ["red-lentils",1,"lentils"],
         ["tofu",1,"soybeans"]
       ]
