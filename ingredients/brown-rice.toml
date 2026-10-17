@@ -6,6 +6,9 @@ taxon = "NCBITaxon_4530"
 fdc_id = 2512380
 description = "Rice, brown, long grain, unenriched, raw"
 
+[origin]
+none = "Hulled from paddy rice, the grain as harvested, which no USDA food is."
+
 [[form]]
 state = "dry"
 fdc_id = 169703

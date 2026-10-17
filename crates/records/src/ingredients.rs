@@ -17,6 +17,18 @@
 //!
 //! Which food or item is the ingredient's organism's is a review's choice; that USDA's data or the
 //! pinned item gives the taxon the file says, the warehouse's load checks.
+//!
+//! Every ingredient says, in its `[origin]` table, what it is made from (decided 2026-10-17, Jon:
+//! "your call"):
+//!
+//! - `harvested = true`: nothing; it is a food as harvested, such as a lemon;
+//! - `made_from`, the ingredients it is made from, such as lemon juice from lemons;
+//! - or `none`, saying why: what it is made from is no ingredient, such as cow's milk for a cheese.
+//!
+//! Whether an ingredient is harvested, and what it is made from, is a review's choice. That each
+//! ingredient it is made from is in `ingredients/` and has its organism where it has one, that
+//! none leads back to it, and that a harvested ingredient has an organism, `parse` checks; that a
+//! crop yields only a harvested ingredient, the warehouse's load.
 
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
@@ -74,6 +86,7 @@ struct IngredientFile {
     wikidata: Option<String>,
     aliases: Vec<String>,
     organism: OrganismFile,
+    origin: OriginFile,
     form: Vec<Form>,
 }
 
@@ -170,6 +183,65 @@ impl OrganismFile {
     }
 }
 
+/// An ingredient's `[origin]` table, as written: which keys go together is checked in `parse`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OriginFile {
+    harvested: Option<bool>,
+    made_from: Option<Vec<String>>,
+    none: Option<String>,
+}
+
+/// What an ingredient is made from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IngredientOrigin {
+    /// Nothing: it is a food as harvested.
+    Harvested,
+    /// The ids of the ingredients it is made from, in the file's order.
+    MadeFrom(Vec<String>),
+    /// What it is made from is no ingredient, and why.
+    None { why: String },
+}
+
+impl OriginFile {
+    /// The table as an origin, refusing keys that do not go together: one of the three, a
+    /// harvested that is true, and a made_from that lists ingredients' ids, each once.
+    fn read(self) -> Result<IngredientOrigin, String> {
+        match (self.harvested, self.made_from, self.none) {
+            (Some(true), None, None) => Ok(IngredientOrigin::Harvested),
+            (Some(false), None, None) => {
+                Err("origin: harvested = false says nothing: say what it is made from".into())
+            }
+            (None, Some(sources), None) => {
+                if sources.is_empty() {
+                    return Err("origin: made_from lists no ingredient".into());
+                }
+                let mut seen = BTreeSet::new();
+                for s in &sources {
+                    if !crate::is_id(s) {
+                        return Err(format!("origin: made_from {s:?} is not an ingredient's id"));
+                    }
+                    if !seen.insert(s.as_str()) {
+                        return Err(format!("origin: made_from lists {s} twice"));
+                    }
+                }
+                Ok(IngredientOrigin::MadeFrom(sources))
+            }
+            (None, None, Some(why)) => {
+                if why.trim().is_empty() {
+                    return Err("origin: none, with no reason".into());
+                }
+                Ok(IngredientOrigin::None { why })
+            }
+            _ => Err(
+                "origin: one of harvested = true, made_from (the ingredients it is made from), \
+                 or none (none, saying why)"
+                    .into(),
+            ),
+        }
+    }
+}
+
 /// One ingredient, as its file holds it, with the id its file name gives it.
 #[derive(Debug)]
 pub struct Ingredient {
@@ -181,6 +253,7 @@ pub struct Ingredient {
     /// Lowercase, with single spaces; each names this ingredient alone.
     pub aliases: Vec<String>,
     pub organism: IngredientOrganism,
+    pub origin: IngredientOrigin,
     /// First form first: the default.
     pub forms: Vec<Form>,
     /// The file's path, relative to the repo root, and its text.
@@ -266,19 +339,82 @@ impl Ingredients {
                 }
             }
             let organism = f.organism.read().map_err(at)?;
+            let origin = f.origin.read().map_err(at)?;
             ingredient.push(Ingredient {
                 id: id.to_string(),
                 name: f.name,
                 wikidata: f.wikidata,
                 aliases: f.aliases,
                 organism,
+                origin,
                 forms: f.form,
                 path,
                 text: text.clone(),
             });
         }
+        check_origins(&ingredient)?;
         Ok(Ingredients { ingredient })
     }
+}
+
+/// Refuses a harvested ingredient with no organism, and an ingredient made from one that is not
+/// there, whose organism is not its own where it has one, or that leads back to it.
+fn check_origins(ingredients: &[Ingredient]) -> Result<(), String> {
+    let by_id: BTreeMap<&str, &Ingredient> =
+        ingredients.iter().map(|i| (i.id.as_str(), i)).collect();
+    for i in ingredients {
+        let at = |e: String| format!("{}: origin: {e}", i.path);
+        let sources = match &i.origin {
+            IngredientOrigin::Harvested if i.organism.taxon().is_none() => {
+                return Err(at("harvested, yet no organism".into()));
+            }
+            IngredientOrigin::MadeFrom(sources) => sources,
+            _ => continue,
+        };
+        for s in sources {
+            let source = by_id
+                .get(s.as_str())
+                .ok_or_else(|| at(format!("made from {s}, which is not in ingredients/")))?;
+            if let Some(taxon) = i.organism.taxon()
+                && source.organism.taxon() != Some(taxon)
+            {
+                return Err(at(format!(
+                    "made from {s}, whose organism is {}, not {taxon}",
+                    source.organism.taxon().unwrap_or("none")
+                )));
+            }
+        }
+        if let Some(way) = way_back(&i.id, &by_id) {
+            return Err(at(format!("made from itself, through {}", way.join(" → "))));
+        }
+    }
+    Ok(())
+}
+
+/// A way from `id` back to itself through what each ingredient on it is made from, as the ids
+/// along it, `id` first and last; None where there is none.
+fn way_back(id: &str, by_id: &BTreeMap<&str, &Ingredient>) -> Option<Vec<String>> {
+    fn walk(
+        at: &str,
+        id: &str,
+        by_id: &BTreeMap<&str, &Ingredient>,
+        way: &mut Vec<String>,
+        seen: &mut BTreeSet<String>,
+    ) -> bool {
+        let Some(IngredientOrigin::MadeFrom(sources)) = by_id.get(at).map(|i| &i.origin) else {
+            return false;
+        };
+        for s in sources {
+            way.push(s.clone());
+            if s == id || (seen.insert(s.clone()) && walk(s, id, by_id, way, seen)) {
+                return true;
+            }
+            way.pop();
+        }
+        false
+    }
+    let mut way = vec![id.to_string()];
+    walk(id, id, by_id, &mut way, &mut BTreeSet::new()).then_some(way)
 }
 
 #[cfg(test)]
@@ -292,6 +428,9 @@ aliases = ["onion", "onions"]
 taxon = "NCBITaxon_4679"
 fdc_id = 790646
 description = "Onions, yellow, raw"
+
+[origin]
+harvested = true
 
 [[form]]
 state = "raw"
@@ -486,7 +625,10 @@ description = "Onions, cooked, boiled, drained, without salt"
             })
         );
         assert_eq!(
-            organism(&with_organism(&format!("[organism]\n{none}"))),
+            organism(
+                &with_organism(&format!("[organism]\n{none}"))
+                    .replace("harvested = true", "none = \"Of several.\"")
+            ),
             Ok(IngredientOrganism::None {
                 why: "A mix.".into()
             })
@@ -565,6 +707,168 @@ description = "Onions, cooked, boiled, drained, without salt"
                     "is not NCBITaxon_<digits>",
                 );
             }
+        }
+    }
+
+    /// `ONION` with its `[origin]` table replaced by `table`.
+    fn with_origin(table: &str) -> String {
+        with("[origin]\nharvested = true\n", table)
+    }
+
+    fn origin(text: &str) -> Result<IngredientOrigin, String> {
+        Ingredients::parse(&files(&[("onion.toml", text)]))
+            .map(|i| i.ingredient.into_iter().next().unwrap().origin)
+    }
+
+    /// An origin is one of harvested, made from ingredients each listed once by its id, or none
+    /// with its reason; harvested is never false. A file with no `[origin]` table is refused.
+    #[test]
+    fn an_ingredient_says_what_it_is_made_from() {
+        let onion_too = files(&[
+            ("onion.toml", ONION),
+            (
+                "onion-juice.toml",
+                &with_origin("[origin]\nmade_from = [\"onion\"]\n")
+                    .replace("[\"onion\", \"onions\"]", "[\"onion juice\"]"),
+            ),
+        ]);
+        let i = Ingredients::parse(&onion_too).unwrap();
+        assert_eq!(
+            (&i.ingredient[0].origin, &i.ingredient[1].origin),
+            (
+                &IngredientOrigin::Harvested,
+                &IngredientOrigin::MadeFrom(vec!["onion".into()])
+            )
+        );
+        assert_eq!(
+            origin(&with_origin("[origin]\nnone = \"From milk.\"\n")),
+            Ok(IngredientOrigin::None {
+                why: "From milk.".into()
+            })
+        );
+        for (table, why) in [
+            ("", "missing field `origin`"),
+            ("[origin]\n", "origin: one of harvested = true"),
+            (
+                "[origin]\nharvested = true\nnone = \"x\"\n",
+                "origin: one of harvested = true",
+            ),
+            (
+                "[origin]\nharvested = true\nmade_from = [\"leek\"]\n",
+                "origin: one of harvested = true",
+            ),
+            (
+                "[origin]\nmade_from = [\"leek\"]\nnone = \"x\"\n",
+                "origin: one of harvested = true",
+            ),
+            (
+                "[origin]\nharvested = false\n",
+                "origin: harvested = false says nothing",
+            ),
+            (
+                "[origin]\nmade_from = []\n",
+                "origin: made_from lists no ingredient",
+            ),
+            (
+                "[origin]\nmade_from = [\"Leek\"]\n",
+                "origin: made_from \"Leek\" is not an ingredient's id",
+            ),
+            (
+                "[origin]\nmade_from = [\"leek\", \"leek\"]\n",
+                "origin: made_from lists leek twice",
+            ),
+            ("[origin]\nnone = \" \"\n", "origin: none, with no reason"),
+            (
+                "[origin]\nharvested = true\ngrade = \"trusted\"\n",
+                "unknown field `grade`",
+            ),
+        ] {
+            refused(&[("onion.toml", &with_origin(table))], why);
+        }
+    }
+
+    /// An ingredient whose id and one alias are `id`, with `organism` and `origin` as its tables.
+    fn food(id: &str, organism: &str, origin: &str) -> (String, String) {
+        (
+            format!("{id}.toml"),
+            with(ONION_ORGANISM, organism)
+                .replace("[origin]\nharvested = true\n", origin)
+                .replace("[\"onion\", \"onions\"]", &format!("[\"{id}\"]")),
+        )
+    }
+
+    /// What an ingredient is made from is in `ingredients/`, has its organism where it has one, and
+    /// does not lead back to it; a harvested ingredient has an organism.
+    #[test]
+    fn what_an_ingredient_is_made_from_is_there_shares_its_organism_and_leads_elsewhere() {
+        let onion = ONION_ORGANISM;
+        let leek = "[organism]\ntaxon = \"NCBITaxon_4681\"\nwikidata = \"Q1\"\n";
+        let mix = "[organism]\nnone = \"A mix.\"\n";
+        let harvested = "[origin]\nharvested = true\n";
+        let from = |ids: &str| format!("[origin]\nmade_from = [{ids}]\n");
+        let parse = |foods: &[(String, String)]| Ingredients::parse(foods).map(|_| ());
+        let ok = [
+            vec![
+                food("a", onion, harvested),
+                food("b", onion, &from("\"a\"")),
+                food("c", onion, &from("\"b\"")),
+            ],
+            vec![
+                food("a", onion, harvested),
+                food("l", leek, harvested),
+                food("m", mix, &from("\"a\", \"l\"")),
+            ],
+            vec![
+                food("m", mix, "[origin]\nnone = \"From milk.\"\n"),
+                food("n", mix, &from("\"m\"")),
+            ],
+        ];
+        for foods in ok {
+            assert_eq!(parse(&foods), Ok(()), "{foods:?}");
+        }
+        for (foods, why) in [
+            (
+                vec![food("b", onion, &from("\"a\""))],
+                "ingredients/b.toml: origin: made from a, which is not in ingredients/",
+            ),
+            (
+                vec![food("l", leek, harvested), food("b", onion, &from("\"l\""))],
+                "ingredients/b.toml: origin: made from l, whose organism is NCBITaxon_4681, not NCBITaxon_4679",
+            ),
+            (
+                vec![
+                    food("m", mix, "[origin]\nnone = \"From milk.\"\n"),
+                    food("b", onion, &from("\"m\"")),
+                ],
+                "ingredients/b.toml: origin: made from m, whose organism is none, not NCBITaxon_4679",
+            ),
+            (
+                vec![food("m", mix, harvested)],
+                "ingredients/m.toml: origin: harvested, yet no organism",
+            ),
+            (
+                vec![food("a", onion, &from("\"a\""))],
+                "ingredients/a.toml: origin: made from itself, through a → a",
+            ),
+            (
+                vec![
+                    food("a", onion, &from("\"b\"")),
+                    food("b", onion, &from("\"c\"")),
+                    food("c", onion, &from("\"a\"")),
+                ],
+                "ingredients/a.toml: origin: made from itself, through a → b → c → a",
+            ),
+            (
+                vec![
+                    food("a", onion, harvested),
+                    food("b", onion, &from("\"a\", \"c\"")),
+                    food("c", onion, &from("\"b\"")),
+                ],
+                "ingredients/b.toml: origin: made from itself, through b → c → b",
+            ),
+        ] {
+            let err = parse(&foods).expect_err("refused");
+            assert!(err.contains(why), "{err:?} does not say {why:?}");
         }
     }
 

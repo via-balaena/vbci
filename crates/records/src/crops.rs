@@ -3,6 +3,9 @@
 //! pins, with the NCBI Taxonomy id and the scientific name that item gives. A crop names its
 //! ingredient rather than being found through its organism, as one organism can be several crops.
 //!
+//! A crop is harvested raw or dry, which `parse` checks, and yields an ingredient as harvested, one
+//! whose `[origin]` says `harvested = true`, which the warehouse's load checks.
+//!
 //! Which ingredient a crop yields is a review's choice. That the item gives the crop's taxon and
 //! name, and that the crop's organism is its ingredient's or one step below it, by the item's
 //! parent taxon, the warehouse's load checks (decided 2026-10-16, Jon: "your call").
@@ -36,7 +39,7 @@ pub struct Crop {
     pub scientific_name: String,
     /// The id of the ingredient the crop yields.
     pub ingredient: String,
-    /// The state the ingredient is in when harvested.
+    /// The state the ingredient is in when harvested: raw or dry.
     pub state: State,
     /// The file's path, relative to the repo root, and its text.
     pub path: String,
@@ -84,6 +87,12 @@ impl Crops {
             }
             if f.scientific_name.trim().is_empty() {
                 return Err(at("scientific_name is empty".into()));
+            }
+            if !matches!(f.state, State::Raw | State::Dry) {
+                return Err(at(format!(
+                    "state {} is not a state a crop is harvested in: raw or dry",
+                    f.state.as_str()
+                )));
             }
             if !crate::is_id(&f.ingredient) {
                 return Err(at(format!(
@@ -216,6 +225,18 @@ state = "raw"
             ("name = \"Carrot\"", "name = \"\"", "name is empty"),
         ] {
             refused(&[("carrot.toml", &with(old, new))], why);
+        }
+    }
+
+    /// A crop is harvested raw or dry; the states a food reaches after harvest are refused.
+    #[test]
+    fn a_crop_is_harvested_raw_or_dry() {
+        assert!(Crops::parse(&files(&[("carrot.toml", &with("\"raw\"", "\"dry\""))])).is_ok());
+        for state in ["cooked", "canned", "frozen", "as_sold"] {
+            refused(
+                &[("carrot.toml", &with("\"raw\"", &format!("\"{state}\"")))],
+                &format!("state {state} is not a state a crop is harvested in: raw or dry"),
+            );
         }
     }
 

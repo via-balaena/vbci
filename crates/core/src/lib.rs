@@ -644,6 +644,8 @@ mod tests {
                 "ingredient_alias",
                 "ingredient_form",
                 "ingredient_organism",
+                "ingredient_origin",
+                "ingredient_made_from",
                 "crop"
             ]
         );

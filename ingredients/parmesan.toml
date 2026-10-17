@@ -7,6 +7,9 @@ taxon = "NCBITaxon_9913"
 fdc_id = 325036
 description = "Cheese, parmesan, grated"
 
+[origin]
+none = "Made from cow's milk, which no VBCI ingredient is."
+
 [[form]]
 state = "as_sold"
 fdc_id = 171247

@@ -5,6 +5,9 @@ aliases = ["cumin", "ground cumin", "cumin seed", "cumin seeds"]
 taxon = "NCBITaxon_52462"
 wikidata = "Q57328174"
 
+[origin]
+harvested = true
+
 [[form]]
 state = "dry"
 fdc_id = 170923

@@ -103,6 +103,27 @@ pub const EXPORTED: &[Exported] = &[
         references: &[INGREDIENT],
     },
     Exported {
+        view: "ingredient_origin",
+        key: &["ingredient"],
+        references: &[INGREDIENT],
+    },
+    Exported {
+        view: "ingredient_made_from",
+        key: &["ingredient", "position"],
+        references: &[
+            Reference {
+                columns: &["ingredient"],
+                view: "ingredient_origin",
+                to: &["ingredient"],
+            },
+            Reference {
+                columns: &["made_from"],
+                view: "ingredient",
+                to: &["ingredient"],
+            },
+        ],
+    },
+    Exported {
         view: "crop",
         key: &["crop"],
         references: &[

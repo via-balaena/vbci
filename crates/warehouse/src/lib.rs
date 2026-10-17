@@ -7,7 +7,7 @@ pub mod usda;
 pub mod wikidata;
 
 use balaena_records::{
-    CountUnits, Crops, Diet, IngredientOrganism, Ingredients, Nutrients, Sources,
+    CountUnits, Crops, Diet, IngredientOrganism, IngredientOrigin, Ingredients, Nutrients, Sources,
 };
 use duckdb::{Connection, params};
 use std::collections::{BTreeMap, BTreeSet};
@@ -274,9 +274,10 @@ fn load_portions(conn: &Connection, counts: &CountUnits) -> Result<(), String> {
     Ok(())
 }
 
-/// Loads the FoodOn ids and common names USDA's data gives foods, and the ingredients, into
-/// silver; then refuses a form whose name is not USDA's. A form linked to a food silver lacks, or
-/// an alias two ingredients claim, the keys refuse.
+/// Loads the FoodOn ids and common names USDA's data gives foods, and the ingredients with their
+/// origins, into silver; then refuses a form whose name is not USDA's. A form linked to a food
+/// silver lacks, an alias two ingredients claim, or an ingredient made from one not there, the
+/// keys refuse.
 fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), String> {
     conn.execute_batch(
         "INSERT INTO silver.usda_food_foodon
@@ -319,6 +320,25 @@ fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), 
             .map_err(|e| format!("{} {} {}: {e}", i.path, form.state.as_str(), form.fdc_id))?;
         }
     }
+    for i in &ingredients.ingredient {
+        let (origin, sources, none) = match &i.origin {
+            IngredientOrigin::Harvested => ("harvested", &[][..], None),
+            IngredientOrigin::MadeFrom(sources) => ("made_from", &sources[..], None),
+            IngredientOrigin::None { why } => ("none", &[][..], Some(why)),
+        };
+        conn.execute(
+            "INSERT INTO silver.ingredient_origin VALUES (?, ?, ?)",
+            params![i.id, origin, none],
+        )
+        .map_err(|e| format!("{} origin: {e}", i.path))?;
+        for (position, source) in sources.iter().enumerate() {
+            conn.execute(
+                "INSERT INTO silver.ingredient_made_from VALUES (?, ?, ?)",
+                params![i.id, position as i64 + 1, source],
+            )
+            .map_err(|e| format!("{} made_from {source}: {e}", i.path))?;
+        }
+    }
     refuse_any(
         conn,
         "SELECT i.record || ': food ' || f.fdc_id || ' is ' || u.description
@@ -334,8 +354,8 @@ fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), 
 /// Loads the organism USDA's data gives each Foundation food, the statements `wikidata::PROPERTIES`
 /// names in each pinned Wikidata item, each ingredient's organism and each crop into silver. Then
 /// refuses an ingredient's organism its source does not give; a crop whose item does not give its
-/// taxon and name, or whose organism is neither its ingredient's nor one step below it; and a
-/// pinned item nothing reads. A food, item or ingredient form named but not there, the keys and the
+/// taxon and name, whose ingredient is not harvested, or whose organism is neither its
+/// ingredient's nor one step below it; and a pinned item nothing reads. A food, item or ingredient form named but not there, the keys and the
 /// Wikidata reading refuse.
 fn load_organisms(
     conn: &Connection,
@@ -443,6 +463,12 @@ fn load_organisms(
         .iter()
         .map(|i| (i.id.as_str(), i.organism.taxon()))
         .collect();
+    let harvested: BTreeSet<&str> = ingredients
+        .ingredient
+        .iter()
+        .filter(|i| i.origin == IngredientOrigin::Harvested)
+        .map(|i| i.id.as_str())
+        .collect();
     for c in &crops.crop {
         let at = |e: String| format!("{}: {e}", c.path);
         let (taxon, name) = wikidata::own_taxon(&c.wikidata, &pinned).map_err(at)?;
@@ -470,6 +496,12 @@ fn load_organisms(
                     c.ingredient
                 ))
             })?;
+        if !harvested.contains(c.ingredient.as_str()) {
+            return Err(at(format!(
+                "ingredient {} is not harvested, so no crop yields it: its [origin] is not harvested = true",
+                c.ingredient
+            )));
+        }
         let parent_item = if taxon == ingredient {
             None
         } else {
@@ -972,7 +1004,8 @@ pub fn diet_report(conn: &Connection, sources: &Sources) -> Result<String, Strin
 pub const INGREDIENTS_PATH: &str = "docs/ingredients.md";
 
 /// `docs/ingredients.md`, as the warehouse writes it: each ingredient with its aliases, its
-/// organism and its forms, and the alias candidates USDA's data gives its foods.
+/// organism, what it is made from and its forms, and the alias candidates USDA's data gives its
+/// foods.
 pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
     let count = |query: &str| -> Result<i64, String> {
         conn.query_row(query, [], |r| r.get(0))
@@ -989,6 +1022,11 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         count("SELECT count(*) FROM gold.ingredient_organism WHERE wikidata IS NOT NULL")?,
         count("SELECT count(*) FROM gold.ingredient_organism WHERE none IS NOT NULL")?,
     );
+    let (harvested, made, made_of_none) = (
+        count("SELECT count(*) FROM gold.ingredient_origin WHERE origin = 'harvested'")?,
+        count("SELECT count(*) FROM gold.ingredient_origin WHERE origin = 'made_from'")?,
+        count("SELECT count(*) FROM gold.ingredient_origin WHERE origin = 'none'")?,
+    );
     let mut out = format!(
         "# Ingredients\n\n\
          Generated by `cargo run -p balaena-warehouse -- ingredients` from `ingredients/` and the\n\
@@ -1002,7 +1040,10 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
          ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n\n\
          Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one\n\
          place: the \"NCBI Taxon\" USDA's data gives a Foundation food, for {from_usda} ingredients; a\n\
-         Wikidata item `sources.toml` pins, for {from_wikidata}; or none, saying why, for {no_organism}.\n"
+         Wikidata item `sources.toml` pins, for {from_wikidata}; or none, saying why, for {no_organism}.\n\n\
+         What each ingredient is made from (`gold.ingredient_origin`): nothing, as it is harvested, for\n\
+         {harvested}; other ingredients (`gold.ingredient_made_from`), for {made}; or something that\n\
+         is no ingredient, saying why, for {made_of_none}. A crop yields only a harvested ingredient.\n"
     );
     let ids = rows(
         conn,
@@ -1048,8 +1089,32 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
             [(None, None, None, None, None, Some(why))] => format!("none. {why}"),
             other => return Err(format!("{id}: organism {other:?}")),
         };
+        let (origin, none) = conn
+            .query_row(
+                &format!("SELECT origin, none FROM gold.ingredient_origin WHERE ingredient = {i}"),
+                [],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)),
+            )
+            .map_err(|e| format!("{id}: origin: {e}"))?;
+        let made_from = rows(
+            conn,
+            &format!(
+                "SELECT i.name || ' (`' || m.made_from || '`)' FROM gold.ingredient_made_from m
+                 JOIN gold.ingredient i ON i.ingredient = m.made_from
+                 WHERE m.ingredient = {i} ORDER BY m.position"
+            ),
+            |r| r.get::<_, String>(0),
+        )?;
+        let origin = match (origin.as_str(), none) {
+            ("harvested", None) if made_from.is_empty() => "harvested.".to_string(),
+            ("made_from", None) if !made_from.is_empty() => {
+                format!("made from {}.", made_from.join(", "))
+            }
+            ("none", Some(why)) if made_from.is_empty() => format!("none. {why}"),
+            (other, why) => return Err(format!("{id}: origin {other} {why:?} {made_from:?}")),
+        };
         out.push_str(&format!(
-            "\n## {name} (`{id}`)\n\nAliases: {}.\n\nOrganism: {organism}\n\n\
+            "\n## {name} (`{id}`)\n\nAliases: {}.\n\nOrganism: {organism}\n\nOrigin: {origin}\n\n\
              | state | default | fdc_id | dataset | USDA's name | of {nutrients} | FoodOn |\n|---|---|---|---|---|---|---|\n",
             aliases.join(", ")
         ));
@@ -1113,9 +1178,10 @@ pub fn crops_report(conn: &Connection) -> Result<String, String> {
          Wikidata items `sources.toml` pins; the test `the_crops_report_is_current` fails when this\n\
          file differs from what that would write. Change the records, not this file.\n\n\
          {crops} crops yield {ingredients} ingredients (`gold.crop`). A crop names the ingredient it\n\
-         yields and the state it is harvested in; its organism is the NCBI Taxonomy id and scientific\n\
-         name its Wikidata item gives. That organism is its ingredient's, or, for {below}, one step\n\
-         below it by the item's parent taxon.\n\n\
+         yields, one whose origin is harvested (`gold.ingredient_origin`), and the state it is\n\
+         harvested in, raw or dry; its organism is the NCBI Taxonomy id and scientific name its\n\
+         Wikidata item gives. That organism is its ingredient's, or, for {below}, one step below\n\
+         it by the item's parent taxon.\n\n\
          | crop | yields | organism | scientific name | Wikidata | to the ingredient's organism |\n\
          |---|---|---|---|---|---|\n"
     );
@@ -1716,11 +1782,11 @@ codes = ["269", "269.3"]
     const SYNTHETIC_INGREDIENTS: [(&str, &str); 2] = [
         (
             "a-food.toml",
-            "name = \"A\"\naliases = [\"a-food\", \"ay\"]\n\n[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n\n[[form]]\nstate = \"raw\"\nfdc_id = 1\ndescription = \"A\"\n",
+            "name = \"A\"\naliases = [\"a-food\", \"ay\"]\n\n[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n\n[origin]\nharvested = true\n\n[[form]]\nstate = \"raw\"\nfdc_id = 1\ndescription = \"A\"\n",
         ),
         (
             "olive-oil.toml",
-            "name = \"Olive oil\"\naliases = [\"olive oil\"]\n\n[organism]\ntaxon = \"NCBITaxon_4146\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n\n[[form]]\nstate = \"as_sold\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n",
+            "name = \"Olive oil\"\naliases = [\"olive oil\"]\n\n[organism]\ntaxon = \"NCBITaxon_4146\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n\n[origin]\nnone = \"Pressed from olives.\"\n\n[[form]]\nstate = \"as_sold\"\nfdc_id = 6\ndescription = \"Oil, olive\"\n",
         ),
     ];
 
@@ -2190,6 +2256,14 @@ codes = ["269", "269.3"]
                 "INSERT INTO silver.usda_rejected VALUES ('t', 'd', 'x', ' ')",
                 false,
             ),
+            (
+                "INSERT INTO silver.crop VALUES ('c', 'C', 'Q2', 'NCBITaxon_111', 'A b', 'a-food', 'raw', NULL, 'x')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.crop VALUES ('c', 'C', 'Q2', 'NCBITaxon_111', 'A b', 'olive-oil', 'as_sold', NULL, 'x')",
+                false,
+            ),
         ];
         for (sql, ok) in cases {
             assert_eq!(accepted(sql).is_ok(), ok, "{sql}: {:?}", accepted(sql));
@@ -2421,10 +2495,13 @@ codes = ["269", "269.3"]
                 "Q2 P685 1 111 normal"
             ]
         );
-        let broth = SYNTHETIC_INGREDIENTS[0].1.replace(
-            "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
-            "[organism]\nnone = \"A mix.\"\n",
-        );
+        let broth = SYNTHETIC_INGREDIENTS[0]
+            .1
+            .replace(
+                "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
+                "[organism]\nnone = \"A mix.\"\n",
+            )
+            .replace("harvested = true", "none = \"Of several.\"");
         let w = synthetic_pinned(
             SYNTHETIC_NUTRIENTS,
             SYNTHETIC_DIET,
@@ -2442,6 +2519,124 @@ codes = ["269", "269.3"]
             ),
             ["a-food - A mix.", "olive-oil NCBITaxon_4146 -"]
         );
+    }
+
+    /// Each ingredient's origin is in gold as its file gives it, with what it is made from in the
+    /// file's order. Silver's keys refuse an origin value they do not know, a reason without
+    /// `none` or `none` without one, a blank reason, an origin or a source that is no ingredient, a
+    /// second origin for one ingredient, a source listed twice or two at one position, a position
+    /// below 1, an ingredient made directly from itself, and a source for an ingredient with no
+    /// origin; the records' other origin rules, a longer way back among them, silver does not
+    /// hold.
+    #[test]
+    fn each_ingredient_s_origin_is_loaded_and_its_keys_hold() {
+        let juice = SYNTHETIC_INGREDIENTS[0]
+            .1
+            .replace("[\"a-food\", \"ay\"]", "[\"a juice\"]")
+            .replace("harvested = true", "made_from = [\"a-food\"]");
+        let w = synthetic_pinned(
+            SYNTHETIC_NUTRIENTS,
+            SYNTHETIC_DIET,
+            &[
+                SYNTHETIC_INGREDIENTS[0],
+                ("a-juice.toml", &juice),
+                SYNTHETIC_INGREDIENTS[1],
+            ],
+            SYNTHETIC_COUNT_UNITS,
+            &synthetic_wikidata(),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ' ' || origin || ' ' || coalesce(none, '-')
+                 FROM gold.ingredient_origin ORDER BY ingredient"
+            ),
+            [
+                "a-food harvested -",
+                "a-juice made_from -",
+                "olive-oil none Pressed from olives."
+            ]
+        );
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT ingredient || ' ' || position || ' ' || made_from
+                 FROM gold.ingredient_made_from ORDER BY ingredient, position"
+            ),
+            ["a-juice 1 a-food"]
+        );
+        let accepted = |sql: &str| {
+            w.execute_batch(&format!(
+                "BEGIN; INSERT INTO silver.ingredient VALUES ('b', 'B', NULL, 'x'); {sql}; ROLLBACK;"
+            ))
+            .map_err(|e| {
+                let _ = w.execute_batch("ROLLBACK");
+                e.to_string()
+            })
+        };
+        let cases = [
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('b', 'harvested', NULL)",
+                true,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('b', 'grown', NULL)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('b', 'harvested', 'Why.')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('b', 'none', NULL)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('b', 'none', ' ')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('c', 'harvested', NULL)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_origin VALUES ('a-food', 'harvested', NULL)",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 2, 'b')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 2, 'a-food')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 1, 'b')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 0, 'b')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 2, 'c')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('a-food', 1, 'a-food')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.ingredient_made_from VALUES ('b', 1, 'a-food')",
+                false,
+            ),
+        ];
+        for (sql, ok) in cases {
+            assert_eq!(accepted(sql).is_ok(), ok, "{sql}: {:?}", accepted(sql));
+        }
     }
 
     /// The load stops on an organism its source does not give: a food named by another name than
@@ -2571,7 +2766,8 @@ codes = ["269", "269.3"]
     }
 
     /// The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks
-    /// either; whose ingredient is not there, has no organism, or has no form in the crop's state;
+    /// either; whose ingredient is not there, has no organism, is not harvested, or has no form in
+    /// the crop's state;
     /// and whose organism is not its ingredient's and not one step below it: a parent taxon with
     /// another organism, two steps down, none, or one not pinned.
     #[test]
@@ -2581,13 +2777,23 @@ codes = ["269", "269.3"]
             assert_eq!(plant.matches(old).count(), 1, "{old:?}");
             plant.replace(old, new)
         };
-        let a_food_none = SYNTHETIC_INGREDIENTS[0].1.replace(
-            "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
-            "[organism]\nnone = \"A mix.\"\n",
-        );
+        let a_food_none = SYNTHETIC_INGREDIENTS[0]
+            .1
+            .replace(
+                "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
+                "[organism]\nnone = \"A mix.\"\n",
+            )
+            .replace("harvested = true", "none = \"Of several.\"");
         let none_ingredients = [
             ("a-food.toml", a_food_none.as_str()),
             SYNTHETIC_INGREDIENTS[1],
+        ];
+        let oil_harvested = SYNTHETIC_INGREDIENTS[1]
+            .1
+            .replace("none = \"Pressed from olives.\"", "harvested = true");
+        let harvested_ingredients = [
+            SYNTHETIC_INGREDIENTS[0],
+            ("olive-oil.toml", oil_harvested.as_str()),
         ];
         let crop = |item: &str, taxon: &str, name: &str, ingredient: &str, state: &str| {
             format!(
@@ -2640,15 +2846,19 @@ codes = ["269", "269.3"]
             (
                 &SYNTHETIC_INGREDIENTS,
                 crop_wikidata(&[]),
-                in_plant("\"raw\"", "\"cooked\""),
-                "crops/c.toml: Constraint Error: Violates foreign key",
+                in_plant("\"a-food\"", "\"olive-oil\""),
+                "crops/c.toml: ingredient olive-oil is not harvested, so no crop yields it",
             ),
             (
                 &SYNTHETIC_INGREDIENTS,
                 crop_wikidata(&[]),
-                variety
-                    .replace("\"a-food\"", "\"olive-oil\"")
-                    .replace("\"raw\"", "\"as_sold\""),
+                in_plant("\"raw\"", "\"dry\""),
+                "crops/c.toml: Constraint Error: Violates foreign key",
+            ),
+            (
+                &harvested_ingredients,
+                crop_wikidata(&[]),
+                variety.replace("\"a-food\"", "\"olive-oil\""),
                 "crops/c.toml: NCBITaxon_112 is neither olive-oil's organism, NCBITaxon_4146, nor one step below it: Wikidata item Q3's P171 is Q10, NCBITaxon_111",
             ),
             (

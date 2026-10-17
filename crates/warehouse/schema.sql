@@ -259,6 +259,24 @@ CREATE TABLE silver.ingredient_organism (
 COMMENT ON TABLE silver.ingredient_organism IS 'Each ingredient''s organism, from its file''s [organism] table: an NCBI Taxonomy id read from a Foundation food or a pinned Wikidata item, or none and why. The load refuses a taxon its source does not give.';
 COMMENT ON COLUMN silver.ingredient_organism.taxon_item IS 'Derived, never typed: the Wikidata item whose P685 gave the taxon, the one named or the one its P1582 names.';
 
+CREATE TABLE silver.ingredient_origin (
+    ingredient TEXT PRIMARY KEY REFERENCES silver.ingredient (ingredient),
+    origin     TEXT NOT NULL CHECK (origin IN ('harvested', 'made_from', 'none')),
+    none       TEXT CHECK (none IS NULL OR trim(none) <> ''),
+    CHECK ((origin = 'none') = (none IS NOT NULL))
+);
+COMMENT ON TABLE silver.ingredient_origin IS 'What each ingredient is made from, from its file''s [origin] table: nothing, as it is harvested; the ingredients silver.ingredient_made_from lists; or none, as what it is made from is no ingredient, and why.';
+
+CREATE TABLE silver.ingredient_made_from (
+    ingredient TEXT NOT NULL REFERENCES silver.ingredient_origin (ingredient),
+    position   INTEGER NOT NULL CHECK (position >= 1),
+    made_from  TEXT NOT NULL REFERENCES silver.ingredient (ingredient),
+    PRIMARY KEY (ingredient, position),
+    UNIQUE (ingredient, made_from),
+    CHECK (made_from <> ingredient)
+);
+COMMENT ON TABLE silver.ingredient_made_from IS 'Each ingredient an ingredient is made from, in its file''s order. The records refuse one whose organism is not the ingredient''s, where the ingredient has one, and one that leads back to it.';
+
 CREATE TABLE silver.crop (
     crop            TEXT PRIMARY KEY CHECK (regexp_full_match(crop, '[a-z0-9]+(-[a-z0-9]+)*')),
     name            TEXT NOT NULL CHECK (trim(name) <> ''),
@@ -266,12 +284,12 @@ CREATE TABLE silver.crop (
     taxon           TEXT NOT NULL CHECK (regexp_full_match(taxon, 'NCBITaxon_[0-9]+')),
     scientific_name TEXT NOT NULL CHECK (trim(scientific_name) <> ''),
     ingredient      TEXT NOT NULL,
-    state           TEXT NOT NULL,
+    state           TEXT NOT NULL CHECK (state IN ('raw', 'dry')),
     parent_item     TEXT CHECK (parent_item IS NULL OR regexp_full_match(parent_item, 'Q[0-9]+')),
     record          TEXT NOT NULL,
     FOREIGN KEY (ingredient, state) REFERENCES silver.ingredient_form (ingredient, state)
 );
-COMMENT ON TABLE silver.crop IS 'Each crop, from crops/<id>.toml: the ingredient it yields, in a state the ingredient has a form in, and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient''s nor one step below it.';
+COMMENT ON TABLE silver.crop IS 'Each crop, from crops/<id>.toml: the ingredient it yields, and the state it is harvested in, raw or dry, which the ingredient has a form in; and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient''s nor one step below it.';
 COMMENT ON COLUMN silver.crop.parent_item IS 'Derived, never typed: the item the crop''s item names as its parent taxon, whose NCBI Taxonomy id is the ingredient''s organism; NULL where the crop''s organism is the ingredient''s.';
 
 CREATE TABLE silver.usda_measure_unit (
@@ -476,12 +494,22 @@ COMMENT ON COLUMN gold.ingredient_organism.wikidata IS 'The Wikidata item the in
 COMMENT ON COLUMN gold.ingredient_organism.taxon_item IS 'The Wikidata item whose P685 (NCBI taxonomy ID) gave the taxon: the one named, or the one its P1582 (natural product of taxon) names.';
 COMMENT ON COLUMN gold.ingredient_organism.none IS 'Why the ingredient has no organism, as its file says.';
 
+CREATE VIEW gold.ingredient_origin AS
+SELECT ingredient, origin, none FROM silver.ingredient_origin;
+COMMENT ON VIEW gold.ingredient_origin IS 'What each ingredient is made from: harvested, a food as harvested, made from nothing; made_from, the ingredients gold.ingredient_made_from lists; or none, as what it is made from is no ingredient. A crop yields only a harvested ingredient.';
+COMMENT ON COLUMN gold.ingredient_origin.origin IS 'harvested, made_from or none.';
+COMMENT ON COLUMN gold.ingredient_origin.none IS 'Why what the ingredient is made from is no ingredient, as its file says; NULL unless origin is none.';
+
+CREATE VIEW gold.ingredient_made_from AS
+SELECT ingredient, position, made_from FROM silver.ingredient_made_from;
+COMMENT ON VIEW gold.ingredient_made_from IS 'Each ingredient an ingredient is made from, in its file''s order. Where the ingredient has an organism, each it is made from has the same; none leads back to it.';
+
 CREATE VIEW gold.crop AS
 SELECT crop, name, ingredient, state, taxon, scientific_name, wikidata, parent_item,
        CASE WHEN parent_item IS NULL THEN 0 ELSE 1 END AS steps_below
 FROM silver.crop;
 COMMENT ON VIEW gold.crop IS 'Each crop VBCI knows, the ingredient it yields and the state it is harvested in, and its organism by NCBI Taxonomy id and scientific name, as a pinned Wikidata item gives them. Several crops can yield one ingredient.';
-COMMENT ON COLUMN gold.crop.state IS 'The state the ingredient is in when harvested: a state the ingredient has a form in.';
+COMMENT ON COLUMN gold.crop.state IS 'The state the ingredient is in when harvested, raw or dry: a state the ingredient has a form in.';
 COMMENT ON COLUMN gold.crop.wikidata IS 'The Wikidata item of the crop''s organism, at the revision sources.toml pins.';
 COMMENT ON COLUMN gold.crop.parent_item IS 'The Wikidata item the crop''s item names as its parent taxon, where the crop''s organism is one step below its ingredient''s; NULL where the two are one organism.';
 COMMENT ON COLUMN gold.crop.steps_below IS 'How many steps the crop''s organism is below its ingredient''s, by Wikidata''s parent taxon: 0 or 1.';

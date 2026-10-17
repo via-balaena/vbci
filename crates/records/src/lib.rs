@@ -10,7 +10,7 @@ pub mod units;
 
 pub use crops::{Crop, Crops};
 pub use diet::{Answer, Class, Diet, DietCategory, Exception, Organism, Rule, Taxon};
-pub use ingredients::{Form, Ingredient, IngredientOrganism, Ingredients, State};
+pub use ingredients::{Form, Ingredient, IngredientOrganism, IngredientOrigin, Ingredients, State};
 pub use nutrients::{Nutrient, Nutrients};
 pub use sources::{Dataset, Publisher, Sources, WikidataItem};
 pub use units::{CountUnit, CountUnits};

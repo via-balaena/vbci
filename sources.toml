@@ -131,3 +131,18 @@ item = "Q131226"
 revision = 2553321145
 sha256 = "c7cf8923cd05ff939a1e279e8b3bd1e7868f0add2996c28a713feff3bd40a565"
 bytes = 108964
+
+# Pinned 2026-10-17, each at its newest revision that day: the lemon ingredient's item, Q1093742,
+# which reads its organism through its "natural product of taxon", Q500, pinned above; and the
+# soybean crop's, Q11006. The lemon crop reads Q500 too.
+[[wikidata]]
+item = "Q1093742"
+revision = 2557408056
+sha256 = "ee8d2fe212d9f74d2906defae8795430a182a8ebeb5c5d09d14f95c9ac525d0c"
+bytes = 38945
+
+[[wikidata]]
+item = "Q11006"
+revision = 2545415117
+sha256 = "ed5e67d32b45f0046f564a05239639cfb2a5ad49ea052c83c68783b0906004ce"
+bytes = 178451

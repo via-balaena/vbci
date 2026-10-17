@@ -1,0 +1,21 @@
+name = "Soybeans"
+aliases = ["soybeans", "soybean", "soy beans"]
+
+# Foundation foods have no soybeans; their soy milk is made from them.
+[organism]
+taxon = "NCBITaxon_3847"
+fdc_id = 1999630
+description = "Soy milk, unsweetened, plain, shelf stable"
+
+[origin]
+harvested = true
+
+[[form]]
+state = "dry"
+fdc_id = 174270
+description = "Soybeans, mature seeds, raw"
+
+[[form]]
+state = "cooked"
+fdc_id = 174271
+description = "Soybeans, mature cooked, boiled, without salt"
