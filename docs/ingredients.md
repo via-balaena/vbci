@@ -19,8 +19,8 @@ place: the "NCBI Taxon" USDA's data gives a Foundation food, for 18 ingredients;
 Wikidata item `sources.toml` pins, for 5; or none, saying why, for 6.
 
 What each ingredient is made from (`gold.ingredient_origin`): nothing, as it is harvested, for
-13; other ingredients (`gold.ingredient_made_from`), for 4; or something that
-is no ingredient, saying why, for 12. A crop yields only a harvested ingredient.
+13; other ingredients (`gold.ingredient_made_from`), for 5; or something that
+is no ingredient, saying why, for 11. A crop yields only a harvested ingredient.
 
 ## Baking powder (`baking-powder`)
 
@@ -243,7 +243,7 @@ Aliases: parmesan, parmesan cheese, parmigiano reggiano, parmigiano-reggiano.
 
 Organism: `NCBITaxon_9913`, from Foundation food 325036, Cheese, parmesan, grated.
 
-Origin: none. Made from cow's milk, which no VBCI ingredient is.
+Origin: made from Milk (`milk`).
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|

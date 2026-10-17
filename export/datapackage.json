@@ -398,7 +398,7 @@
       },
       {
         "path": "ingredients/parmesan.toml",
-        "sha256": "684fdc847ec2fa8838eb9a7bce87774c423a86ba98afbeec19594a24b7db60fc"
+        "sha256": "d776e735f52d9b25f672511455e7c79f20468d20aa0ebc80363be7255678c355"
       },
       {
         "path": "ingredients/potato.toml",
@@ -136042,7 +136042,7 @@
         ["milk","harvested",null],
         ["olive-oil","none","Pressed from olives as picked, which no USDA food is: USDA's olives are canned, pickled or stuffed."],
         ["onion","harvested",null],
-        ["parmesan","none","Made from cow's milk, which no VBCI ingredient is."],
+        ["parmesan","made_from",null],
         ["potato","harvested",null],
         ["red-lentils","made_from",null],
         ["salt","none","Evaporated from brine or mined, which no ingredient is."],
@@ -136108,6 +136108,7 @@
         ["ingredient","position","made_from"],
         ["butter",1,"milk"],
         ["lemon-juice",1,"lemon"],
+        ["parmesan",1,"milk"],
         ["red-lentils",1,"lentils"],
         ["tofu",1,"soybeans"]
       ]
