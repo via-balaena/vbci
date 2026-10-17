@@ -2204,7 +2204,8 @@ codes = ["269", "269.3"]
 
     /// Silver's keys refuse a second food with one fdc_id, a food in no category, an amount for a
     /// nutrient its dataset lacks or a second amount for one food and nutrient, one code in two
-    /// nutrients, and a count unit that says neither that it is whole nor that it is not; the control
+    /// nutrients, a rejected row with a blank reason, a crop harvested in a state other than raw or
+    /// dry, and a count unit that says neither that it is whole nor that it is not; the control
     /// rows beside each are accepted.
     #[test]
     fn the_database_refuses_what_silver_s_keys_refuse() {
