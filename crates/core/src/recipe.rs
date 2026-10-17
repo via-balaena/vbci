@@ -75,7 +75,7 @@ pub enum How {
     /// The food has no portion in its volume unit: grams per millilitre from the food's portions in
     /// other volume units, by their texts.
     Density(Vec<String>),
-    /// Its amount has no unit and its name ends in no count unit's name, so it counts whole
+    /// Its amount has no unit and its name has none (`ingredient_alias_unit`), so it counts whole
     /// items: the food's USDA portions in the count units one of which is one whole item, by their
     /// texts.
     Whole(Vec<String>),
@@ -100,8 +100,8 @@ pub enum NoGrams {
     NoAmount,
     /// Its amount is text, such as "to taste".
     TextAmount(String),
-    /// Its amount has no unit and its name ends in no count unit's name, so it counts whole items,
-    /// and the food has no USDA portion in a count unit one of which is one whole item.
+    /// Its amount has no unit and its name has none (`ingredient_alias_unit`), so it counts whole
+    /// items, and the food has no USDA portion in a count unit one of which is one whole item.
     NoWhole,
     /// Its amount has no unit, its name is an alias ending in a count unit's name, and the food
     /// has no USDA portion in that unit.

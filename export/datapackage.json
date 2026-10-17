@@ -366,7 +366,7 @@
       },
       {
         "path": "units/count.toml",
-        "sha256": "1bd4be531119918a590df393cee3b0720327d300f0a0f4f823142beb96741d4a"
+        "sha256": "e9dc9519bfd1eb2ee343eec1069c31ea6eb94e32448c2294365a13e4c008c04f"
       }
     ]
   },
@@ -135361,7 +135361,7 @@
     {
       "name": "count_unit",
       "type": "table",
-      "description": "Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name ends in no count unit's name, is weighed by the food's portions in the units that are.",
+      "description": "Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name gold.ingredient_alias_unit gives no unit, is weighed by the food's portions in the units that are.",
       "schema": {
         "fields": [
           {

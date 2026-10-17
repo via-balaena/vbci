@@ -358,10 +358,10 @@ The second arc, farm reference data, began on 2026-10-16.
     Wikidata's lemon fruit item, as Foundation foods have no lemon, and soybeans' from the soy milk
     tofu's is. Done, with the tests in the rules above.
 14. **Bare counts.** A recipe line with no unit, such as `@onion{1}`, counts whole items (from
-    step 15, unless its name ends in a count unit's name), weighed by the food's USDA portions in
-    the count units `units/count.toml` marks whole (decided above): head, each, small, medium,
-    large and fruit. "fruit" is new, and reads 70 of USDA's portions that no unit read, the
-    lemon's two among them. One raw onion is then 70–150 g, a raw carrot
+    step 15, unless `gold.ingredient_alias_unit` gives its name a unit), weighed by the food's
+    USDA portions in the count units `units/count.toml` marks whole (decided above): head, each,
+    small, medium, large and fruit. "fruit" is new, and reads 70 of USDA's portions that no unit
+    read, the lemon's two among them. One raw onion is then 70–150 g, a raw carrot
     50–72 g, a raw potato 92–369 g, a raw tomato 91–182 g and a lemon 58–84 g. Garlic, whose count
     portions are cloves, and spinach, a bunch, a leaf or a package, have none, nor has cooked
     carrot, whose one portion of a whole carrot reads "carrot", a phrase no unit reads. The export
