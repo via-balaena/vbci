@@ -2385,7 +2385,8 @@ codes = ["269", "269.3"]
 
     /// Olive oil's organism is read from food 6's NCBI Taxon, which USDA repeats, and a-food's from
     /// Wikidata item Q1 through its P1582, Q2. Each Foundation food's own organism is in silver once,
-    /// a food recorded as NA has none, and each pinned item's P685 and P1582 statements are there.
+    /// a food recorded as NA has none, and each pinned item's statements of the properties read are
+    /// there.
     #[test]
     fn each_ingredient_s_organism_is_read_from_its_source() {
         let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
