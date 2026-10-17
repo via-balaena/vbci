@@ -366,9 +366,7 @@ fn check_origins(ingredients: &[Ingredient]) -> Result<(), String> {
         let at = |e: String| format!("{}: origin: {e}", i.path);
         let sources = match &i.origin {
             IngredientOrigin::Harvested if i.organism.taxon().is_none() => {
-                return Err(at(
-                    "harvested, yet no organism: a food as harvested is one organism's".into(),
-                ));
+                return Err(at("harvested, yet no organism".into()));
             }
             IngredientOrigin::MadeFrom(sources) => sources,
             _ => continue,
