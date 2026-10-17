@@ -42,8 +42,8 @@ pub fn url(w: &WikidataItem) -> String {
 }
 
 /// The most an answer may weigh: twice the content, as a JSON string escapes some of it, and
-/// 4 KiB for the rest. On 2026-10-16 the four pinned revisions' answers were 1.17 to 1.20 times
-/// their content.
+/// 4 KiB for the rest. On 2026-10-16 the answers for the 14 revisions then pinned were 1.16 to
+/// 1.20 times their content.
 pub fn answer_limit(w: &WikidataItem) -> u64 {
     2 * w.bytes + 4096
 }
@@ -413,6 +413,8 @@ mod tests {
             ("Q5", vec![ncbi("5"), name("E"), parent("Q2"), parent("Q1")]),
             ("Q6", vec![ncbi("6"), name("F"), parent("Q99")]),
             ("Q7", vec![ncbi("7"), name("G"), parent("Q3")]),
+            ("Q8", vec![ncbi("8"), ncbi("9"), name("H")]),
+            ("Q9", vec![ncbi("9"), name("I"), name("J")]),
         ]);
         assert_eq!(
             own_taxon("Q1", &p),
@@ -429,6 +431,14 @@ mod tests {
             ),
             (own_taxon("Q3", &p), "Wikidata item Q3 has no P685"),
             (own_taxon("Q4", &p), "Wikidata item Q4 has no P225"),
+            (
+                own_taxon("Q8", &p),
+                "Wikidata item Q8 has 2 P685 statements, not one",
+            ),
+            (
+                own_taxon("Q9", &p),
+                "Wikidata item Q9 has 2 P225 statements, not one",
+            ),
             (
                 parent_taxon("Q2", &p).map(|_| (String::new(), String::new())),
                 "Wikidata item Q2 has no P171",
