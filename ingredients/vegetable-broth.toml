@@ -4,6 +4,9 @@ aliases = ["vegetable broth", "vegetable stock", "veggie broth", "veg stock"]
 [organism]
 none = "A broth of several vegetables, so no one organism."
 
+[origin]
+none = "Made from several vegetables, which USDA's name for the broth does not say."
+
 [[form]]
 state = "as_sold"
 fdc_id = 171583

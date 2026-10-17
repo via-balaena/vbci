@@ -6,6 +6,9 @@ taxon = "NCBITaxon_4146"
 fdc_id = 748608
 description = "Oil, olive, extra virgin"
 
+[origin]
+none = "Pressed from olives as picked, which no USDA food is: USDA's olives are canned, pickled or stuffed."
+
 [[form]]
 state = "as_sold"
 fdc_id = 171413

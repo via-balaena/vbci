@@ -406,6 +406,12 @@ A table. Each form of an ingredient: a state linked to one USDA food in the pinn
 
 Columns: `ingredient` VARCHAR, `state` VARCHAR, `position` INTEGER, `fdc_id` INTEGER, `description` VARCHAR.
 
+### silver.ingredient_made_from
+
+A table. Each ingredient an ingredient is made from, in its file's order. The records refuse one whose organism is not the ingredient's, where the ingredient has one, and one that leads back to it.
+
+Columns: `ingredient` VARCHAR, `position` INTEGER, `made_from` VARCHAR.
+
 ### silver.ingredient_organism
 
 A table. Each ingredient's organism, from its file's [organism] table: an NCBI Taxonomy id read from a Foundation food or a pinned Wikidata item, or none and why. The load refuses a taxon its source does not give.
@@ -415,6 +421,12 @@ A table. Each ingredient's organism, from its file's [organism] table: an NCBI T
 | taxon_item | VARCHAR | Derived, never typed: the Wikidata item whose P685 gave the taxon, the one named or the one its P1582 names. |
 
 Other columns: `ingredient` VARCHAR, `taxon` VARCHAR, `fdc_id` INTEGER, `description` VARCHAR, `wikidata` VARCHAR, `none` VARCHAR.
+
+### silver.ingredient_origin
+
+A table. What each ingredient is made from, from its file's [origin] table: nothing, as it is harvested; the ingredients silver.ingredient_made_from lists; or none, as what it is made from is no ingredient, and why.
+
+Columns: `ingredient` VARCHAR, `origin` VARCHAR, `none` VARCHAR.
 
 ### silver.nutrient
 
@@ -606,6 +618,12 @@ A view. Each form of each ingredient, with its USDA food, whether it is the defa
 
 Other columns: `ingredient` VARCHAR, `state` VARCHAR, `is_default` BOOLEAN, `fdc_id` INTEGER, `dataset` VARCHAR, `description` VARCHAR, `nutrients` BIGINT.
 
+### gold.ingredient_made_from
+
+A view. Each ingredient an ingredient is made from, in its file's order. Where the ingredient has an organism, each it is made from has the same; none leads back to it.
+
+Columns: `ingredient` VARCHAR, `position` INTEGER, `made_from` VARCHAR.
+
 ### gold.ingredient_organism
 
 A view. Each ingredient's organism by its NCBI Taxonomy id, and where the id was read from: a Foundation food, or a Wikidata item that sources.toml pins; or why it has none. Many ingredients can share one organism.
@@ -617,6 +635,17 @@ A view. Each ingredient's organism by its NCBI Taxonomy id, and where the id was
 | wikidata | VARCHAR | The Wikidata item the ingredient names, at the revision sources.toml pins. |
 | taxon_item | VARCHAR | The Wikidata item whose P685 (NCBI taxonomy ID) gave the taxon: the one named, or the one its P1582 (natural product of taxon) names. |
 | none | VARCHAR | Why the ingredient has no organism, as its file says. |
+
+Other columns: `ingredient` VARCHAR.
+
+### gold.ingredient_origin
+
+A view. What each ingredient is made from: harvested, a food as harvested, made from nothing; made_from, the ingredients gold.ingredient_made_from lists; or none, as what it is made from is no ingredient. A crop yields only a harvested ingredient.
+
+| column | type | what it is |
+|---|---|---|
+| origin | VARCHAR | harvested, made_from or none. |
+| none | VARCHAR | Why what the ingredient is made from is no ingredient, as its file says; NULL unless origin is none. |
 
 Other columns: `ingredient` VARCHAR.
 

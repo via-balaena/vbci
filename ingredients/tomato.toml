@@ -6,6 +6,9 @@ taxon = "NCBITaxon_4081"
 fdc_id = 1999634
 description = "Tomato, roma"
 
+[origin]
+harvested = true
+
 [[form]]
 state = "raw"
 fdc_id = 170457

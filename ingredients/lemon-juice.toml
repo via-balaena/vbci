@@ -5,6 +5,9 @@ aliases = ["lemon juice", "fresh lemon juice"]
 taxon = "NCBITaxon_2708"
 wikidata = "Q1375049"
 
+[origin]
+made_from = ["lemon"]
+
 [[form]]
 state = "raw"
 fdc_id = 167747

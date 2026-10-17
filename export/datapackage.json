@@ -92,6 +92,16 @@
       "version": "2553321145"
     },
     {
+      "title": "Q1093742, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q1093742&oldid=2557408056",
+      "version": "2557408056"
+    },
+    {
+      "title": "Q11006, Wikidata",
+      "path": "https://www.wikidata.org/w/index.php?title=Q11006&oldid=2545415117",
+      "version": "2545415117"
+    },
+    {
       "title": "VBCI's records, at the sha256s _lineage gives",
       "path": "https://github.com/via-balaena/vbci"
     }
@@ -113,10 +123,22 @@
     ],
     "wikidata": [
       {
+        "item": "Q1093742",
+        "revision": 2557408056,
+        "sha256": "ee8d2fe212d9f74d2906defae8795430a182a8ebeb5c5d09d14f95c9ac525d0c",
+        "bytes": 38945
+      },
+      {
         "item": "Q10998",
         "revision": 2557408936,
         "sha256": "c4456ada5cc72e2cf1791414c042cda1501dd9fbe5ca0b1d3967c7608b242c26",
         "bytes": 201413
+      },
+      {
+        "item": "Q11006",
+        "revision": 2545415117,
+        "sha256": "ed5e67d32b45f0046f564a05239639cfb2a5ad49ea052c83c68783b0906004ce",
+        "bytes": 178451
       },
       {
         "item": "Q11678009",
@@ -219,6 +241,10 @@
         "sha256": "8a58f3d79143554d054fcec51c77d26ab0096939de627222c49f3613a8033856"
       },
       {
+        "path": "crops/lemon.toml",
+        "sha256": "8b96e05dca94f80b52d0c57c7dcf0a48edcdbd63866a76f250be083b6819a340"
+      },
+      {
         "path": "crops/lentil.toml",
         "sha256": "b8b896cf784201b00d34f5819d89d5b7487df03a82ae5a7a4b0e650eb9482444"
       },
@@ -229,6 +255,10 @@
       {
         "path": "crops/potato.toml",
         "sha256": "6b8d1d62de7c1dc5c52422b9f6a4ac34e89e0a9f36e86778212696b8b66609a4"
+      },
+      {
+        "path": "crops/soybean.toml",
+        "sha256": "d9942467dee7462d25c31ddb4bcf98dd87d8ad19541e5f9e086efb67bd3f6de1"
       },
       {
         "path": "crops/spinach.toml",
@@ -256,67 +286,75 @@
       },
       {
         "path": "ingredients/brown-rice.toml",
-        "sha256": "d8002fcd5583949d79c598175f74d8d3d8b715b69405bbd41f74636e8c7b2496"
+        "sha256": "9b468078bc70750393d7c9fcb872833a1d5a5661a792343c7f597146480252fe"
       },
       {
         "path": "ingredients/carrot.toml",
-        "sha256": "0fd87dad1522710d2eadc2af0c170d023a7a1ac3e5dffcdfefc037eaf75d660d"
+        "sha256": "121ea5f851154f0b774d797a83655405e8f927e0aaab549eba7345c9e350b3f6"
       },
       {
         "path": "ingredients/chickpeas.toml",
-        "sha256": "17690681ecdd37514e4d7b0218ee837d967d4632a94e251a709384fdb80e94d6"
+        "sha256": "5c229df84782329ea632fdd84663954f1c6e731240ee92b20fe8f80ccc32f021"
       },
       {
         "path": "ingredients/cumin.toml",
-        "sha256": "b6ad770c6f088fc52dbba88a90949754cd74d04d0f57238dc7b0490551d8380d"
+        "sha256": "9506d1bf6f69ea31ec4bce545442184a238a0e2158f68bd3a9250f7e0150abef"
       },
       {
         "path": "ingredients/garlic.toml",
-        "sha256": "c8e932ec88add73951ae02a96efe4071032e9756261feed3e12e9df7baabddff"
+        "sha256": "a2a9dfcc5c21df1540f11186f3ac3c0ebfcd207fc3e83645a8b72be70c0670d1"
       },
       {
         "path": "ingredients/lemon-juice.toml",
-        "sha256": "310c1eab95784f682a861c2a815b10ed6c59e027157560fd18344873dfc01971"
+        "sha256": "7e3985a07357f877c2aa9437eba41d0c2c1714bf389b7be3df44da17d6f6890b"
+      },
+      {
+        "path": "ingredients/lemon.toml",
+        "sha256": "ce685b63435be230b6eb4b87da9311cf85727f88a214c8177dfa6b0480c83bba"
       },
       {
         "path": "ingredients/lentils.toml",
-        "sha256": "ddc6aefa79b043a56acf1f70aeb99bb65da510ee9f99391753c3fa1f4a4ead1a"
+        "sha256": "a87a89cf8cc6dcd9221a7629f28b6282042fd0d19a0a959c9248408bff393ff8"
       },
       {
         "path": "ingredients/olive-oil.toml",
-        "sha256": "8d26f11f1bc5867b7adaca1ee7a7467919a8bb54c4ca3db82cc4e20ab25d22b0"
+        "sha256": "7af1b457468e8e5a2722a971e61bda5693fb44ad711e66b8fae6f1c206ac5385"
       },
       {
         "path": "ingredients/onion.toml",
-        "sha256": "dd421bdd429d91f7069f4fc268ddbc5dd2ada8516be9d1e3ed1264063f22b84c"
+        "sha256": "a36fe1b003f4110a6cbd9021c1341a32cfa076cc778a48012afd4d17687f7389"
       },
       {
         "path": "ingredients/parmesan.toml",
-        "sha256": "61f05213e393d0469aebdefce336a3d5d822d8d4a8a4389e80f8a9d390407a80"
+        "sha256": "684fdc847ec2fa8838eb9a7bce87774c423a86ba98afbeec19594a24b7db60fc"
       },
       {
         "path": "ingredients/potato.toml",
-        "sha256": "2ec22eb6c19205271421b9c3d6b869266dc6eed9ce52c5d60bd0099a5d638ee1"
+        "sha256": "c334e0c33695c697c17750cf6fb6219361b6d243703f64497a68642be8ab9fee"
       },
       {
         "path": "ingredients/red-lentils.toml",
-        "sha256": "1cfe0f3209fc7127f85cf429d5cb7ad589a3e74e06c8e9b0521bc92aa21617eb"
+        "sha256": "4693301c4f44b02d4f40c50a957c618a4a85df5892b34a121fd5fe57f75bb210"
+      },
+      {
+        "path": "ingredients/soybeans.toml",
+        "sha256": "3e389b8f514e005841c5e8f0249cf78aec13b1563726ec6e70c0ce34052bcc80"
       },
       {
         "path": "ingredients/spinach.toml",
-        "sha256": "1529b41a5dbeddbabe02ea38fd2a2c81193375df237bde49682c1497de13e912"
+        "sha256": "0f6139d30e95b9a8e4d1df6f5cff1bf6e685c28cf36b6d2c433c17029d4c6a2e"
       },
       {
         "path": "ingredients/tofu.toml",
-        "sha256": "8ae3a0bef02d38f9af42a53f71519edd7adefdc7bf69b19ff95e2f693714ddec"
+        "sha256": "7e24898f3d39dae776edbe3ec3076085a3f4466bb00462a39bf3e584c6ca799a"
       },
       {
         "path": "ingredients/tomato.toml",
-        "sha256": "8d07723a3f8df7d94bb639e4c2793b36c045d40f921bb844085ff3265712109a"
+        "sha256": "ff23d08c6a9a9439b76dffe7586b97bc906714a2728ace647415f91c019c4d59"
       },
       {
         "path": "ingredients/vegetable-broth.toml",
-        "sha256": "f23b55433cd0777ca4527d098d91dfa75532b3988e85d86a16b4184b62c80549"
+        "sha256": "f85045ab9439dec09a6a55862852c49493d45f380323f84feb02405c04ad7d5e"
       },
       {
         "path": "nutrients.toml",
@@ -324,7 +362,7 @@
       },
       {
         "path": "sources.toml",
-        "sha256": "52647cd204c92050559d888868dad6c910de8e461ffdcb9dd37e6f7f22bd6965"
+        "sha256": "43a5c3c479996b153ad70dea78078fe318158d3b468c6b21665fbe157f6f9164"
       },
       {
         "path": "units/count.toml",
@@ -135333,6 +135371,7 @@
         ["chickpeas","Chickpeas",null],
         ["cumin","Cumin",null],
         ["garlic","Garlic",null],
+        ["lemon","Lemon",null],
         ["lemon-juice","Lemon juice",null],
         ["lentils","Lentils",null],
         ["olive-oil","Olive oil",null],
@@ -135340,6 +135379,7 @@
         ["parmesan","Parmesan",null],
         ["potato","Potato",null],
         ["red-lentils","Red lentils",null],
+        ["soybeans","Soybeans",null],
         ["spinach","Spinach",null],
         ["tofu","Tofu",null],
         ["tomato","Tomato",null],
@@ -135399,7 +135439,9 @@
         ["garlic cloves","garlic"],
         ["green lentils","lentils"],
         ["ground cumin","cumin"],
+        ["lemon","lemon"],
         ["lemon juice","lemon-juice"],
+        ["lemons","lemon"],
         ["lentil","lentils"],
         ["lentils","lentils"],
         ["masoor dal","red-lentils"],
@@ -135415,6 +135457,9 @@
         ["potatoes","potato"],
         ["red lentil","red-lentils"],
         ["red lentils","red-lentils"],
+        ["soy beans","soybeans"],
+        ["soybean","soybeans"],
+        ["soybeans","soybeans"],
         ["spinach","spinach"],
         ["split red lentils","red-lentils"],
         ["tofu","tofu"],
@@ -135508,6 +135553,7 @@
         ["chickpeas","dry",true,173756,"sr-legacy","Chickpeas (garbanzo beans, bengal gram), mature seeds, raw",null,15],
         ["cumin","dry",true,170923,"sr-legacy","Spices, cumin seed",null,15],
         ["garlic","raw",true,169230,"sr-legacy","Garlic, raw",null,15],
+        ["lemon","raw",true,167746,"sr-legacy","Lemons, raw, without peel",null,15],
         ["lemon-juice","canned",false,167748,"sr-legacy","Lemon juice from concentrate, canned or bottled",null,15],
         ["lemon-juice","raw",true,167747,"sr-legacy","Lemon juice, raw",null,16],
         ["lentils","cooked",false,172421,"sr-legacy","Lentils, mature seeds, cooked, boiled, without salt",null,15],
@@ -135519,6 +135565,8 @@
         ["potato","cooked",false,170440,"sr-legacy","Potatoes, boiled, cooked without skin, flesh, without salt",null,15],
         ["potato","raw",true,170028,"sr-legacy","Potatoes, white, flesh and skin, raw",null,15],
         ["red-lentils","dry",true,174284,"sr-legacy","Lentils, pink or red, raw",null,14],
+        ["soybeans","cooked",false,174271,"sr-legacy","Soybeans, mature cooked, boiled, without salt",null,15],
+        ["soybeans","dry",true,174270,"sr-legacy","Soybeans, mature seeds, raw",null,15],
         ["spinach","canned",false,169286,"sr-legacy","Spinach, canned, regular pack, drained solids",null,15],
         ["spinach","cooked",false,168463,"sr-legacy","Spinach, cooked, boiled, drained, without salt",null,15],
         ["spinach","frozen",false,169287,"sr-legacy","Spinach, frozen, chopped or leaf, unprepared (Includes foods for USDA's Food Distribution Program)",null,15],
@@ -135590,6 +135638,7 @@
         ["chickpeas","NCBITaxon_3827",2644282,null,null,null],
         ["cumin","NCBITaxon_52462",null,"Q57328174","Q132624",null],
         ["garlic","NCBITaxon_4682",1104647,null,null,null],
+        ["lemon","NCBITaxon_2708",null,"Q1093742","Q500",null],
         ["lemon-juice","NCBITaxon_2708",null,"Q1375049","Q500",null],
         ["lentils","NCBITaxon_3864",2644283,null,null,null],
         ["olive-oil","NCBITaxon_4146",748608,null,null,null],
@@ -135597,10 +135646,126 @@
         ["parmesan","NCBITaxon_9913",325036,null,null,null],
         ["potato","NCBITaxon_4113",2346401,null,null,null],
         ["red-lentils","NCBITaxon_3864",2644283,null,null,null],
+        ["soybeans","NCBITaxon_3847",1999630,null,null,null],
         ["spinach","NCBITaxon_3562",1999633,null,null,null],
         ["tofu","NCBITaxon_3847",1999630,null,null,null],
         ["tomato","NCBITaxon_4081",1999634,null,null,null],
         ["vegetable-broth",null,null,null,null,"A broth of several vegetables, so no one organism."]
+      ]
+    },
+    {
+      "name": "ingredient_origin",
+      "type": "table",
+      "description": "What each ingredient is made from: harvested, a food as harvested, made from nothing; made_from, the ingredients gold.ingredient_made_from lists; or none, as what it is made from is no ingredient. A crop yields only a harvested ingredient.",
+      "schema": {
+        "fields": [
+          {
+            "name": "ingredient",
+            "type": "string"
+          },
+          {
+            "name": "origin",
+            "type": "string",
+            "description": "harvested, made_from or none."
+          },
+          {
+            "name": "none",
+            "type": "string",
+            "description": "Why what the ingredient is made from is no ingredient, as its file says; NULL unless origin is none."
+          }
+        ],
+        "primaryKey": [
+          "ingredient"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "ingredient"
+            ],
+            "reference": {
+              "resource": "ingredient",
+              "fields": [
+                "ingredient"
+              ]
+            }
+          }
+        ]
+      },
+      "data": [
+        ["ingredient","origin","none"],
+        ["brown-rice","none","Hulled from paddy rice, the grain as harvested, which no USDA food is."],
+        ["carrot","harvested",null],
+        ["chickpeas","harvested",null],
+        ["cumin","harvested",null],
+        ["garlic","harvested",null],
+        ["lemon","harvested",null],
+        ["lemon-juice","made_from",null],
+        ["lentils","harvested",null],
+        ["olive-oil","none","Pressed from olives as picked, which no USDA food is: USDA's olives are canned, pickled or stuffed."],
+        ["onion","harvested",null],
+        ["parmesan","none","Made from cow's milk, which no VBCI ingredient is."],
+        ["potato","harvested",null],
+        ["red-lentils","made_from",null],
+        ["soybeans","harvested",null],
+        ["spinach","harvested",null],
+        ["tofu","made_from",null],
+        ["tomato","harvested",null],
+        ["vegetable-broth","none","Made from several vegetables, which USDA's name for the broth does not say."]
+      ]
+    },
+    {
+      "name": "ingredient_made_from",
+      "type": "table",
+      "description": "Each ingredient an ingredient is made from, in its file's order. Where the ingredient has an organism, each it is made from has the same; none leads back to it.",
+      "schema": {
+        "fields": [
+          {
+            "name": "ingredient",
+            "type": "string"
+          },
+          {
+            "name": "position",
+            "type": "integer"
+          },
+          {
+            "name": "made_from",
+            "type": "string"
+          }
+        ],
+        "primaryKey": [
+          "ingredient",
+          "position"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "ingredient"
+            ],
+            "reference": {
+              "resource": "ingredient_origin",
+              "fields": [
+                "ingredient"
+              ]
+            }
+          },
+          {
+            "fields": [
+              "made_from"
+            ],
+            "reference": {
+              "resource": "ingredient",
+              "fields": [
+                "ingredient"
+              ]
+            }
+          }
+        ]
+      },
+      "data": [
+        ["ingredient","position","made_from"],
+        ["lemon-juice",1,"lemon"],
+        ["red-lentils",1,"lentils"],
+        ["tofu",1,"soybeans"]
       ]
     },
     {
@@ -135687,9 +135852,11 @@
         ["chickpea","Chickpea","chickpeas","dry","NCBITaxon_3827","Cicer arietinum","Q81375",null,0],
         ["cumin","Cumin","cumin","dry","NCBITaxon_52462","Cuminum cyminum","Q132624",null,0],
         ["garlic","Garlic","garlic","raw","NCBITaxon_4682","Allium sativum","Q23400",null,0],
+        ["lemon","Lemon","lemon","raw","NCBITaxon_2708","Citrus × limon","Q500",null,0],
         ["lentil","Lentil","lentils","dry","NCBITaxon_3864","Lens culinaris","Q131226",null,0],
         ["onion","Onion","onion","raw","NCBITaxon_4679","Allium cepa","Q23485",null,0],
         ["potato","Potato","potato","raw","NCBITaxon_4113","Solanum tuberosum","Q10998",null,0],
+        ["soybean","Soybean","soybeans","dry","NCBITaxon_3847","Glycine max","Q11006",null,0],
         ["spinach","Spinach","spinach","raw","NCBITaxon_3562","Spinacia oleracea","Q81464",null,0],
         ["tomato","Tomato","tomato","raw","NCBITaxon_4081","Solanum lycopersicum","Q23501",null,0]
       ]

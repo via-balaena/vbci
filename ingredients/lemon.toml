@@ -1,0 +1,14 @@
+name = "Lemon"
+aliases = ["lemon", "lemons"]
+
+[organism]
+taxon = "NCBITaxon_2708"
+wikidata = "Q1093742"
+
+[origin]
+harvested = true
+
+[[form]]
+state = "raw"
+fdc_id = 167746
+description = "Lemons, raw, without peel"
