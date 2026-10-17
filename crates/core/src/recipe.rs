@@ -1176,6 +1176,14 @@ mod tests {
                 None,
                 "slice, medium (1/8\" thick)",
             ),
+            portion(
+                2,
+                "count",
+                "slice",
+                38.0,
+                None,
+                "slice, large (1/4\" thick)",
+            ),
             portion(3, "count", "medium", 94.0, None, "medium"),
             portion(5, "mass", "oz", 28.35, None, "oz"),
             portion(6, "volume", "c", 192.0, Some(cup), "cup"),
@@ -1485,23 +1493,29 @@ mod tests {
             Ok((one(2.8), How::Portions(texts(&["tsp"])))),
             "a unit the line gives wins over its name's"
         );
+        let slices = texts(&["slice, medium (1/8\" thick)", "slice, large (1/4\" thick)"]);
         assert_eq!(
             grams("@onion slices{3}"),
             Ok((
-                one(42.0),
-                How::Named(
-                    "slice".into(),
-                    Box::new(How::Portions(texts(&["slice, medium (1/8\" thick)"])))
-                )
+                both(42.0, 114.0),
+                How::Named("slice".into(), Box::new(How::Portions(slices.clone())))
             )),
             "its name's unit, not whole items"
         );
         assert_eq!(
-            grams("@onion{1%slice}"),
+            grams("@onion slices{1}(large)"),
             Ok((
-                one(14.0),
-                How::Portions(texts(&["slice, medium (1/8\" thick)"]))
+                one(38.0),
+                How::Named(
+                    "slice".into(),
+                    Box::new(How::PortionsByNote(texts(&["slice, large (1/4\" thick)"])))
+                )
             )),
+            "the note names one of its name's unit's portions"
+        );
+        assert_eq!(
+            grams("@onion{1%slice}"),
+            Ok((both(14.0, 38.0), How::Portions(slices))),
             "a unit not marked whole is still read in its own unit"
         );
         let (g, how) = grams("@lemon juice{2%tbsp}").unwrap();
