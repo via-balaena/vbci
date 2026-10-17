@@ -332,7 +332,8 @@ mod tests {
 
     /// Each place a taxon could be read from more than one way, or not at all, is refused: an item
     /// not pinned, two read statements of a property, one with no value, neither property, a P1582
-    /// naming an item not pinned, or one with no P685 of its own; one step only.
+    /// naming an item not pinned, or one with no P685 of its own. One step only: Q7's P1582 names
+    /// Q12, whose P1582 names Q10, which has a P685, and Q7 is still refused.
     #[test]
     fn an_item_whose_taxon_is_not_one_value_is_refused() {
         let p = pinned(&[
@@ -345,11 +346,12 @@ mod tests {
             ("Q4", vec![]),
             ("Q5", vec![product_of("Q99")]),
             ("Q6", vec![product_of("Q4")]),
-            ("Q7", vec![product_of("Q6")]),
+            ("Q7", vec![product_of("Q12")]),
             ("Q8", vec![product_of("Q10"), product_of("Q11")]),
             ("Q9", vec![product_of("Q1")]),
             ("Q10", vec![ncbi("10")]),
             ("Q11", vec![ncbi("11")]),
+            ("Q12", vec![product_of("Q10")]),
         ]);
         for (item, why) in [
             ("Q0", "Wikidata item Q0 is not pinned in sources.toml"),
@@ -367,7 +369,7 @@ mod tests {
             ),
             (
                 "Q7",
-                "Wikidata item Q6, which Q7's P1582 names, has no P685",
+                "Wikidata item Q12, which Q7's P1582 names, has no P685",
             ),
             ("Q8", "Wikidata item Q8 has 2 P1582 statements, not one"),
             ("Q9", "Wikidata item Q1 has 2 P685 statements, not one"),
