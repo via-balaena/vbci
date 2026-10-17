@@ -12,7 +12,7 @@ use cooklang::metadata::Servings;
 use cooklang::{
     Converter, CooklangParser, Extensions, IngredientReferenceTarget, Quantity, Value as Amount,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -75,6 +75,12 @@ pub enum How {
     /// The food has no portion in its volume unit: grams per millilitre from the food's portions in
     /// other volume units, by their texts.
     Density(Vec<String>),
+    /// Its amount has no unit, so it counts whole items: the food's USDA portions in the count
+    /// units one of which is one whole item, by their texts.
+    Whole(Vec<String>),
+    /// Of the food's USDA portions of one whole item, which disagree, those whose text holds its
+    /// note's words.
+    WholeByNote(Vec<String>),
 }
 
 /// Why a line has no grams.
@@ -90,8 +96,9 @@ pub enum NoGrams {
     NoAmount,
     /// Its amount is text, such as "to taste".
     TextAmount(String),
-    /// Its amount has no unit.
-    NoUnit,
+    /// Its amount has no unit, so it counts whole items, and the food has no USDA portion in a
+    /// count unit one of which is one whole item.
+    NoWhole,
     /// Its unit is no mass, volume or count unit.
     Unit(String),
     /// The food has no USDA portion in its unit, nor, for a volume unit, in any volume unit.
@@ -272,6 +279,8 @@ struct Kitchen {
     portions: Vec<Portion>,
     /// Each count unit's names, with the unit it names.
     counts: BTreeMap<String, String>,
+    /// The count units one of which is one whole item of a food.
+    whole: BTreeSet<String>,
     converter: Converter,
 }
 
@@ -445,6 +454,16 @@ impl Kitchen {
             };
             counts.insert(nm.to_string(), u.to_string());
         }
+        let (t, [unit, whole]) = columns(export, "count_unit", ["unit", "whole"])?;
+        let mut wholes = BTreeSet::new();
+        for (n, r) in t.rows.iter().enumerate() {
+            let (Some(u), Value::Boolean(w)) = (text(&r[unit]), &r[whole]) else {
+                return Err(bad("count_unit", n));
+            };
+            if *w {
+                wholes.insert(u.to_string());
+            }
+        }
         Ok(Kitchen {
             aliases,
             forms,
@@ -453,6 +472,7 @@ impl Kitchen {
             nutrients,
             portions,
             counts,
+            whole: wholes,
             converter: Converter::bundled(),
         })
     }
@@ -513,7 +533,17 @@ impl Kitchen {
             },
             Amount::Text(t) => return Err(NoGrams::TextAmount(t.clone())),
         };
-        let unit = q.unit().ok_or(NoGrams::NoUnit)?;
+        let Some(unit) = q.unit() else {
+            let (per, texts, noted) = self
+                .portions(fdc_id, "count", |u| self.whole.contains(u), note)
+                .ok_or(NoGrams::NoWhole)?;
+            let how = if noted {
+                How::WholeByNote(texts)
+            } else {
+                How::Whole(texts)
+            };
+            return Ok((amount.times(per), how));
+        };
         // A unit is read as the warehouse reads a portion's (crates/warehouse, src/portions.rs):
         // lowercased with single spaces, a mass or volume unit cooklang knows, by its first symbol,
         // else a count unit's name.
@@ -528,8 +558,10 @@ impl Kitchen {
             return match u.physical_quantity {
                 PhysicalQuantity::Mass => Ok((amount.times(Range::one(u.ratio)), How::Mass)),
                 PhysicalQuantity::Volume => {
-                    if let Some((per, how)) = self.portions(fdc_id, "volume", &symbol, note) {
-                        return Ok((amount.times(per), how));
+                    if let Some((per, texts, noted)) =
+                        self.portions(fdc_id, "volume", |u| u == symbol, note)
+                    {
+                        return Ok((amount.times(per), in_unit(texts, noted)));
                     }
                     let volume: Vec<&Portion> = self
                         .portions
@@ -553,20 +585,27 @@ impl Kitchen {
             .counts
             .get(&name)
             .ok_or_else(|| NoGrams::Unit(unit.to_string()))?;
-        let (per, how) = self
-            .portions(fdc_id, "count", count, note)
+        let (per, texts, noted) = self
+            .portions(fdc_id, "count", |u| u == count, note)
             .ok_or_else(|| NoGrams::NoPortion(unit.to_string()))?;
-        Ok((amount.times(per), how))
+        Ok((amount.times(per), in_unit(texts, noted)))
     }
 
-    /// Grams in one `unit` of `fdc_id` by its USDA portions in that unit: the range of what they
-    /// give, or, when they disagree, of those whose text holds the note's words, if some do and
-    /// some do not. None when it has no portion in the unit.
-    fn portions(&self, fdc_id: i64, kind: &str, unit: &str, note: &str) -> Option<(Range, How)> {
+    /// Grams in one unit of `fdc_id` by its USDA portions of `kind` in the units `unit` accepts:
+    /// the range of what they give, or, when they disagree, of those whose text holds the note's
+    /// words, if some do and some do not; with those portions' texts, and whether the note's words
+    /// chose them. None when it has no such portion.
+    fn portions(
+        &self,
+        fdc_id: i64,
+        kind: &str,
+        unit: impl Fn(&str) -> bool,
+        note: &str,
+    ) -> Option<(Range, Vec<String>, bool)> {
         let all: Vec<&Portion> = self
             .portions
             .iter()
-            .filter(|p| p.fdc_id == fdc_id && p.kind == kind && p.unit == unit)
+            .filter(|p| p.fdc_id == fdc_id && p.kind == kind && unit(&p.unit))
             .collect();
         if all.is_empty() {
             return None;
@@ -583,10 +622,20 @@ impl Kitchen {
                 .filter(|p| phrase(&p.text).contains(&note))
                 .collect();
             if !named.is_empty() && named.len() < all.len() {
-                return Some((per(&named), How::PortionsByNote(texts(&named))));
+                return Some((per(&named), texts(&named), true));
             }
         }
-        Some((range, How::Portions(texts(&all))))
+        Some((range, texts(&all), false))
+    }
+}
+
+/// How a line's grams were reached by the food's portions in its unit, whether its note's words
+/// chose them or not.
+fn in_unit(texts: Vec<String>, noted: bool) -> How {
+    if noted {
+        How::PortionsByNote(texts)
+    } else {
+        How::Portions(texts)
     }
 }
 
@@ -735,6 +784,19 @@ impl How {
             }
             How::PortionsByNote(t) => format!("USDA's portions the note names, {}", code(t)),
             How::Density(t) => format!("grams per millilitre from USDA's {}", code(t)),
+            How::Whole(t) if t.len() == 1 => {
+                format!("whole items, by USDA's portion {}", code(t))
+            }
+            How::Whole(t) => format!("whole items, by USDA's portions {}", code(t)),
+            How::WholeByNote(t) if t.len() == 1 => {
+                format!("whole items, by USDA's portion the note names, {}", code(t))
+            }
+            How::WholeByNote(t) => {
+                format!(
+                    "whole items, by USDA's portions the note names, {}",
+                    code(t)
+                )
+            }
         }
     }
 }
@@ -750,7 +812,9 @@ impl NoGrams {
             ),
             NoGrams::NoAmount => "it has no amount".into(),
             NoGrams::TextAmount(t) => format!("its amount is text, `{t}`"),
-            NoGrams::NoUnit => "its amount has no unit".into(),
+            NoGrams::NoWhole => {
+                "its amount has no unit, and the food has no USDA portion of one whole item".into()
+            }
             NoGrams::Unit(u) => format!("`{u}` is no mass, volume or count unit"),
             NoGrams::NoPortion(u) => format!("the food has no USDA portion in `{u}`"),
         }
@@ -1068,7 +1132,17 @@ mod tests {
             portion(1, "volume", "tsp", 2.8, Some(tsp), "tsp"),
             portion(2, "volume", "c", 160.0, Some(cup), "cup, chopped"),
             portion(2, "volume", "c", 115.0, Some(cup), "cup, sliced"),
+            portion(2, "count", "small", 70.0, None, "small"),
             portion(2, "count", "medium", 110.0, None, "medium (2-1/2\" dia)"),
+            portion(2, "count", "large", 150.0, None, "large"),
+            portion(
+                2,
+                "count",
+                "slice",
+                14.0,
+                None,
+                "slice, medium (1/8\" thick)",
+            ),
             portion(3, "count", "medium", 94.0, None, "medium"),
             portion(5, "mass", "oz", 28.35, None, "oz"),
             portion(6, "volume", "c", 192.0, Some(cup), "cup"),
@@ -1102,6 +1176,20 @@ mod tests {
             ],
             portions,
         );
+        let count_unit = table(
+            "count_unit",
+            &[("unit", Text), ("whole", Boolean)],
+            [
+                ("clove", false),
+                ("large", true),
+                ("medium", true),
+                ("slice", false),
+                ("small", true),
+            ]
+            .iter()
+            .map(|(u, w)| vec![s(u), Value::Boolean(*w)])
+            .collect(),
+        );
         let count_unit_name = table(
             "count_unit_name",
             &[("name", Text), ("unit", Text)],
@@ -1109,6 +1197,7 @@ mod tests {
                 vec![s("clove"), s("clove")],
                 vec![s("cloves"), s("clove")],
                 vec![s("medium"), s("medium")],
+                vec![s("slice"), s("slice")],
             ],
         );
         let ingredient_alias = table(
@@ -1164,6 +1253,7 @@ mod tests {
                 nutrient,
                 food_nutrient,
                 portion,
+                count_unit,
                 count_unit_name,
                 ingredient_alias,
                 ingredient_form,
@@ -1298,6 +1388,43 @@ mod tests {
             grams("@red lentils{1/2%cup}"),
             Ok((one(96.0), How::Portions(texts(&["cup"]))))
         );
+        let whole = How::Whole(texts(&["small", "medium (2-1/2\" dia)", "large"]));
+        assert_eq!(
+            grams("@onion{1}"),
+            Ok((both(70.0, 150.0), whole.clone())),
+            "no unit: whole items, by the portions in units marked whole, not the slice"
+        );
+        assert_eq!(
+            grams("@onion{1-2}"),
+            Ok((both(70.0, 300.0), whole.clone())),
+            "a range of whole items"
+        );
+        assert_eq!(
+            grams("@onion{1}(chopped)"),
+            Ok((both(70.0, 150.0), whole)),
+            "the note's words are in no whole item's text"
+        );
+        assert_eq!(
+            grams("@onion{1}(medium)"),
+            Ok((
+                one(110.0),
+                How::WholeByNote(texts(&["medium (2-1/2\" dia)"]))
+            )),
+            "the note names one whole item; the slice's text holds it too, but a slice is not whole"
+        );
+        assert_eq!(
+            grams("@onion{2}(cooked)"),
+            Ok((one(188.0), How::Whole(texts(&["medium"])))),
+            "the cooked form's one whole item"
+        );
+        assert_eq!(
+            grams("@onion{1%slice}"),
+            Ok((
+                one(14.0),
+                How::Portions(texts(&["slice, medium (1/8\" thick)"]))
+            )),
+            "a unit not marked whole is still read in its own unit"
+        );
         let (g, how) = grams("@lemon juice{2%tbsp}").unwrap();
         assert_eq!(how, How::Density(texts(&["cup", "fl oz"])));
         let tbsp: f64 = 2.0 * 14.786764;
@@ -1317,7 +1444,7 @@ mod tests {
         why("@garlic{}", NoGrams::NoAmount);
         why("@garlic", NoGrams::NoAmount);
         why("@garlic{to taste}", NoGrams::TextAmount("to taste".into()));
-        why("@onion{1}", NoGrams::NoUnit);
+        why("@garlic{1}", NoGrams::NoWhole);
         why("@garlic{1%pinch}", NoGrams::Unit("pinch".into()));
         why("@garlic{2%cm}", NoGrams::Unit("cm".into()));
         why("@red lentils{1%clove}", NoGrams::NoPortion("clove".into()));
@@ -1362,7 +1489,7 @@ mod tests {
 
     #[test]
     fn a_total_says_how_many_lines_it_covers() {
-        let r = report("@red lentils{1%cup} @garlic{3%cloves} @salt{1%tsp} @onion{1}");
+        let r = report("@red lentils{1%cup} @garlic{3%cloves} @salt{1%tsp} @garlic{1}");
         let totals: Vec<(&str, usize)> = r
             .totals
             .iter()
@@ -1402,7 +1529,7 @@ mod tests {
 
     #[test]
     fn a_report_lists_the_lines_without_grams() {
-        let md = report("---\ntitle: Test\n---\n@salt{1%tsp} and @onion{1}(chopped).")
+        let md = report("---\ntitle: Test\n---\n@salt{1%tsp} and @garlic{1}(chopped).")
             .markdown("x", "From x.");
         assert!(md.starts_with("# Test\n"), "{md}");
         assert!(
@@ -1418,10 +1545,21 @@ mod tests {
             md.ends_with(
                 "## Lines without grams\n\n\
                  - salt, 1 tsp: its name is no ingredient's alias.\n\
-                 - onion, 1 (chopped): its amount has no unit.\n"
+                 - garlic, 1 (chopped): its amount has no unit, and the food has no USDA portion of one whole item.\n"
             ),
             "{md}"
         );
+    }
+
+    #[test]
+    fn a_report_says_a_bare_count_counts_whole_items() {
+        let md = report("@onion{1} and @onion{1}(medium).").markdown("x", "From x.");
+        for how in [
+            "| 70.0–150.0 | whole items, by USDA's portions `small`; `medium (2-1/2\" dia)`; `large` |",
+            "| 110.0 | whole items, by USDA's portion the note names, `medium (2-1/2\" dia)` |",
+        ] {
+            assert!(md.contains(how), "{how}\n{md}");
+        }
     }
 
     #[test]
