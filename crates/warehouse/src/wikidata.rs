@@ -490,6 +490,13 @@ mod tests {
                 r#"{"query":{"pages":[{"title":"Q1","revisions":[]}]}}"#.to_string(),
                 "wikidata Q1 revision 7: the answer has 0 revisions, not one",
             ),
+            (
+                answer("Q1", 7, CONTENT).replace(
+                    "\"revisions\":[",
+                    "\"revisions\":[{\"revid\":7,\"slots\":{\"main\":{\"content\":\"{}\"}}},",
+                ),
+                "wikidata Q1 revision 7: the answer has 2 revisions, not one",
+            ),
         ] {
             assert_eq!(content_of(&w, body.as_bytes()), Err(why.to_string()));
         }
