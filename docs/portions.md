@@ -16,8 +16,8 @@ not guessed.
 |---|---|
 | mass | 3606 |
 | volume | 4331 |
-| count | 2315 |
-| not read | 4179 |
+| count | 2381 |
+| not read | 4113 |
 
 ## Foundation Foods 2026-04-30 (`foundation`): 187 portions
 
@@ -25,8 +25,8 @@ not guessed.
 |---|---|
 | mass | 5 |
 | volume | 78 |
-| count | 46 |
-| not read | 58 |
+| count | 50 |
+| not read | 54 |
 
 ## Count units
 
@@ -41,6 +41,7 @@ it.
 | clove | 2 | 0 |
 | dash | 2 | 0 |
 | each | 13 | 19 |
+| fruit | 66 | 4 |
 | head | 27 | 0 |
 | jar | 348 | 0 |
 | large | 111 | 0 |
@@ -80,7 +81,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | chicken | 42 | chicken |
 | sr-legacy | cracker | 41 | cracker |
 | sr-legacy | patty | 40 | patty |
-| sr-legacy | fruit | 39 | fruit |
 | sr-legacy | drumstick | 38 | drumstick |
 | sr-legacy | nlea serving | 38 | NLEA Serving |
 | sr-legacy | pizza | 37 | pizza |
@@ -105,7 +105,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | back | 17 | back |
 | sr-legacy | leg | 17 | leg |
 | sr-legacy | doughnut | 15 | doughnut |
-| sr-legacy | fruit without refuse | 15 | fruit without refuse |
 | sr-legacy | half | 15 | half |
 | sr-legacy | thigh without skin | 15 | thigh without skin |
 | sr-legacy | bird | 14 | bird |
@@ -184,7 +183,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | spears | 5 | spears |
 | sr-legacy | wafer | 5 | wafer |
 | foundation | banana | 4 | Banana |
-| foundation | fruit | 4 | fruit |
 | sr-legacy | apricot half with liquid | 4 | apricot half with liquid |
 | sr-legacy | artichoke | 4 | artichoke, large |
 | sr-legacy | bottle 12 fl oz | 4 | bottle 12 fl oz |
@@ -229,8 +227,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | drink box | 3 | drink box (8.45 fl oz) |
 | sr-legacy | fig with liquid | 3 | fig with liquid |
 | sr-legacy | floweret | 3 | floweret |
-| sr-legacy | fruit without skin and seeds | 3 | fruit without skin and seeds |
-| sr-legacy | fruit yields | 3 | fruit yields |
 | sr-legacy | gumdrop | 3 | gumdrop, large (1" dia) |
 | sr-legacy | honeybun | 3 | honeybun (4" x 3") |
 | sr-legacy | individual packet | 3 | individual packet |
@@ -312,7 +308,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | flowerets | 2 | flowerets |
 | sr-legacy | fries | 2 | fries |
 | sr-legacy | frond | 2 | frond (6-1/2" long) |
-| sr-legacy | fruit without pits | 2 | fruit without pits |
 | sr-legacy | glass | 2 | glass (3.5 fl oz) |
 | sr-legacy | gold fish | 2 | gold fish |
 | sr-legacy | gourd | 2 | gourd |
@@ -467,10 +462,6 @@ A count unit added to `units/count.toml` reads the phrases that name it.
 | sr-legacy | fish | 1 | fish |
 | sr-legacy | flat fillet | 1 | flat fillet |
 | sr-legacy | frank 1 nlea serving | 1 | frank 1 NLEA serving |
-| sr-legacy | fruit 2-1/4" high x 2-1/2" dia | 1 | fruit 2-1/4" high x 2-1/2" dia |
-| sr-legacy | fruit 3-3/8" high x 3" diameter | 1 | fruit 3-3/8" high x 3" diameter |
-| sr-legacy | fruit without peel | 1 | fruit without peel |
-| sr-legacy | fruit without seeds | 1 | fruit without seeds |
 | sr-legacy | fudge marshmallow | 1 | Fudge Marshmallow |
 | sr-legacy | full rump | 1 | full rump |
 | sr-legacy | full rump cooked | 1 | full rump cooked ( yield from 695 g raw meat ) |
