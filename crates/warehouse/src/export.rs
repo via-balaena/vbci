@@ -102,6 +102,22 @@ pub const EXPORTED: &[Exported] = &[
         references: &[INGREDIENT],
     },
     Exported {
+        view: "ingredient_alias_unit",
+        key: &["alias"],
+        references: &[
+            Reference {
+                columns: &["alias"],
+                view: "ingredient_alias",
+                to: &["alias"],
+            },
+            Reference {
+                columns: &["unit"],
+                view: "count_unit",
+                to: &["unit"],
+            },
+        ],
+    },
+    Exported {
         view: "ingredient_form",
         key: &["ingredient", "state"],
         references: &[INGREDIENT, FOOD],

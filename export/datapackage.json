@@ -135598,6 +135598,55 @@
       ]
     },
     {
+      "name": "ingredient_alias_unit",
+      "type": "table",
+      "description": "Each alias of two or more words whose last word is a count unit's name, and that unit: a recipe line with no unit that calls its ingredient by the alias counts in it, as @garlic cloves{2} counts cloves.",
+      "schema": {
+        "fields": [
+          {
+            "name": "alias",
+            "type": "string"
+          },
+          {
+            "name": "unit",
+            "type": "string"
+          }
+        ],
+        "primaryKey": [
+          "alias"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "alias"
+            ],
+            "reference": {
+              "resource": "ingredient_alias",
+              "fields": [
+                "alias"
+              ]
+            }
+          },
+          {
+            "fields": [
+              "unit"
+            ],
+            "reference": {
+              "resource": "count_unit",
+              "fields": [
+                "unit"
+              ]
+            }
+          }
+        ]
+      },
+      "data": [
+        ["alias","unit"],
+        ["garlic clove","clove"],
+        ["garlic cloves","clove"]
+      ]
+    },
+    {
       "name": "ingredient_form",
       "type": "table",
       "description": "Each form of each ingredient, with its USDA food, whether it is the default, the FoodOn ids that food carries, and how many of the nutrients VBCI reports it has a value for.",

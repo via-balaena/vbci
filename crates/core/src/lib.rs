@@ -643,6 +643,7 @@ mod tests {
                 "count_unit_name",
                 "ingredient",
                 "ingredient_alias",
+                "ingredient_alias_unit",
                 "ingredient_form",
                 "ingredient_organism",
                 "ingredient_origin",

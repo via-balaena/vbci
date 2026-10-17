@@ -618,6 +618,12 @@ A view. Each name a recipe may call an ingredient by, and the ingredient it name
 
 Columns: `alias` VARCHAR, `ingredient` VARCHAR.
 
+### gold.ingredient_alias_unit
+
+A view. Each alias of two or more words whose last word is a count unit's name, and that unit: a recipe line with no unit that calls its ingredient by the alias counts in it, as @garlic cloves{2} counts cloves.
+
+Columns: `alias` VARCHAR, `unit` VARCHAR.
+
 ### gold.ingredient_form
 
 A view. Each form of each ingredient, with its USDA food, whether it is the default, the FoodOn ids that food carries, and how many of the nutrients VBCI reports it has a value for.
