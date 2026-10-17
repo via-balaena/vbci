@@ -284,12 +284,12 @@ CREATE TABLE silver.crop (
     taxon           TEXT NOT NULL CHECK (regexp_full_match(taxon, 'NCBITaxon_[0-9]+')),
     scientific_name TEXT NOT NULL CHECK (trim(scientific_name) <> ''),
     ingredient      TEXT NOT NULL,
-    state           TEXT NOT NULL,
+    state           TEXT NOT NULL CHECK (state IN ('raw', 'dry')),
     parent_item     TEXT CHECK (parent_item IS NULL OR regexp_full_match(parent_item, 'Q[0-9]+')),
     record          TEXT NOT NULL,
     FOREIGN KEY (ingredient, state) REFERENCES silver.ingredient_form (ingredient, state)
 );
-COMMENT ON TABLE silver.crop IS 'Each crop, from crops/<id>.toml: the ingredient it yields, in a state the ingredient has a form in, and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient''s nor one step below it.';
+COMMENT ON TABLE silver.crop IS 'Each crop, from crops/<id>.toml: the ingredient it yields, and the state it is harvested in, raw or dry, which the ingredient has a form in; and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient''s nor one step below it.';
 COMMENT ON COLUMN silver.crop.parent_item IS 'Derived, never typed: the item the crop''s item names as its parent taxon, whose NCBI Taxonomy id is the ingredient''s organism; NULL where the crop''s organism is the ingredient''s.';
 
 CREATE TABLE silver.usda_measure_unit (
@@ -509,7 +509,7 @@ SELECT crop, name, ingredient, state, taxon, scientific_name, wikidata, parent_i
        CASE WHEN parent_item IS NULL THEN 0 ELSE 1 END AS steps_below
 FROM silver.crop;
 COMMENT ON VIEW gold.crop IS 'Each crop VBCI knows, the ingredient it yields and the state it is harvested in, and its organism by NCBI Taxonomy id and scientific name, as a pinned Wikidata item gives them. Several crops can yield one ingredient.';
-COMMENT ON COLUMN gold.crop.state IS 'The state the ingredient is in when harvested: a state the ingredient has a form in.';
+COMMENT ON COLUMN gold.crop.state IS 'The state the ingredient is in when harvested, raw or dry: a state the ingredient has a form in.';
 COMMENT ON COLUMN gold.crop.wikidata IS 'The Wikidata item of the crop''s organism, at the revision sources.toml pins.';
 COMMENT ON COLUMN gold.crop.parent_item IS 'The Wikidata item the crop''s item names as its parent taxon, where the crop''s organism is one step below its ingredient''s; NULL where the two are one organism.';
 COMMENT ON COLUMN gold.crop.steps_below IS 'How many steps the crop''s organism is below its ingredient''s, by Wikidata''s parent taxon: 0 or 1.';

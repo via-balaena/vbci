@@ -6,9 +6,9 @@ file differs from what that would write. Change the records, not this file.
 
 12 crops yield 11 ingredients (`gold.crop`). A crop names the ingredient it
 yields, one whose origin is harvested (`gold.ingredient_origin`), and the state it is
-harvested in; its organism is the NCBI Taxonomy id and scientific name its Wikidata item
-gives. That organism is its ingredient's, or, for 2, one step below it by
-the item's parent taxon.
+harvested in, raw or dry; its organism is the NCBI Taxonomy id and scientific name its
+Wikidata item gives. That organism is its ingredient's, or, for 2, one step below
+it by the item's parent taxon.
 
 | crop | yields | organism | scientific name | Wikidata | to the ingredient's organism |
 |---|---|---|---|---|---|

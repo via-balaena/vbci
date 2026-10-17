@@ -356,7 +356,7 @@ Columns: `name` VARCHAR, `unit` VARCHAR.
 
 ### silver.crop
 
-A table. Each crop, from crops/<id>.toml: the ingredient it yields, in a state the ingredient has a form in, and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient's nor one step below it.
+A table. Each crop, from crops/<id>.toml: the ingredient it yields, and the state it is harvested in, raw or dry, which the ingredient has a form in; and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient's nor one step below it.
 
 | column | type | what it is |
 |---|---|---|
@@ -568,7 +568,7 @@ A view. Each crop VBCI knows, the ingredient it yields and the state it is harve
 
 | column | type | what it is |
 |---|---|---|
-| state | VARCHAR | The state the ingredient is in when harvested: a state the ingredient has a form in. |
+| state | VARCHAR | The state the ingredient is in when harvested, raw or dry: a state the ingredient has a form in. |
 | wikidata | VARCHAR | The Wikidata item of the crop's organism, at the revision sources.toml pins. |
 | parent_item | VARCHAR | The Wikidata item the crop's item names as its parent taxon, where the crop's organism is one step below its ingredient's; NULL where the two are one organism. |
 | steps_below | INTEGER | How many steps the crop's organism is below its ingredient's, by Wikidata's parent taxon: 0 or 1. |

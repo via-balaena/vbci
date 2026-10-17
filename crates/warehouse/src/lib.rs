@@ -1179,9 +1179,9 @@ pub fn crops_report(conn: &Connection) -> Result<String, String> {
          file differs from what that would write. Change the records, not this file.\n\n\
          {crops} crops yield {ingredients} ingredients (`gold.crop`). A crop names the ingredient it\n\
          yields, one whose origin is harvested (`gold.ingredient_origin`), and the state it is\n\
-         harvested in; its organism is the NCBI Taxonomy id and scientific name its Wikidata item\n\
-         gives. That organism is its ingredient's, or, for {below}, one step below it by\n\
-         the item's parent taxon.\n\n\
+         harvested in, raw or dry; its organism is the NCBI Taxonomy id and scientific name its\n\
+         Wikidata item gives. That organism is its ingredient's, or, for {below}, one step below\n\
+         it by the item's parent taxon.\n\n\
          | crop | yields | organism | scientific name | Wikidata | to the ingredient's organism |\n\
          |---|---|---|---|---|---|\n"
     );
@@ -2254,6 +2254,14 @@ codes = ["269", "269.3"]
             ),
             (
                 "INSERT INTO silver.usda_rejected VALUES ('t', 'd', 'x', ' ')",
+                false,
+            ),
+            (
+                "INSERT INTO silver.crop VALUES ('c', 'C', 'Q2', 'NCBITaxon_111', 'A b', 'a-food', 'raw', NULL, 'x')",
+                true,
+            ),
+            (
+                "INSERT INTO silver.crop VALUES ('c', 'C', 'Q2', 'NCBITaxon_111', 'A b', 'olive-oil', 'as_sold', NULL, 'x')",
                 false,
             ),
         ];

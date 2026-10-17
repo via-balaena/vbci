@@ -135789,7 +135789,7 @@
           {
             "name": "state",
             "type": "string",
-            "description": "The state the ingredient is in when harvested: a state the ingredient has a form in."
+            "description": "The state the ingredient is in when harvested, raw or dry: a state the ingredient has a form in."
           },
           {
             "name": "taxon",
