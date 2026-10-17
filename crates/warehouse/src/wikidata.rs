@@ -94,8 +94,8 @@ struct Slot {
 }
 
 /// The content the revisions API's answer carries, refusing an answer about another item or
-/// another revision: a revision id is unique across all of Wikidata, so a mistyped one finds
-/// some other item's.
+/// another revision: a revision id is unique across all of Wikidata, so a mistyped one can find
+/// another item's revision.
 pub fn content_of(w: &WikidataItem, answer: &[u8]) -> Result<Vec<u8>, String> {
     let at = |e: String| format!("wikidata {} revision {}: {e}", w.item, w.revision);
     let a: Answer = serde_json::from_slice(answer).map_err(|e| at(e.to_string()))?;

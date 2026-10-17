@@ -54,8 +54,8 @@ pub struct Dataset {
 }
 
 /// One revision of a Wikidata item, pinned by the sha256 and length of the content Wikidata stores
-/// for it: the item's JSON, as the revisions API gives it. A revision is never edited, so its
-/// content is its identity, as a zip's bytes are a dataset's.
+/// for it: the item's JSON, as the revisions API gives it. The content is its identity, as a zip's
+/// bytes are a dataset's: content that differs from the pin is refused.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WikidataItem {
