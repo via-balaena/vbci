@@ -2598,6 +2598,10 @@ codes = ["269", "269.3"]
                 false,
             ),
             (
+                "INSERT INTO silver.ingredient_origin VALUES ('a-food', 'harvested', NULL)",
+                false,
+            ),
+            (
                 "INSERT INTO silver.ingredient_made_from VALUES ('a-juice', 2, 'b')",
                 true,
             ),
