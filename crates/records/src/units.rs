@@ -14,7 +14,8 @@ pub struct CountUnit {
     /// The names it may be written with, lowercase; each names this unit alone.
     pub names: Vec<String>,
     /// `true` where one of the unit is one whole item of a food, so a bare count, such as
-    /// `@onion{1}`, is weighed by a food's portions in it; left out where it is not.
+    /// `@onion{1}`, whose name ends in no count unit's name, is weighed by a food's portions in it;
+    /// left out where it is not.
     pub whole: Option<bool>,
 }
 

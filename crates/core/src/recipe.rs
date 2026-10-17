@@ -75,8 +75,9 @@ pub enum How {
     /// The food has no portion in its volume unit: grams per millilitre from the food's portions in
     /// other volume units, by their texts.
     Density(Vec<String>),
-    /// Its amount has no unit, so it counts whole items: the food's USDA portions in the count
-    /// units one of which is one whole item, by their texts.
+    /// Its amount has no unit and its name ends in no count unit's name, so it counts whole
+    /// items: the food's USDA portions in the count units one of which is one whole item, by their
+    /// texts.
     Whole(Vec<String>),
     /// Of the food's USDA portions of one whole item, which disagree, those whose text holds its
     /// note's words as one run, in their order.
@@ -99,8 +100,8 @@ pub enum NoGrams {
     NoAmount,
     /// Its amount is text, such as "to taste".
     TextAmount(String),
-    /// Its amount has no unit, so it counts whole items, and the food has no USDA portion in a
-    /// count unit one of which is one whole item.
+    /// Its amount has no unit and its name ends in no count unit's name, so it counts whole items,
+    /// and the food has no USDA portion in a count unit one of which is one whole item.
     NoWhole,
     /// Its amount has no unit, its name is an alias ending in a count unit's name, and the food
     /// has no USDA portion in that unit.
@@ -245,8 +246,6 @@ pub(crate) fn columns<'a, const N: usize>(
     Ok((t, at))
 }
 
-/// Lowercase words of letters and digits, each between single spaces: " cup chopped " for
-/// "Cup, chopped". A phrase holds another's words, in order, when its text contains the other's.
 /// A line's name as an alias is written: lowercased, with single spaces.
 fn key(name: &str) -> String {
     name.to_lowercase()
@@ -255,6 +254,8 @@ fn key(name: &str) -> String {
         .join(" ")
 }
 
+/// Lowercase words of letters and digits, each between single spaces: " cup chopped " for
+/// "Cup, chopped". A phrase holds another's words, in order, when its text contains the other's.
 fn phrase(s: &str) -> String {
     let words: Vec<String> = s
         .split(|c: char| !c.is_alphanumeric())

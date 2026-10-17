@@ -10,9 +10,9 @@ file differs from what that would write. Change the records, not this file.
 come from USDA's data, which gives them for Foundation foods only. 3 alias
 candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no
 ingredient lists yet: unknown until a person reviews one into an ingredient's aliases. An
-alias whose last word is a count unit's name (`gold.ingredient_alias_unit`) is shown with
-that unit: a recipe line that uses it with no unit, such as `@garlic cloves{2}`, counts
-in it.
+alias of two or more words whose last word is a count unit's name
+(`gold.ingredient_alias_unit`) is shown with that unit: a recipe line that uses it with no
+unit, such as `@garlic cloves{2}`, counts in it.
 
 Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one
 place: the "NCBI Taxon" USDA's data gives a Foundation food, for 14 ingredients; a

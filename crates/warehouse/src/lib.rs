@@ -1038,9 +1038,9 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
          come from USDA's data, which gives them for Foundation foods only. {candidates} alias\n\
          candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no\n\
          ingredient lists yet: unknown until a person reviews one into an ingredient's aliases. An\n\
-         alias whose last word is a count unit's name (`gold.ingredient_alias_unit`) is shown with\n\
-         that unit: a recipe line that uses it with no unit, such as `@garlic cloves{{2}}`, counts\n\
-         in it.\n\n\
+         alias of two or more words whose last word is a count unit's name\n\
+         (`gold.ingredient_alias_unit`) is shown with that unit: a recipe line that uses it with no\n\
+         unit, such as `@garlic cloves{{2}}`, counts in it.\n\n\
          Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one\n\
          place: the \"NCBI Taxon\" USDA's data gives a Foundation food, for {from_usda} ingredients; a\n\
          Wikidata item `sources.toml` pins, for {from_wikidata}; or none, saying why, for {no_organism}.\n\n\

@@ -528,7 +528,7 @@ COMMENT ON VIEW gold.ingredient_alias_unit IS 'Each alias of two or more words w
 
 CREATE VIEW gold.count_unit AS
 SELECT unit, whole FROM silver.count_unit;
-COMMENT ON VIEW gold.count_unit IS 'Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food''s portions in the units that are.';
+COMMENT ON VIEW gold.count_unit IS 'Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name ends in no count unit''s name, is weighed by the food''s portions in the units that are.';
 
 CREATE VIEW gold.count_unit_name AS
 SELECT name, unit FROM silver.count_unit_name;

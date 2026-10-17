@@ -562,7 +562,7 @@ Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` I
 
 ### gold.count_unit
 
-A view. Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food's portions in the units that are.
+A view. Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name ends in no count unit's name, is weighed by the food's portions in the units that are.
 
 Columns: `unit` VARCHAR, `whole` BOOLEAN.
 
