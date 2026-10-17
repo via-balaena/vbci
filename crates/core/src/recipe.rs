@@ -75,12 +75,16 @@ pub enum How {
     /// The food has no portion in its volume unit: grams per millilitre from the food's portions in
     /// other volume units, by their texts.
     Density(Vec<String>),
-    /// Its amount has no unit, so it counts whole items: the food's USDA portions in the count
-    /// units one of which is one whole item, by their texts.
+    /// Its amount has no unit and its name has none (`ingredient_alias_unit`), so it counts whole
+    /// items: the food's USDA portions in the count units one of which is one whole item, by their
+    /// texts.
     Whole(Vec<String>),
     /// Of the food's USDA portions of one whole item, which disagree, those whose text holds its
     /// note's words as one run, in their order.
     WholeByNote(Vec<String>),
+    /// Its amount has no unit, and its name is an alias ending in a count unit's name: the food's
+    /// USDA portions in that unit, as `Portions` or `PortionsByNote` say.
+    Named(String, Box<How>),
 }
 
 /// Why a line has no grams.
@@ -96,9 +100,12 @@ pub enum NoGrams {
     NoAmount,
     /// Its amount is text, such as "to taste".
     TextAmount(String),
-    /// Its amount has no unit, so it counts whole items, and the food has no USDA portion in a
-    /// count unit one of which is one whole item.
+    /// Its amount has no unit and its name has none (`ingredient_alias_unit`), so it counts whole
+    /// items, and the food has no USDA portion in a count unit one of which is one whole item.
     NoWhole,
+    /// Its amount has no unit, its name is an alias ending in a count unit's name, and the food
+    /// has no USDA portion in that unit.
+    NoNamedPortion(String),
     /// Its unit is no mass, volume or count unit.
     Unit(String),
     /// The food has no USDA portion in its unit, nor, for a volume unit, in any volume unit.
@@ -239,6 +246,14 @@ pub(crate) fn columns<'a, const N: usize>(
     Ok((t, at))
 }
 
+/// A line's name as an alias is written: lowercased, with single spaces.
+fn key(name: &str) -> String {
+    name.to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Lowercase words of letters and digits, each between single spaces: " cup chopped " for
 /// "Cup, chopped". A phrase holds another's words, in order, when its text contains the other's.
 fn phrase(s: &str) -> String {
@@ -281,6 +296,8 @@ struct Kitchen {
     counts: BTreeMap<String, String>,
     /// The count units one of which is one whole item of a food.
     whole: BTreeSet<String>,
+    /// Each alias ending in a count unit's name, with that unit.
+    alias_units: BTreeMap<String, String>,
     converter: Converter,
 }
 
@@ -464,6 +481,14 @@ impl Kitchen {
                 wholes.insert(u.to_string());
             }
         }
+        let (t, [alias, unit]) = columns(export, "ingredient_alias_unit", ["alias", "unit"])?;
+        let mut alias_units = BTreeMap::new();
+        for (n, r) in t.rows.iter().enumerate() {
+            let (Some(a), Some(u)) = (text(&r[alias]), text(&r[unit])) else {
+                return Err(bad("ingredient_alias_unit", n));
+            };
+            alias_units.insert(a.to_string(), u.to_string());
+        }
         Ok(Kitchen {
             aliases,
             forms,
@@ -473,18 +498,14 @@ impl Kitchen {
             portions,
             counts,
             whole: wholes,
+            alias_units,
             converter: Converter::bundled(),
         })
     }
 
     /// The food a line's name and note find, or why there is none.
     fn food(&self, name: &str, note: &str) -> Result<Food, NoGrams> {
-        let key = name
-            .to_lowercase()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
-        let ingredient = self.aliases.get(&key).ok_or(NoGrams::NoIngredient)?;
+        let ingredient = self.aliases.get(&key(name)).ok_or(NoGrams::NoIngredient)?;
         let note = phrase(note);
         let named: Vec<&str> = STATES
             .into_iter()
@@ -517,12 +538,14 @@ impl Kitchen {
         })
     }
 
-    /// The grams of `fdc_id` a line's quantity gives, and how, or why it gives none.
+    /// The grams of `fdc_id` a line's quantity gives, and how, or why it gives none. `name` is the
+    /// line's name, an alias of the food's ingredient.
     fn grams(
         &self,
         fdc_id: i64,
         quantity: Option<&Quantity>,
         note: &str,
+        name: &str,
     ) -> Result<(Range, How), NoGrams> {
         let q = quantity.ok_or(NoGrams::NoAmount)?;
         let amount = match q.value() {
@@ -534,6 +557,13 @@ impl Kitchen {
             Amount::Text(t) => return Err(NoGrams::TextAmount(t.clone())),
         };
         let Some(unit) = q.unit() else {
+            if let Some(named) = self.alias_units.get(&key(name)) {
+                let (per, texts, noted) = self
+                    .portions(fdc_id, "count", |u| u == named, note)
+                    .ok_or_else(|| NoGrams::NoNamedPortion(named.clone()))?;
+                let how = How::Named(named.clone(), Box::new(in_unit(texts, noted)));
+                return Ok((amount.times(per), how));
+            }
             let (per, texts, noted) = self
                 .portions(fdc_id, "count", |u| self.whole.contains(u), note)
                 .ok_or(NoGrams::NoWhole)?;
@@ -688,7 +718,7 @@ pub fn analyze(text: &str, export: &Export) -> Result<Report, String> {
         let note = note.clone().unwrap_or_default();
         let (food, grams) = match kitchen.food(&ing.name, &note) {
             Ok(f) => {
-                let g = kitchen.grams(f.fdc_id, ing.quantity.as_ref(), &note);
+                let g = kitchen.grams(f.fdc_id, ing.quantity.as_ref(), &note, &ing.name);
                 (Some(f), g)
             }
             Err(why) => (None, Err(why)),
@@ -797,6 +827,7 @@ impl How {
                     code(t)
                 )
             }
+            How::Named(u, how) => format!("`{u}`, its name's unit: {}", how.said()),
         }
     }
 }
@@ -814,6 +845,9 @@ impl NoGrams {
             NoGrams::TextAmount(t) => format!("its amount is text, `{t}`"),
             NoGrams::NoWhole => {
                 "its amount has no unit, and the food has no USDA portion of one whole item".into()
+            }
+            NoGrams::NoNamedPortion(u) => {
+                format!("its name's unit is `{u}`, and the food has no USDA portion in it")
             }
             NoGrams::Unit(u) => format!("`{u}` is no mass, volume or count unit"),
             NoGrams::NoPortion(u) => format!("the food has no USDA portion in `{u}`"),
@@ -1143,6 +1177,14 @@ mod tests {
                 None,
                 "slice, medium (1/8\" thick)",
             ),
+            portion(
+                2,
+                "count",
+                "slice",
+                38.0,
+                None,
+                "slice, large (1/4\" thick)",
+            ),
             portion(3, "count", "medium", 94.0, None, "medium"),
             portion(5, "mass", "oz", 28.35, None, "oz"),
             portion(6, "volume", "c", 192.0, Some(cup), "cup"),
@@ -1205,7 +1247,10 @@ mod tests {
             &[("alias", Text), ("ingredient", Text)],
             [
                 ("garlic", "garlic"),
+                ("garlic cloves", "garlic"),
+                ("garlic slices", "garlic"),
                 ("onion", "onion"),
+                ("onion slices", "onion"),
                 ("lemon juice", "lemon-juice"),
                 ("parmesan", "parmesan"),
                 ("red lentils", "red-lentils"),
@@ -1213,6 +1258,18 @@ mod tests {
             ]
             .iter()
             .map(|(a, b)| vec![s(a), s(b)])
+            .collect(),
+        );
+        let ingredient_alias_unit = table(
+            "ingredient_alias_unit",
+            &[("alias", Text), ("unit", Text)],
+            [
+                ("garlic cloves", "clove"),
+                ("garlic slices", "slice"),
+                ("onion slices", "slice"),
+            ]
+            .iter()
+            .map(|(a, u)| vec![s(a), s(u)])
             .collect(),
         );
         let ingredient_form = table(
@@ -1256,6 +1313,7 @@ mod tests {
                 count_unit,
                 count_unit_name,
                 ingredient_alias,
+                ingredient_alias_unit,
                 ingredient_form,
             ],
         }
@@ -1417,12 +1475,48 @@ mod tests {
             Ok((one(188.0), How::Whole(texts(&["medium"])))),
             "the cooked form's one whole item"
         );
+        let cloves = How::Named(
+            "clove".into(),
+            Box::new(How::Portions(texts(&["clove", "cloves"]))),
+        );
+        assert_eq!(
+            grams("@garlic cloves{2}"),
+            Ok((one(6.0), cloves.clone())),
+            "no unit, and an alias ending in a count unit's name: that unit"
+        );
+        assert_eq!(
+            grams("@Garlic  Cloves{2}"),
+            Ok((one(6.0), cloves)),
+            "the name read as an alias is"
+        );
+        assert_eq!(
+            grams("@garlic cloves{1%tsp}"),
+            Ok((one(2.8), How::Portions(texts(&["tsp"])))),
+            "a unit the line gives wins over its name's"
+        );
+        let slices = texts(&["slice, medium (1/8\" thick)", "slice, large (1/4\" thick)"]);
+        assert_eq!(
+            grams("@onion slices{3}"),
+            Ok((
+                both(42.0, 114.0),
+                How::Named("slice".into(), Box::new(How::Portions(slices.clone())))
+            )),
+            "its name's unit, not whole items"
+        );
+        assert_eq!(
+            grams("@onion slices{1}(large)"),
+            Ok((
+                one(38.0),
+                How::Named(
+                    "slice".into(),
+                    Box::new(How::PortionsByNote(texts(&["slice, large (1/4\" thick)"])))
+                )
+            )),
+            "the note names one of its name's unit's portions"
+        );
         assert_eq!(
             grams("@onion{1%slice}"),
-            Ok((
-                one(14.0),
-                How::Portions(texts(&["slice, medium (1/8\" thick)"]))
-            )),
+            Ok((both(14.0, 38.0), How::Portions(slices))),
             "a unit not marked whole is still read in its own unit"
         );
         let (g, how) = grams("@lemon juice{2%tbsp}").unwrap();
@@ -1445,6 +1539,11 @@ mod tests {
         why("@garlic", NoGrams::NoAmount);
         why("@garlic{to taste}", NoGrams::TextAmount("to taste".into()));
         why("@garlic{1}", NoGrams::NoWhole);
+        why("@garlic slices{2}", NoGrams::NoNamedPortion("slice".into()));
+        why(
+            "@onion slices{2}(cooked)",
+            NoGrams::NoNamedPortion("slice".into()),
+        );
         why("@garlic{1%pinch}", NoGrams::Unit("pinch".into()));
         why("@garlic{2%cm}", NoGrams::Unit("cm".into()));
         why("@red lentils{1%clove}", NoGrams::NoPortion("clove".into()));
@@ -1580,6 +1679,40 @@ mod tests {
         ] {
             assert_eq!(how.said(), said);
         }
+    }
+
+    #[test]
+    fn a_report_says_a_bare_count_counts_in_its_name_s_unit() {
+        let md = report("@garlic cloves{2} and @garlic slices{2}.").markdown("x", "From x.");
+        for said in [
+            "| 6.0 | `clove`, its name's unit: USDA's portions `clove`; `cloves` |",
+            "- garlic slices, 2: its name's unit is `slice`, and the food has no USDA portion in it.\n",
+        ] {
+            assert!(md.contains(said), "{said}\n{md}");
+        }
+        let by_note = How::Named("slice".into(), Box::new(How::PortionsByNote(texts(&["a"]))));
+        assert_eq!(
+            by_note.said(),
+            "`slice`, its name's unit: USDA's portion the note names, `a`"
+        );
+    }
+
+    /// Against the export, a bare count by each alias that ends in a count unit's name counts in
+    /// that unit: garlic's two, in cloves of 3 g.
+    #[test]
+    fn an_alias_s_unit_weighs_a_bare_count_in_the_export() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let export = Export::load(&root).unwrap();
+        let got: Vec<String> = analyze("@garlic cloves{2} and @garlic clove{1}.", &export)
+            .unwrap()
+            .lines
+            .iter()
+            .map(|l| match &l.grams {
+                Ok((g, How::Named(u, _))) => format!("{} {} {u}", l.name, shown_range(*g)),
+                other => format!("{} {other:?}", l.name),
+            })
+            .collect();
+        assert_eq!(got, ["garlic cloves 6.0 clove", "garlic clove 3.0 clove"]);
     }
 
     /// A bare count of each ingredient, by its first alias and in its default form, against the

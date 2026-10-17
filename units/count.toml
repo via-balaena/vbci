@@ -6,8 +6,9 @@
 # crates/records (src/units.rs).
 #
 # whole = true marks a unit one of which is one whole item of a food: a bare count, such as
-# @onion{1}, is weighed by the food's USDA portions in the units marked so. A unit that names a
-# part (clove, leaf, slice), several items (bunch) or a pack (can, package) is not marked.
+# @onion{1}, is weighed by the food's USDA portions in the units marked so, unless the warehouse's
+# gold.ingredient_alias_unit gives its name a unit (@garlic cloves{2} counts cloves). A unit that
+# names a part (clove, leaf, slice), several items (bunch) or a pack (can, package) is not marked.
 
 [[unit]]
 key = "clove"

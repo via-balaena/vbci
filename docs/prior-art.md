@@ -186,13 +186,17 @@ re-read.
 
 ## Bare counts
 
-For plan step 14. Searched on 2026-10-17 without agents: open-tandoor-data's conversions at its
-latest commit, read through GitHub's API with a scratch script; USDA's two pinned releases' portions
-with scratch scripts. Other recipe tools' handling of a line with no unit was not searched again.
+For plan steps 14 and 15. Searched on 2026-10-17 without agents: open-tandoor-data's conversions at
+its latest commit, read through GitHub's API with a scratch script; USDA's two pinned releases'
+portions with scratch scripts; three public collections of Cooklang recipes, analysed with a
+scratch build of `balaena` that logs each line's portions; ingredient-parser's tests. Other recipe
+tools' handling of a line with no unit was not searched.
 A source marked **re-read** was read that day for what the mark names.
 
 | source | what it is | license | what VBCI takes | source |
 |---|---|---|---|---|
 | open-tandoor-data's conversions | 163 conversions, 27 of them a food's one piece ("pcs") in grams, one number each: carrot 61 g, from SR Legacy's medium carrot; onion 143 g, from Foundation's "Onions, yellow, raw"; lemon 65 g, from FDC 2344662, which neither of VBCI's pinned releases holds | ODbL schema, DbCL contents, as "Linking recipes to USDA data" above gives them | nothing: ODbL is share-alike. Its shape, a weight per food, was passed over for count units marked whole (`docs/architecture.md`, decided 2026-10-17) | github.com/TandoorRecipes/open-tandoor-data at b4d05271, `data/conversion/base/data.json`, **re-read** (counts, the three weights) |
 | recipya-rs | takes grams from a `food_portion` modifier, else "medium" | AGPL-3.0 | nothing | as the 2026-10-11 search reported it |
+| Public Cooklang recipes | three collections at one commit each: cooklang/recipes (36 recipes), nicholaswilde/recipes (1,276) and dubadub/cookbook (149); 24 of the 1,461 do not parse | nicholaswilde/recipes Apache-2.0; the other two state none | nothing: measured, not copied. Of 13,858 lines, 292 have a note, 28 of them on one of VBCI's ingredients; a note met portions that disagree 9 times. 25 were bare counts of garlic written `@garlic cloves{2}` or `@garlic clove{1}` (step 15) | github.com/cooklang/recipes at 95608fe1, github.com/nicholaswilde/recipes at 261d873d, github.com/dubadub/cookbook at 93c02a1b, **re-read** (license, counts) |
+| ingredient-parser | parses an ingredient line into name, amount, unit and more | MIT, as "Linking recipes to USDA data" above gives it | the reading of step 15: its tests hold that "2 garlic cloves" has "cloves" as its unit, and that "1 tsp cloves" has cloves as its name | github.com/strangetom/ingredient-parser at 8cac3497, `tests/parser/test_cloves.py`, **re-read** (the tests) |
 | USDA's portions | one whole item's portions: for VBCI's carrot, onion, potato and tomato in small, medium and large, and for its lemon in "fruit"; some name the food itself, as cooked carrot's "carrot" and Foundation's yellow onion's "Onion" do | CC0 | step 14's grams, read through the count units marked whole | scratch check of both pinned zips |

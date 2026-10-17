@@ -1037,7 +1037,10 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
          {nutrients}\" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids\n\
          come from USDA's data, which gives them for Foundation foods only. {candidates} alias\n\
          candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no\n\
-         ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.\n\n\
+         ingredient lists yet: unknown until a person reviews one into an ingredient's aliases. An\n\
+         alias of two or more words whose last word is a count unit's name\n\
+         (`gold.ingredient_alias_unit`) is shown with that unit: a recipe line that uses it with no\n\
+         unit, such as `@garlic cloves{{2}}`, counts in it.\n\n\
          Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one\n\
          place: the \"NCBI Taxon\" USDA's data gives a Foundation food, for {from_usda} ingredients; a\n\
          Wikidata item `sources.toml` pins, for {from_wikidata}; or none, saying why, for {no_organism}.\n\n\
@@ -1055,7 +1058,9 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
         let aliases = rows(
             conn,
             &format!(
-                "SELECT alias FROM silver.ingredient_alias WHERE ingredient = {i} ORDER BY alias"
+                "SELECT a.alias || coalesce(' (counts in `' || u.unit || '`)', '')
+                 FROM silver.ingredient_alias a LEFT JOIN gold.ingredient_alias_unit u USING (alias)
+                 WHERE a.ingredient = {i} ORDER BY a.alias"
             ),
             |r| r.get::<_, String>(0),
         )?;
@@ -3805,6 +3810,37 @@ codes = ["269", "269.3"]
         assert!(
             written == crops_report(&w).unwrap(),
             "{CROPS_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- crops`"
+        );
+    }
+
+    /// An alias of two or more words whose last word is a count unit's name counts in that unit
+    /// (`gold.ingredient_alias_unit`): the records' two, and, on rows inserted for the purpose and
+    /// rolled back, a plural, a name of one word, a unit's name that is not last, and a whole unit.
+    #[test]
+    fn an_alias_ending_in_a_count_unit_s_name_counts_in_it() {
+        let w = warehouse();
+        let units = |w: &Connection| {
+            strings(
+                w,
+                "SELECT alias || ' ' || unit FROM gold.ingredient_alias_unit ORDER BY alias",
+            )
+        };
+        assert_eq!(units(&w), ["garlic clove clove", "garlic cloves clove"]);
+        let inserted = w.execute_batch(
+            "BEGIN; INSERT INTO silver.ingredient_alias VALUES
+             ('bay leaves', 'garlic'), ('leaves', 'garlic'), ('leaves of garlic', 'garlic'),
+             ('a fruit', 'lemon');",
+        );
+        let got = inserted.as_ref().map(|_| units(&w));
+        w.execute_batch("ROLLBACK").unwrap();
+        assert_eq!(
+            got.unwrap(),
+            [
+                "a fruit fruit",
+                "bay leaves leaf",
+                "garlic clove clove",
+                "garlic cloves clove"
+            ]
         );
     }
 

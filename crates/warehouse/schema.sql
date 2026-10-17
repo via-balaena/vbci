@@ -520,9 +520,15 @@ CREATE VIEW gold.ingredient_alias AS
 SELECT alias, ingredient FROM silver.ingredient_alias;
 COMMENT ON VIEW gold.ingredient_alias IS 'Each name a recipe may call an ingredient by, and the ingredient it names.';
 
+CREATE VIEW gold.ingredient_alias_unit AS
+SELECT a.alias, n.unit
+FROM silver.ingredient_alias a
+JOIN silver.count_unit_name n ON n.name = regexp_extract(a.alias, ' ([^ ]+)$', 1);
+COMMENT ON VIEW gold.ingredient_alias_unit IS 'Each alias of two or more words whose last word is a count unit''s name, and that unit: a recipe line with no unit that calls its ingredient by the alias counts in it, as @garlic cloves{2} counts cloves.';
+
 CREATE VIEW gold.count_unit AS
 SELECT unit, whole FROM silver.count_unit;
-COMMENT ON VIEW gold.count_unit IS 'Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food''s portions in the units that are.';
+COMMENT ON VIEW gold.count_unit IS 'Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name gold.ingredient_alias_unit gives no unit, is weighed by the food''s portions in the units that are.';
 
 CREATE VIEW gold.count_unit_name AS
 SELECT name, unit FROM silver.count_unit_name;

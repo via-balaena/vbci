@@ -366,7 +366,7 @@
       },
       {
         "path": "units/count.toml",
-        "sha256": "ec427cea7118c89491801b2228532f2439b3285f9c53288b3b2225540d813b85"
+        "sha256": "e9dc9519bfd1eb2ee343eec1069c31ea6eb94e32448c2294365a13e4c008c04f"
       }
     ]
   },
@@ -135361,7 +135361,7 @@
     {
       "name": "count_unit",
       "type": "table",
-      "description": "Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food's portions in the units that are.",
+      "description": "Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name gold.ingredient_alias_unit gives no unit, is weighed by the food's portions in the units that are.",
       "schema": {
         "fields": [
           {
@@ -135595,6 +135595,55 @@
         ["vegetable broth","vegetable-broth"],
         ["vegetable stock","vegetable-broth"],
         ["veggie broth","vegetable-broth"]
+      ]
+    },
+    {
+      "name": "ingredient_alias_unit",
+      "type": "table",
+      "description": "Each alias of two or more words whose last word is a count unit's name, and that unit: a recipe line with no unit that calls its ingredient by the alias counts in it, as @garlic cloves{2} counts cloves.",
+      "schema": {
+        "fields": [
+          {
+            "name": "alias",
+            "type": "string"
+          },
+          {
+            "name": "unit",
+            "type": "string"
+          }
+        ],
+        "primaryKey": [
+          "alias"
+        ],
+        "foreignKeys": [
+          {
+            "fields": [
+              "alias"
+            ],
+            "reference": {
+              "resource": "ingredient_alias",
+              "fields": [
+                "alias"
+              ]
+            }
+          },
+          {
+            "fields": [
+              "unit"
+            ],
+            "reference": {
+              "resource": "count_unit",
+              "fields": [
+                "unit"
+              ]
+            }
+          }
+        ]
+      },
+      "data": [
+        ["alias","unit"],
+        ["garlic clove","clove"],
+        ["garlic cloves","clove"]
       ]
     },
     {

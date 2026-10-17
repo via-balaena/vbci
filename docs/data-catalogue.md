@@ -562,7 +562,7 @@ Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` I
 
 ### gold.count_unit
 
-A view. Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, is weighed by the food's portions in the units that are.
+A view. Each count unit, and whether one of it is one whole item of a food: a bare count, such as @onion{1}, whose name gold.ingredient_alias_unit gives no unit, is weighed by the food's portions in the units that are.
 
 Columns: `unit` VARCHAR, `whole` BOOLEAN.
 
@@ -617,6 +617,12 @@ Columns: `ingredient` VARCHAR, `name` VARCHAR, `wikidata` VARCHAR.
 A view. Each name a recipe may call an ingredient by, and the ingredient it names.
 
 Columns: `alias` VARCHAR, `ingredient` VARCHAR.
+
+### gold.ingredient_alias_unit
+
+A view. Each alias of two or more words whose last word is a count unit's name, and that unit: a recipe line with no unit that calls its ingredient by the alias counts in it, as @garlic cloves{2} counts cloves.
+
+Columns: `alias` VARCHAR, `unit` VARCHAR.
 
 ### gold.ingredient_form
 

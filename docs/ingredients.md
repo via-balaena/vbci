@@ -9,7 +9,10 @@ file differs from what that would write. Change the records, not this file.
 16" is how many of the nutrients `nutrients.toml` lists the food has a value for. FoodOn ids
 come from USDA's data, which gives them for Foundation foods only. 3 alias
 candidates (`gold.alias_candidate`) are names USDA's data gives a linked food that no
-ingredient lists yet: unknown until a person reviews one into an ingredient's aliases.
+ingredient lists yet: unknown until a person reviews one into an ingredient's aliases. An
+alias of two or more words whose last word is a count unit's name
+(`gold.ingredient_alias_unit`) is shown with that unit: a recipe line that uses it with no
+unit, such as `@garlic cloves{2}`, counts in it.
 
 Each ingredient's organism (`gold.ingredient_organism`) is an NCBI Taxonomy id read from one
 place: the "NCBI Taxon" USDA's data gives a Foundation food, for 14 ingredients; a
@@ -77,7 +80,7 @@ Origin: harvested.
 
 ## Garlic (`garlic`)
 
-Aliases: garlic, garlic clove, garlic cloves.
+Aliases: garlic, garlic clove (counts in `clove`), garlic cloves (counts in `clove`).
 
 Organism: `NCBITaxon_4682`, from Foundation food 1104647, Garlic, raw.
 
