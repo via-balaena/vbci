@@ -354,6 +354,16 @@ A table. Each name a count unit may be written with.
 
 Columns: `name` VARCHAR, `unit` VARCHAR.
 
+### silver.crop
+
+A table. Each crop, from crops/<id>.toml: the ingredient it yields, in a state the ingredient has a form in, and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient's nor one step below it.
+
+| column | type | what it is |
+|---|---|---|
+| parent_item | VARCHAR | Derived, never typed: the item the crop's item names as its parent taxon, whose NCBI Taxonomy id is the ingredient's organism; NULL where the crop's organism is the ingredient's. |
+
+Other columns: `crop` VARCHAR, `name` VARCHAR, `wikidata` VARCHAR, `taxon` VARCHAR, `scientific_name` VARCHAR, `ingredient` VARCHAR, `state` VARCHAR, `record` VARCHAR.
+
 ### silver.diet_category
 
 A table. The class of each USDA category, from diet/categories.toml: plant, dairy_and_egg, flesh or mixed.
@@ -518,11 +528,11 @@ Other columns: `dataset` VARCHAR, `reason` VARCHAR.
 
 ### silver.wikidata_statement
 
-A table. Each statement of P685 (NCBI taxonomy ID) and P1582 (natural product of taxon) in each pinned Wikidata item's content, in its order there.
+A table. Each statement of P685 (NCBI taxonomy ID), P1582 (natural product of taxon), P171 (parent taxon) and P225 (taxon name) in each pinned Wikidata item's content, in its order there.
 
 | column | type | what it is |
 |---|---|---|
-| value | VARCHAR | For P685 the NCBI Taxonomy id's digits, for P1582 the item it names; NULL where the statement says some value or no value rather than giving one. |
+| value | VARCHAR | For P685 the NCBI Taxonomy id's digits, for P225 the name, for P1582 and P171 the item it names; NULL where the statement says some value or no value rather than giving one. |
 
 Other columns: `item` VARCHAR, `property` VARCHAR, `position` INTEGER, `rank` VARCHAR.
 
@@ -539,6 +549,19 @@ Columns: `ingredient` VARCHAR, `candidate` VARCHAR, `source` VARCHAR, `fdc_id` I
 A view. Each name a count unit may be written with, and the count unit it names: the unit gold.portion gives a portion counted in it.
 
 Columns: `name` VARCHAR, `unit` VARCHAR.
+
+### gold.crop
+
+A view. Each crop VBCI knows, the ingredient it yields and the state it is harvested in, and its organism by NCBI Taxonomy id and scientific name, as a pinned Wikidata item gives them. Several crops can yield one ingredient.
+
+| column | type | what it is |
+|---|---|---|
+| state | VARCHAR | The state the ingredient is in when harvested: a state the ingredient has a form in. |
+| wikidata | VARCHAR | The Wikidata item of the crop's organism, at the revision sources.toml pins. |
+| parent_item | VARCHAR | The Wikidata item the crop's item names as its parent taxon, where the crop's organism is one step below its ingredient's; NULL where the two are one organism. |
+| steps_below | INTEGER | How many steps the crop's organism is below its ingredient's, by Wikidata's parent taxon: 0 or 1. |
+
+Other columns: `crop` VARCHAR, `name` VARCHAR, `ingredient` VARCHAR, `taxon` VARCHAR, `scientific_name` VARCHAR.
 
 ### gold.food_diet
 

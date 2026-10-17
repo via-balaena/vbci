@@ -7,9 +7,10 @@
 --           silver.usda_rejected with its reason; any other value that does not cast stops the load
 --   gold    views that answer questions; never stored, always derived
 --
--- The warehouse is rebuilt from the records and the pinned zips on every load, so it can be deleted
--- at any time. Every table and view says what it is in a COMMENT ON, which docs/data-catalogue.md
--- is generated from (`cargo run -p balaena-warehouse -- catalogue`).
+-- The warehouse is rebuilt from the records, the pinned zips and the pinned Wikidata revisions on
+-- every load, so it can be deleted at any time. Every table and view says what it is in a COMMENT
+-- ON, which docs/data-catalogue.md is generated from
+-- (`cargo run -p balaena-warehouse -- catalogue`).
 --
 -- Each CSV in a zip becomes a table bronze.usda_<name>, created by the loader: one row for each of
 -- the CSV's rows, every column text, and a `dataset` column naming the zip it came from.
@@ -154,14 +155,14 @@ COMMENT ON TABLE silver.usda_food_organism IS 'The source organism each Foundati
 
 CREATE TABLE silver.wikidata_statement (
     item     TEXT NOT NULL,
-    property TEXT NOT NULL CHECK (property IN ('P685', 'P1582')),
+    property TEXT NOT NULL CHECK (property IN ('P685', 'P1582', 'P171', 'P225')),
     position INTEGER NOT NULL CHECK (position >= 1),
     value    TEXT,
     rank     TEXT NOT NULL CHECK (rank IN ('preferred', 'normal', 'deprecated')),
     PRIMARY KEY (item, property, position)
 );
-COMMENT ON TABLE silver.wikidata_statement IS 'Each statement of P685 (NCBI taxonomy ID) and P1582 (natural product of taxon) in each pinned Wikidata item''s content, in its order there.';
-COMMENT ON COLUMN silver.wikidata_statement.value IS 'For P685 the NCBI Taxonomy id''s digits, for P1582 the item it names; NULL where the statement says some value or no value rather than giving one.';
+COMMENT ON TABLE silver.wikidata_statement IS 'Each statement of P685 (NCBI taxonomy ID), P1582 (natural product of taxon), P171 (parent taxon) and P225 (taxon name) in each pinned Wikidata item''s content, in its order there.';
+COMMENT ON COLUMN silver.wikidata_statement.value IS 'For P685 the NCBI Taxonomy id''s digits, for P225 the name, for P1582 and P171 the item it names; NULL where the statement says some value or no value rather than giving one.';
 
 CREATE TABLE silver.diet_category (
     description TEXT PRIMARY KEY,
@@ -257,6 +258,21 @@ CREATE TABLE silver.ingredient_organism (
 );
 COMMENT ON TABLE silver.ingredient_organism IS 'Each ingredient''s organism, from its file''s [organism] table: an NCBI Taxonomy id read from a Foundation food or a pinned Wikidata item, or none and why. The load refuses a taxon its source does not give.';
 COMMENT ON COLUMN silver.ingredient_organism.taxon_item IS 'Derived, never typed: the Wikidata item whose P685 gave the taxon, the one named or the one its P1582 names.';
+
+CREATE TABLE silver.crop (
+    crop            TEXT PRIMARY KEY CHECK (regexp_full_match(crop, '[a-z0-9]+(-[a-z0-9]+)*')),
+    name            TEXT NOT NULL CHECK (trim(name) <> ''),
+    wikidata        TEXT NOT NULL CHECK (regexp_full_match(wikidata, 'Q[0-9]+')),
+    taxon           TEXT NOT NULL CHECK (regexp_full_match(taxon, 'NCBITaxon_[0-9]+')),
+    scientific_name TEXT NOT NULL CHECK (trim(scientific_name) <> ''),
+    ingredient      TEXT NOT NULL,
+    state           TEXT NOT NULL,
+    parent_item     TEXT CHECK (parent_item IS NULL OR regexp_full_match(parent_item, 'Q[0-9]+')),
+    record          TEXT NOT NULL,
+    FOREIGN KEY (ingredient, state) REFERENCES silver.ingredient_form (ingredient, state)
+);
+COMMENT ON TABLE silver.crop IS 'Each crop, from crops/<id>.toml: the ingredient it yields, in a state the ingredient has a form in, and its organism, read from a pinned Wikidata item. The load refuses a crop whose organism is neither its ingredient''s nor one step below it.';
+COMMENT ON COLUMN silver.crop.parent_item IS 'Derived, never typed: the item the crop''s item names as its parent taxon, whose NCBI Taxonomy id is the ingredient''s organism; NULL where the crop''s organism is the ingredient''s.';
 
 CREATE TABLE silver.usda_measure_unit (
     dataset TEXT NOT NULL,
@@ -459,6 +475,16 @@ COMMENT ON COLUMN gold.ingredient_organism.fdc_id IS 'The Foundation food whose 
 COMMENT ON COLUMN gold.ingredient_organism.wikidata IS 'The Wikidata item the ingredient names, at the revision sources.toml pins.';
 COMMENT ON COLUMN gold.ingredient_organism.taxon_item IS 'The Wikidata item whose P685 (NCBI taxonomy ID) gave the taxon: the one named, or the one its P1582 (natural product of taxon) names.';
 COMMENT ON COLUMN gold.ingredient_organism.none IS 'Why the ingredient has no organism, as its file says.';
+
+CREATE VIEW gold.crop AS
+SELECT crop, name, ingredient, state, taxon, scientific_name, wikidata, parent_item,
+       CASE WHEN parent_item IS NULL THEN 0 ELSE 1 END AS steps_below
+FROM silver.crop;
+COMMENT ON VIEW gold.crop IS 'Each crop VBCI knows, the ingredient it yields and the state it is harvested in, and its organism by NCBI Taxonomy id and scientific name, as a pinned Wikidata item gives them. Several crops can yield one ingredient.';
+COMMENT ON COLUMN gold.crop.state IS 'The state the ingredient is in when harvested: a state the ingredient has a form in.';
+COMMENT ON COLUMN gold.crop.wikidata IS 'The Wikidata item of the crop''s organism, at the revision sources.toml pins.';
+COMMENT ON COLUMN gold.crop.parent_item IS 'The Wikidata item the crop''s item names as its parent taxon, where the crop''s organism is one step below its ingredient''s; NULL where the two are one organism.';
+COMMENT ON COLUMN gold.crop.steps_below IS 'How many steps the crop''s organism is below its ingredient''s, by Wikidata''s parent taxon: 0 or 1.';
 
 CREATE VIEW gold.ingredient_alias AS
 SELECT alias, ingredient FROM silver.ingredient_alias;

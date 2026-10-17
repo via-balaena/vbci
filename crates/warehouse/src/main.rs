@@ -7,6 +7,7 @@
 //! - `catalogue`: writes `docs/data-catalogue.md`, every table and view with its comment.
 //! - `diet`: writes `docs/diet.md`, how many foods take each vegan and vegetarian answer, and why.
 //! - `ingredients`: writes `docs/ingredients.md`, each ingredient's aliases, forms and candidates.
+//! - `crops`: writes `docs/crops.md`, each crop, the ingredient it yields and its organism.
 //! - `portions`: writes `docs/portions.md`, how USDA's portions' units are read.
 //! - `export`: writes `export/datapackage.json`, the gold views crates/core reads.
 //! - `recipes`: writes `docs/recipes/<name>.md`, each recipe in `recipes/` analysed against the
@@ -16,9 +17,9 @@ use balaena_core::recipe::{REPORTS_DIR, reports};
 use balaena_records::Sources;
 use balaena_warehouse::export::{EXPORT_PATH, export};
 use balaena_warehouse::{
-    CATALOGUE_PATH, COVERAGE_PATH, DIET_PATH, INGREDIENTS_PATH, PORTIONS_PATH, cache_dir,
-    catalogue, coverage_report, diet_report, ingredients_report, load, portions_report, repo_root,
-    usda, wikidata,
+    CATALOGUE_PATH, COVERAGE_PATH, CROPS_PATH, DIET_PATH, INGREDIENTS_PATH, PORTIONS_PATH,
+    cache_dir, catalogue, coverage_report, crops_report, diet_report, ingredients_report, load,
+    portions_report, repo_root, usda, wikidata,
 };
 use std::process::ExitCode;
 
@@ -71,6 +72,11 @@ fn run(command: &str) -> Result<(), String> {
             std::fs::write(root.join(INGREDIENTS_PATH), report).map_err(|e| e.to_string())?;
             println!("wrote {INGREDIENTS_PATH}");
         }
+        "crops" => {
+            let report = crops_report(&load(&root, &cache)?)?;
+            std::fs::write(root.join(CROPS_PATH), report).map_err(|e| e.to_string())?;
+            println!("wrote {CROPS_PATH}");
+        }
         "portions" => {
             let (sources, _) = Sources::load(&root)?;
             let report = portions_report(&load(&root, &cache)?, &sources)?;
@@ -101,7 +107,7 @@ fn run(command: &str) -> Result<(), String> {
         }
         other => {
             return Err(format!(
-                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, portions, catalogue, export or recipes"
+                "unknown command {other:?}: fetch, load, coverage, diet, ingredients, crops, portions, catalogue, export or recipes"
             ));
         }
     }

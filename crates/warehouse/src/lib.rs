@@ -1,12 +1,14 @@
-//! VBCI's warehouse, in DuckDB: rebuilt from the records and USDA's pinned zips on every load, so it
-//! can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
+//! VBCI's warehouse, in DuckDB: rebuilt from the records, USDA's pinned zips and Wikidata's pinned
+//! revisions on every load, so it can be deleted at any time. `schema.sql` describes its layers: bronze, silver and gold.
 
 pub mod export;
 pub mod portions;
 pub mod usda;
 pub mod wikidata;
 
-use balaena_records::{CountUnits, Diet, IngredientOrganism, Ingredients, Nutrients, Sources};
+use balaena_records::{
+    CountUnits, Crops, Diet, IngredientOrganism, Ingredients, Nutrients, Sources,
+};
 use duckdb::{Connection, params};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -21,7 +23,7 @@ pub fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// Where USDA's zips are cached: `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else
+/// Where USDA's zips and Wikidata's revisions are cached: `$VBCI_CACHE`, else `$XDG_CACHE_HOME/vbci`, else
 /// `$HOME/.cache/vbci`.
 pub fn cache_dir() -> Result<PathBuf, String> {
     cache_dir_from(|key| env::var(key).ok().filter(|v| !v.is_empty()))
@@ -108,6 +110,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     let (nutrients, nutrients_text) = Nutrients::load(root)?;
     let diet = Diet::load(root)?;
     let ingredients = Ingredients::load(root)?;
+    let crops = Crops::load(root)?;
     let (counts, counts_text) = CountUnits::load(root)?;
     let conn = Connection::open_in_memory().map_err(sql)?;
     conn.execute_batch(SCHEMA).map_err(sql)?;
@@ -123,6 +126,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
             .iter()
             .map(|i| (i.path.clone(), i.text.clone())),
     );
+    records.extend(crops.crop.iter().map(|c| (c.path.clone(), c.text.clone())));
     for (path, text) in &records {
         conn.execute(
             "INSERT INTO bronze.record VALUES (?, ?)",
@@ -187,7 +191,7 @@ pub fn load(root: &Path, cache: &Path) -> Result<Connection, String> {
     load_silver(&conn, &nutrients)?;
     load_diet(&conn, &diet)?;
     load_ingredients(&conn, &ingredients)?;
-    load_organisms(&conn, &ingredients)?;
+    load_organisms(&conn, &ingredients, &crops)?;
     load_portions(&conn, &counts)?;
     Ok(conn)
 }
@@ -327,11 +331,17 @@ fn load_ingredients(conn: &Connection, ingredients: &Ingredients) -> Result<(), 
     )
 }
 
-/// Loads the organism USDA's data gives each Foundation food, the P685 and P1582 statements of each
-/// pinned Wikidata item, and each ingredient's organism into silver; then refuses an organism its
-/// source does not give, and a pinned item no organism reads. A food or item named but not in the
-/// pinned data, the keys and the Wikidata reading refuse.
-fn load_organisms(conn: &Connection, ingredients: &Ingredients) -> Result<(), String> {
+/// Loads the organism USDA's data gives each Foundation food, the statements `wikidata::PROPERTIES`
+/// names in each pinned Wikidata item, each ingredient's organism and each crop into silver. Then
+/// refuses an ingredient's organism its source does not give; a crop whose item does not give its
+/// taxon and name, or whose organism is neither its ingredient's nor one step below it; and a
+/// pinned item nothing reads. A food, item or ingredient form named but not there, the keys and the
+/// Wikidata reading refuse.
+fn load_organisms(
+    conn: &Connection,
+    ingredients: &Ingredients,
+    crops: &Crops,
+) -> Result<(), String> {
     conn.execute_batch(
         "INSERT INTO silver.usda_food_organism
          SELECT DISTINCT CAST(fdc_id AS INTEGER), dataset,
@@ -400,11 +410,6 @@ fn load_organisms(conn: &Connection, ingredients: &Ingredients) -> Result<(), St
         )
         .map_err(|e| format!("{} organism: {e}", i.path))?;
     }
-    if let Some(item) = pinned.keys().find(|q| !read.contains(*q)) {
-        return Err(format!(
-            "sources.toml: Wikidata item {item} is pinned, but no ingredient's organism reads it"
-        ));
-    }
     refuse_any(
         conn,
         "SELECT i.record || ': organism: food ' || o.fdc_id || ' is ' || u.description
@@ -432,7 +437,78 @@ fn load_organisms(conn: &Connection, ingredients: &Ingredients) -> Result<(), St
          JOIN silver.usda_food_organism f USING (fdc_id)
          WHERE o.taxon <> f.taxon
          ORDER BY 1",
-    )
+    )?;
+    let organism: BTreeMap<&str, Option<&str>> = ingredients
+        .ingredient
+        .iter()
+        .map(|i| (i.id.as_str(), i.organism.taxon()))
+        .collect();
+    for c in &crops.crop {
+        let at = |e: String| format!("{}: {e}", c.path);
+        let (taxon, name) = wikidata::own_taxon(&c.wikidata, &pinned).map_err(at)?;
+        if taxon != c.taxon {
+            return Err(at(format!("Wikidata gives {taxon}, not {}", c.taxon)));
+        }
+        if name != c.scientific_name {
+            return Err(at(format!(
+                "Wikidata item {} names {taxon} {name}, not {}",
+                c.wikidata, c.scientific_name
+            )));
+        }
+        read.insert(c.wikidata.clone());
+        let ingredient = organism
+            .get(c.ingredient.as_str())
+            .ok_or_else(|| {
+                at(format!(
+                    "ingredient {} is not in ingredients/",
+                    c.ingredient
+                ))
+            })?
+            .ok_or_else(|| {
+                at(format!(
+                    "ingredient {} has no organism, so no crop yields it",
+                    c.ingredient
+                ))
+            })?;
+        let parent_item = if taxon == ingredient {
+            None
+        } else {
+            let (parent, parent_taxon) =
+                wikidata::parent_taxon(&c.wikidata, &pinned).map_err(at)?;
+            if parent_taxon != ingredient {
+                return Err(at(format!(
+                    "{taxon} is neither {}'s organism, {ingredient}, nor one step below it: \
+                     Wikidata item {}'s {} is {parent}, {parent_taxon}",
+                    c.ingredient,
+                    c.wikidata,
+                    wikidata::PARENT_TAXON
+                )));
+            }
+            read.insert(parent.clone());
+            Some(parent)
+        };
+        conn.execute(
+            "INSERT INTO silver.crop VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                c.id,
+                c.name,
+                c.wikidata,
+                c.taxon,
+                c.scientific_name,
+                c.ingredient,
+                c.state.as_str(),
+                parent_item,
+                c.path
+            ],
+        )
+        .map_err(|e| at(e.to_string()))?;
+    }
+    if let Some(item) = pinned.keys().find(|q| !read.contains(*q)) {
+        return Err(format!(
+            "sources.toml: Wikidata item {item} is pinned, but no ingredient's or crop's organism reads it"
+        ));
+    }
+    Ok(())
 }
 
 /// The first row of `query`, which names what is wrong, as an error; Ok when there is none.
@@ -1016,6 +1092,66 @@ pub fn ingredients_report(conn: &Connection) -> Result<String, String> {
     Ok(out)
 }
 
+/// Where `crops` writes its report, relative to the repo root.
+pub const CROPS_PATH: &str = "docs/crops.md";
+
+/// `docs/crops.md`, as the warehouse writes it: each crop with the ingredient it yields, its
+/// organism, and how that organism stands to its ingredient's.
+pub fn crops_report(conn: &Connection) -> Result<String, String> {
+    let count = |query: &str| -> Result<i64, String> {
+        conn.query_row(query, [], |r| r.get(0))
+            .map_err(|e| format!("{query}: {e}"))
+    };
+    let (crops, ingredients, below) = (
+        count("SELECT count(*) FROM gold.crop")?,
+        count("SELECT count(DISTINCT ingredient) FROM gold.crop")?,
+        count("SELECT count(*) FROM gold.crop WHERE steps_below = 1")?,
+    );
+    let mut out = format!(
+        "# Crops\n\n\
+         Generated by `cargo run -p balaena-warehouse -- crops` from `crops/`, `ingredients/` and the\n\
+         Wikidata items `sources.toml` pins; the test `the_crops_report_is_current` fails when this\n\
+         file differs from what that would write. Change the records, not this file.\n\n\
+         {crops} crops yield {ingredients} ingredients (`gold.crop`). A crop names the ingredient it\n\
+         yields and the state it is harvested in; its organism is the NCBI Taxonomy id and scientific\n\
+         name its Wikidata item gives. That organism is its ingredient's, or, for {below}, one step\n\
+         below it by the item's parent taxon.\n\n\
+         | crop | yields | organism | scientific name | Wikidata | to the ingredient's organism |\n\
+         |---|---|---|---|---|---|\n"
+    );
+    let lines = rows(
+        conn,
+        "SELECT c.name, c.crop, c.ingredient, c.state, c.taxon, c.scientific_name, c.wikidata,
+                c.parent_item, o.taxon
+         FROM gold.crop c JOIN gold.ingredient_organism o USING (ingredient)
+         ORDER BY c.crop",
+        |r| {
+            let relation = match r.get::<_, Option<String>>(7)? {
+                None => "the same".to_string(),
+                Some(parent) => format!(
+                    "one step below `{}`, through {parent}",
+                    r.get::<_, String>(8)?
+                ),
+            };
+            Ok(format!(
+                "| {} (`{}`) | {}, {} | `{}` | {} | {} | {relation} |",
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+                r.get::<_, String>(6)?
+            ))
+        },
+    )?;
+    for line in lines {
+        out.push_str(&line);
+        out.push('\n');
+    }
+    Ok(out)
+}
+
 /// Where `portions` writes its report, relative to the repo root.
 pub const PORTIONS_PATH: &str = "docs/portions.md";
 
@@ -1588,12 +1724,24 @@ codes = ["269", "269.3"]
         ),
     ];
 
+    /// A Wikidata item's statements, as (property, value, rank).
+    type Claims<'a> = &'a [(&'a str, &'a str, &'a str)];
+
+    /// One refusal case for crops: the ingredient files, the pinned items, the crop's text, and
+    /// what the refusal must say.
+    type CropCase<'a> = (
+        &'a [(&'a str, &'a str)],
+        Vec<(String, String)>,
+        String,
+        &'a str,
+    );
+
     /// A Wikidata item's content, as Wikidata stores it, with `statements` as its claims.
     fn wikidata_item(id: &str, statements: &[(&str, &str, &str)]) -> String {
         let mut claims: BTreeMap<&str, Vec<String>> = BTreeMap::new();
         for (property, value, rank) in statements {
             let datavalue = match *property {
-                "P685" => format!("{{\"value\":\"{value}\",\"type\":\"string\"}}"),
+                "P685" | "P225" => format!("{{\"value\":\"{value}\",\"type\":\"string\"}}"),
                 _ => format!(
                     "{{\"value\":{{\"entity-type\":\"item\",\"id\":\"{value}\"}},\"type\":\"wikibase-entityid\"}}"
                 ),
@@ -1621,9 +1769,68 @@ codes = ["269", "269.3"]
             ),
             (
                 "Q2".into(),
-                wikidata_item("Q2", &[("P685", "111", "normal")]),
+                wikidata_item(
+                    "Q2",
+                    &[("P685", "111", "normal"), ("P225", "A b", "normal")],
+                ),
             ),
         ]
+    }
+
+    /// `synthetic_wikidata` and the items the synthetic crops read: Q3, a variety whose parent
+    /// taxon is Q10, which is NCBI id 111 too. Q3 is read only as a crop's own item and Q10 only as
+    /// a crop's parent, so each way of reading an item is the only one that reads some item.
+    fn crop_wikidata(more: &[(&str, Claims)]) -> Vec<(String, String)> {
+        let mut items = synthetic_wikidata();
+        items.push((
+            "Q3".into(),
+            wikidata_item(
+                "Q3",
+                &[
+                    ("P685", "112", "normal"),
+                    ("P225", "A b var. c", "normal"),
+                    ("P171", "Q10", "normal"),
+                ],
+            ),
+        ));
+        items.push((
+            "Q10".into(),
+            wikidata_item(
+                "Q10",
+                &[("P685", "111", "normal"), ("P225", "A b", "normal")],
+            ),
+        ));
+        for (q, statements) in more {
+            items.push((q.to_string(), wikidata_item(q, statements)));
+        }
+        items
+    }
+
+    /// Crops for the synthetic warehouse: a-plant is a-food's organism, a-variety one step below it.
+    const SYNTHETIC_CROPS: [(&str, &str); 2] = [
+        (
+            "a-plant.toml",
+            "name = \"A plant\"\nwikidata = \"Q2\"\ntaxon = \"NCBITaxon_111\"\nscientific_name = \"A b\"\ningredient = \"a-food\"\nstate = \"raw\"\n",
+        ),
+        (
+            "a-variety.toml",
+            "name = \"A variety\"\nwikidata = \"Q3\"\ntaxon = \"NCBITaxon_112\"\nscientific_name = \"A b var. c\"\ningredient = \"a-food\"\nstate = \"raw\"\n",
+        ),
+    ];
+
+    fn synthetic_crops(
+        ingredients: &[(&str, &str)],
+        wikidata: &[(String, String)],
+        crops: &[(&str, &str)],
+    ) -> Result<Connection, String> {
+        synthetic_pinned(
+            SYNTHETIC_NUTRIENTS,
+            SYNTHETIC_DIET,
+            ingredients,
+            SYNTHETIC_COUNT_UNITS,
+            wikidata,
+            crops,
+        )
     }
 
     /// Count units for the synthetic bronze.
@@ -1644,16 +1851,25 @@ codes = ["269", "269.3"]
         ingredients: &[(&str, &str)],
         counts: &str,
     ) -> Result<Connection, String> {
-        synthetic_pinned(nutrients, diet, ingredients, counts, &synthetic_wikidata())
+        synthetic_pinned(
+            nutrients,
+            diet,
+            ingredients,
+            counts,
+            &synthetic_wikidata(),
+            &[],
+        )
     }
 
-    /// The synthetic warehouse with `wikidata` as its pinned items, (item, content).
+    /// The synthetic warehouse with `wikidata` as its pinned items, (item, content), and `crops`
+    /// as its crops, (file name, text).
     fn synthetic_pinned(
         nutrients: &str,
         diet: [&str; 4],
         ingredients: &[(&str, &str)],
         counts: &str,
         wikidata: &[(String, String)],
+        crops: &[(&str, &str)],
     ) -> Result<Connection, String> {
         let conn = Connection::open_in_memory().map_err(sql)?;
         conn.execute_batch(SCHEMA).map_err(sql)?;
@@ -1727,8 +1943,13 @@ codes = ["269", "269.3"]
             .map(|(f, t)| (f.to_string(), t.to_string()))
             .collect();
         let ingredients = Ingredients::parse(&files)?;
+        let crops: Vec<(String, String)> = crops
+            .iter()
+            .map(|(f, t)| (f.to_string(), t.to_string()))
+            .collect();
+        let crops = Crops::parse(&crops)?;
         load_ingredients(&conn, &ingredients)?;
-        load_organisms(&conn, &ingredients)?;
+        load_organisms(&conn, &ingredients, &crops)?;
         load_portions(&conn, &CountUnits::parse(counts)?)?;
         Ok(conn)
     }
@@ -2164,7 +2385,8 @@ codes = ["269", "269.3"]
 
     /// Olive oil's organism is read from food 6's NCBI Taxon, which USDA repeats, and a-food's from
     /// Wikidata item Q1 through its P1582, Q2. Each Foundation food's own organism is in silver once,
-    /// a food recorded as NA has none, and each pinned item's P685 and P1582 statements are there.
+    /// a food recorded as NA has none, and each pinned item's statements of the properties read are
+    /// there.
     #[test]
     fn each_ingredient_s_organism_is_read_from_its_source() {
         let w = synthetic(SYNTHETIC_NUTRIENTS).unwrap();
@@ -2191,9 +2413,13 @@ codes = ["269", "269.3"]
             strings(
                 &w,
                 "SELECT item || ' ' || property || ' ' || position || ' ' || value || ' ' || rank
-                 FROM silver.wikidata_statement ORDER BY item"
+                 FROM silver.wikidata_statement ORDER BY item, property, position"
             ),
-            ["Q1 P1582 1 Q2 normal", "Q2 P685 1 111 normal"]
+            [
+                "Q1 P1582 1 Q2 normal",
+                "Q2 P225 1 A b normal",
+                "Q2 P685 1 111 normal"
+            ]
         );
         let broth = SYNTHETIC_INGREDIENTS[0].1.replace(
             "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
@@ -2204,6 +2430,7 @@ codes = ["269", "269.3"]
             SYNTHETIC_DIET,
             &[("a-food.toml", &broth), SYNTHETIC_INGREDIENTS[1]],
             SYNTHETIC_COUNT_UNITS,
+            &[],
             &[],
         )
         .unwrap();
@@ -2291,7 +2518,7 @@ codes = ["269", "269.3"]
                 a.into(),
                 oil.into(),
                 &unread,
-                "sources.toml: Wikidata item Q3 is pinned, but no ingredient's organism reads it",
+                "sources.toml: Wikidata item Q3 is pinned, but no ingredient's or crop's organism reads it",
             ),
             (
                 a.into(),
@@ -2311,11 +2538,169 @@ codes = ["269", "269.3"]
                 &files,
                 SYNTHETIC_COUNT_UNITS,
                 wikidata,
+                &[],
             ) else {
                 panic!("loaded, though it should refuse: {why}");
             };
             assert!(err.contains(why), "{err:?} does not say {why:?}");
         }
+    }
+
+    /// a-plant's organism is a-food's, read from its own item; a-variety's is one step below it,
+    /// read from Q3, whose parent taxon Q10 gives a-food's organism.
+    #[test]
+    fn each_crop_s_organism_is_its_ingredient_s_or_one_step_below() {
+        let w = synthetic_crops(
+            &SYNTHETIC_INGREDIENTS,
+            &crop_wikidata(&[]),
+            &SYNTHETIC_CROPS,
+        )
+        .unwrap();
+        assert_eq!(
+            strings(
+                &w,
+                "SELECT crop || ' ' || ingredient || ' ' || state || ' ' || taxon || ' ' || scientific_name
+                        || ' ' || wikidata || ' ' || coalesce(parent_item, '-') || ' ' || steps_below
+                 FROM gold.crop ORDER BY crop"
+            ),
+            [
+                "a-plant a-food raw NCBITaxon_111 A b Q2 - 0",
+                "a-variety a-food raw NCBITaxon_112 A b var. c Q3 Q10 1"
+            ]
+        );
+    }
+
+    /// The load stops on a crop whose item is not pinned, gives another taxon or name, or lacks
+    /// either; whose ingredient is not there, has no organism, or has no form in the crop's state;
+    /// and whose organism is not its ingredient's and not one step below it: a parent taxon with
+    /// another organism, two steps down, none, or one not pinned.
+    #[test]
+    fn the_load_refuses_a_crop_its_organism_does_not_fit() {
+        let [plant, variety] = SYNTHETIC_CROPS.map(|(_, t)| t);
+        let in_plant = |old: &str, new: &str| {
+            assert_eq!(plant.matches(old).count(), 1, "{old:?}");
+            plant.replace(old, new)
+        };
+        let a_food_none = SYNTHETIC_INGREDIENTS[0].1.replace(
+            "[organism]\ntaxon = \"NCBITaxon_111\"\nwikidata = \"Q1\"\n",
+            "[organism]\nnone = \"A mix.\"\n",
+        );
+        let none_ingredients = [
+            ("a-food.toml", a_food_none.as_str()),
+            SYNTHETIC_INGREDIENTS[1],
+        ];
+        let crop = |item: &str, taxon: &str, name: &str, ingredient: &str, state: &str| {
+            format!(
+                "name = \"C\"\nwikidata = \"{item}\"\ntaxon = \"{taxon}\"\nscientific_name = \"{name}\"\ningredient = \"{ingredient}\"\nstate = \"{state}\"\n"
+            )
+        };
+        let cases: Vec<CropCase> = vec![
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                in_plant("\"Q2\"", "\"Q9\""),
+                "crops/c.toml: Wikidata item Q9 is not pinned in sources.toml",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                in_plant("NCBITaxon_111", "NCBITaxon_113"),
+                "crops/c.toml: Wikidata gives NCBITaxon_111, not NCBITaxon_113",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                in_plant("\"A b\"", "\"A c\""),
+                "crops/c.toml: Wikidata item Q2 names NCBITaxon_111 A b, not A c",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[("Q4", &[("P685", "111", "normal")])]),
+                crop("Q4", "NCBITaxon_111", "A b", "a-food", "raw"),
+                "crops/c.toml: Wikidata item Q4 has no P225",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                crop("Q1", "NCBITaxon_111", "A b", "a-food", "raw"),
+                "crops/c.toml: Wikidata item Q1 has no P685",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                in_plant("\"a-food\"", "\"b-food\""),
+                "crops/c.toml: ingredient b-food is not in ingredients/",
+            ),
+            (
+                &none_ingredients,
+                crop_wikidata(&[]),
+                plant.to_string(),
+                "crops/c.toml: ingredient a-food has no organism, so no crop yields it",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                in_plant("\"raw\"", "\"cooked\""),
+                "crops/c.toml: Constraint Error: Violates foreign key",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[]),
+                variety
+                    .replace("\"a-food\"", "\"olive-oil\"")
+                    .replace("\"raw\"", "\"as_sold\""),
+                "crops/c.toml: NCBITaxon_112 is neither olive-oil's organism, NCBITaxon_4146, nor one step below it: Wikidata item Q3's P171 is Q10, NCBITaxon_111",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[(
+                    "Q5",
+                    &[
+                        ("P685", "113", "normal"),
+                        ("P225", "A b var. c f. d", "normal"),
+                        ("P171", "Q3", "normal"),
+                    ],
+                )]),
+                crop("Q5", "NCBITaxon_113", "A b var. c f. d", "a-food", "raw"),
+                "crops/c.toml: NCBITaxon_113 is neither a-food's organism, NCBITaxon_111, nor one step below it: Wikidata item Q5's P171 is Q3, NCBITaxon_112",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[("Q6", &[("P685", "114", "normal"), ("P225", "X", "normal")])]),
+                crop("Q6", "NCBITaxon_114", "X", "a-food", "raw"),
+                "crops/c.toml: Wikidata item Q6 has no P171",
+            ),
+            (
+                &SYNTHETIC_INGREDIENTS,
+                crop_wikidata(&[(
+                    "Q7",
+                    &[
+                        ("P685", "115", "normal"),
+                        ("P225", "Y", "normal"),
+                        ("P171", "Q99", "normal"),
+                    ],
+                )]),
+                crop("Q7", "NCBITaxon_115", "Y", "a-food", "raw"),
+                "crops/c.toml: Wikidata item Q7's P171 is Q99, which sources.toml does not pin",
+            ),
+        ];
+        for (ingredients, wikidata, text, why) in cases {
+            let Err(err) = synthetic_crops(ingredients, &wikidata, &[("c.toml", &text)]) else {
+                panic!("loaded, though it should refuse: {why}");
+            };
+            assert!(err.contains(why), "{err:?} does not say {why:?}");
+        }
+        let only_plant = synthetic_crops(
+            &SYNTHETIC_INGREDIENTS,
+            &crop_wikidata(&[]),
+            &SYNTHETIC_CROPS[..1],
+        );
+        let why = "sources.toml: Wikidata item Q10 is pinned, but no ingredient's or crop's organism reads it";
+        assert!(
+            only_plant.as_ref().err().is_some_and(|e| e.contains(why)),
+            "{:?}",
+            only_plant.err()
+        );
     }
 
     #[test]
@@ -2579,6 +2964,64 @@ codes = ["269", "269.3"]
         );
     }
 
+    /// The crops read their organisms from their pinned items: carrot and cherry tomato one step
+    /// below their ingredient's species, through its item; the rest that species itself. Tomato
+    /// and cherry tomato both yield the tomato ingredient.
+    #[test]
+    fn the_crops_read_their_organisms_from_their_items() {
+        let w = warehouse();
+        assert!(count(&w, "SELECT count(*) FROM gold.crop") >= 10);
+        for (crop, row) in [
+            ("carrot", "carrot raw NCBITaxon_79200 Q11678009 Q30056 1"),
+            (
+                "cherry-tomato",
+                "tomato raw NCBITaxon_195583 Q6540634 Q23501 1",
+            ),
+            ("tomato", "tomato raw NCBITaxon_4081 Q23501 - 0"),
+            ("chickpea", "chickpeas dry NCBITaxon_3827 Q81375 - 0"),
+            ("cumin", "cumin dry NCBITaxon_52462 Q132624 - 0"),
+        ] {
+            let got = strings(
+                &w,
+                &format!(
+                    "SELECT ingredient || ' ' || state || ' ' || taxon || ' ' || wikidata || ' '
+                            || coalesce(parent_item, '-') || ' ' || steps_below
+                     FROM gold.crop WHERE crop = {}",
+                    literal(crop)
+                ),
+            );
+            assert_eq!(got, [row], "{crop}");
+        }
+    }
+
+    /// Every record file the warehouse loads lies in a path `DATA-LICENSE.md` lists as CC0: a file
+    /// listed by name, or one inside a folder listed with its trailing slash.
+    #[test]
+    fn every_record_the_warehouse_loads_is_under_the_data_license() {
+        let w = warehouse();
+        let license = fs::read_to_string(repo_root().join("DATA-LICENSE.md")).unwrap();
+        let (_, listed) = license.split_once("## What is CC0").unwrap();
+        let listed = &listed[..listed.find("\n## ").unwrap()];
+        let paths: Vec<&str> = listed
+            .lines()
+            .filter_map(|l| l.strip_prefix("- `")?.strip_suffix('`'))
+            .collect();
+        assert!(
+            paths.contains(&"crops/") && paths.contains(&"sources.toml"),
+            "{paths:?}"
+        );
+        let records = strings(&w, "SELECT path FROM bronze.record ORDER BY path");
+        assert!(records.len() >= 30, "{records:?}");
+        for record in &records {
+            assert!(
+                paths
+                    .iter()
+                    .any(|p| record == p || (p.ends_with('/') && record.starts_with(p))),
+                "{record} lies in no path DATA-LICENSE.md lists"
+            );
+        }
+    }
+
     /// bronze.wikidata_revision holds each item `sources.toml` pins, at its revision, with content
     /// whose length and sha256 are the pin's, and no other item.
     #[test]
@@ -2698,6 +3141,7 @@ codes = ["269", "269.3"]
             "diet_rule",
             "diet_exception",
             "ingredient",
+            "crop",
             "count_unit",
         ] {
             let untraced = count(
@@ -2830,7 +3274,7 @@ codes = ["269", "269.3"]
 
     /// crates/core reads back each view the export carries as gold holds it: the same columns,
     /// each of the type its DuckDB type is written as, and the same rows in key order, every value
-    /// equal; and the sha256s of the zips and records the warehouse loaded.
+    /// equal; and the sha256s of the zips, Wikidata revisions and records the warehouse loaded.
     #[test]
     fn the_export_reads_back_as_gold() {
         use balaena_core::{Export, Type, Value};
@@ -2914,6 +3358,20 @@ codes = ["269", "269.3"]
                 "SELECT concat_ws(' ', dataset, url, sha256, bytes) FROM bronze.usda_zip ORDER BY dataset"
             )
         );
+        let revisions: Vec<String> = read
+            .lineage
+            .wikidata
+            .iter()
+            .map(|r| format!("{} {} {} {}", r.item, r.revision, r.sha256, r.bytes))
+            .collect();
+        assert_eq!(
+            revisions,
+            strings(
+                &w,
+                "SELECT concat_ws(' ', item, revision, sha256, bytes) FROM bronze.wikidata_revision ORDER BY item"
+            )
+        );
+        assert!(revisions.len() >= 2, "{revisions:?}");
         let records: Vec<String> = read
             .lineage
             .records
@@ -3113,6 +3571,16 @@ codes = ["269", "269.3"]
                 "SELECT count(*) FROM gold.alias_candidate WHERE starts_with(candidate, 'includes') OR candidate IN (SELECT alias FROM silver.ingredient_alias)"
             ),
             0
+        );
+    }
+
+    #[test]
+    fn the_crops_report_is_current() {
+        let w = warehouse();
+        let written = fs::read_to_string(repo_root().join(CROPS_PATH)).unwrap_or_default();
+        assert!(
+            written == crops_report(&w).unwrap(),
+            "{CROPS_PATH} is not what the warehouse writes: run `cargo run -p balaena-warehouse -- crops`"
         );
     }
 
