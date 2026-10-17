@@ -8,8 +8,8 @@ fdc_id = 2644283
 description = "Lentils, dry"
 
 [origin]
-# Red lentils are lentils with the seed coat taken off, which shows their red; most are
-# split too.
+# Red lentils are sold with the seed coat taken off, which shows their red, as a web search
+# reported it (docs/prior-art.md).
 made_from = ["lentils"]
 
 [[form]]

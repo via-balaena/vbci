@@ -2522,8 +2522,12 @@ codes = ["269", "269.3"]
     }
 
     /// Each ingredient's origin is in gold as its file gives it, with what it is made from in the
-    /// file's order; silver's keys refuse an origin the records would, and one made from an
-    /// ingredient not there.
+    /// file's order. Silver's keys refuse an origin value they do not know, a reason without
+    /// `none` or `none` without one, a blank reason, an origin or a source that is no ingredient, a
+    /// second origin for one ingredient, a source listed twice or two at one position, a position
+    /// below 1, an ingredient made directly from itself, and a source for an ingredient with no
+    /// origin; the records' other origin rules, a longer way back among them, silver does not
+    /// hold.
     #[test]
     fn each_ingredient_s_origin_is_loaded_and_its_keys_hold() {
         let juice = SYNTHETIC_INGREDIENTS[0]

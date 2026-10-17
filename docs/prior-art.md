@@ -164,11 +164,11 @@ that day for what the mark names.
 | FoodEx2 | EFSA's food classification: raw commodities, "the parts physically separated from a living source after harvesting (plants)", and derivatives, "food products obtained from raw commodities by applying a process that changes the nature of food"; its facet F27, "source commodities", names what a food comes from | reuse with EFSA acknowledged | the line between harvested and made from, not its data | Eftimov, Korošec and Koroušić Seljak, *Nutrients* 9(6):542, 2017, pmc.ncbi.nlm.nih.gov/articles/5490521, **re-read** (both definitions); F27 as reported by a web search of EFSA's FoodEx2 slides |
 
 What Wikidata's items for the seven say they are made from (P186), and what they are a subclass of
-(P279):
+(P279), each statement at normal rank unless the table says otherwise:
 
 | ingredient | item | P186 | P279 |
 |---|---|---|---|
-| lemon juice | Q1375049 | lemon (Q1093742, the fruit) | lemon and lime juice, juice |
+| lemon juice | Q1375049 | lemon (Q1093742, the fruit) | lemon and lime juice; juice, at deprecated rank |
 | tofu | Q177378 | soy milk, soy bean (Q61503220, the food), soybean (Q11006, the plant) | soy cheese, meat alternative |
 | olive oil | Q93165 | Olea europaea (Q37083, the plant) | vegetable oil, cooking oil, seed oil |
 | vegetable broth | Q42366457, vegetable stock | winter vegetable, condiment, bean, cereal | broth, convenience food, soup |

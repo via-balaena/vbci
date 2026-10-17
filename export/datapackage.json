@@ -334,7 +334,7 @@
       },
       {
         "path": "ingredients/red-lentils.toml",
-        "sha256": "4693301c4f44b02d4f40c50a957c618a4a85df5892b34a121fd5fe57f75bb210"
+        "sha256": "cc0bcdb256a9d847e923a9a8d2db3fb957d606a044e15df77ffb3f973093fd16"
       },
       {
         "path": "ingredients/soybeans.toml",
