@@ -1372,11 +1372,12 @@ mod tests {
         assert_eq!(calls.get(), 1);
     }
 
-    /// A pinned Wikidata revision is downloaded once and cached under its content's sha256; content
-    /// that differs from its pin is refused, neither written when downloaded nor replaced when
-    /// cached, and reading it for the load refuses it too.
+    /// A pinned Wikidata revision is downloaded once and cached under its pin: item, revision and
+    /// sha256. Content that differs from its pin is refused, neither written when downloaded nor
+    /// replaced when cached, and reading it for the load refuses it too; a pin whose revision was
+    /// mistyped misses the cache and is checked against the answer.
     #[test]
-    fn a_wikidata_revision_is_cached_under_its_sha256_and_refused_where_it_differs() {
+    fn a_wikidata_revision_is_cached_under_its_pin_and_refused_where_it_differs() {
         let content = r#"{"type":"item","id":"Q1","claims":{}}"#;
         let w = balaena_records::WikidataItem {
             item: "Q1".into(),

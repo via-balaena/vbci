@@ -1,7 +1,7 @@
 # The datasets and Wikidata items the warehouse loads, and whose they are. Each dataset is pinned
 # by its zip's sha256 and length, and each Wikidata item by one revision's id and the sha256 and
 # length of the content Wikidata stores for it: `cargo run -p balaena-warehouse -- fetch`
-# downloads each into the cache under that sha256, and the warehouse refuses bytes that differ, so
+# downloads each into the cache under its pin, and the warehouse refuses bytes that differ, so
 # a URL that starts serving other bytes stops the load instead of changing what is loaded. Read by
 # crates/records (src/sources.rs).
 

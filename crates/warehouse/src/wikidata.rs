@@ -1,4 +1,4 @@
-//! Wikidata's items: each pinned revision's content, fetched into the cache under its sha256 and
+//! Wikidata's items: each pinned revision's content, fetched into the cache under its pin and
 //! refused wherever its bytes differ from the pin in `sources.toml`; the two properties an
 //! ingredient's organism is read from; and how a taxon is read from them.
 
