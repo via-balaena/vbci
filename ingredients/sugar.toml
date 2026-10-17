@@ -1,5 +1,5 @@
 name = "Sugar"
-aliases = ["sugar", "granulated sugar", "white sugar", "cane sugar"]
+aliases = ["sugar", "granulated sugar", "white sugar"]
 
 [organism]
 none = "Refined from sugarcane or sugar beet, and USDA's name does not say which."

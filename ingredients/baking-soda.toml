@@ -5,7 +5,7 @@ aliases = ["baking soda"]
 none = "Sodium bicarbonate, a mineral salt, not from an organism."
 
 [origin]
-none = "Made as sodium bicarbonate, which no ingredient is."
+none = "Manufactured, not grown or made from a food."
 
 [[form]]
 state = "as_sold"

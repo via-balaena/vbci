@@ -2,10 +2,10 @@ name = "Baking powder"
 aliases = ["baking powder"]
 
 [organism]
-none = "Mineral salts, not from an organism."
+none = "Leavening salts and a filler, 27.7 g of carbohydrate in 100 g by USDA, whose source its name does not give."
 
 [origin]
-none = "Mixed from mineral salts, which no ingredient is."
+none = "Mixed from leavening salts and a filler; USDA's name gives sodium aluminum sulfate alone."
 
 [[form]]
 state = "as_sold"

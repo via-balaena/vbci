@@ -19,16 +19,16 @@ place: the "NCBI Taxon" USDA's data gives a Foundation food, for 18 ingredients;
 Wikidata item `sources.toml` pins, for 5; or none, saying why, for 6.
 
 What each ingredient is made from (`gold.ingredient_origin`): nothing, as it is harvested, for
-13; other ingredients (`gold.ingredient_made_from`), for 5; or something that
-is no ingredient, saying why, for 11. A crop yields only a harvested ingredient.
+14; other ingredients (`gold.ingredient_made_from`), for 5; or something that
+is no ingredient, saying why, for 10. A crop yields only a harvested ingredient.
 
 ## Baking powder (`baking-powder`)
 
 Aliases: baking powder.
 
-Organism: none. Mineral salts, not from an organism.
+Organism: none. Leavening salts and a filler, 27.7 g of carbohydrate in 100 g by USDA, whose source its name does not give.
 
-Origin: none. Mixed from mineral salts, which no ingredient is.
+Origin: none. Mixed from leavening salts and a filler; USDA's name gives sodium aluminum sulfate alone.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -40,7 +40,7 @@ Aliases: baking soda.
 
 Organism: none. Sodium bicarbonate, a mineral salt, not from an organism.
 
-Origin: none. Made as sodium bicarbonate, which no ingredient is.
+Origin: none. Manufactured, not grown or made from a food.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
@@ -52,11 +52,11 @@ Aliases: black pepper, freshly ground black pepper, freshly ground pepper, groun
 
 Organism: `NCBITaxon_13216`, from Wikidata item Q22915010 through its natural product of taxon, Q43084.
 
-Origin: none. Ground from dried peppercorns, which no ingredient is.
+Origin: harvested.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|
-| as_sold | yes | 170931 | sr-legacy | Spices, pepper, black | 16 | - |
+| dry | yes | 170931 | sr-legacy | Spices, pepper, black | 16 | - |
 
 ## Brown rice (`brown-rice`)
 
@@ -316,7 +316,7 @@ Origin: harvested.
 
 ## Sugar (`sugar`)
 
-Aliases: cane sugar, granulated sugar, sugar, white sugar.
+Aliases: granulated sugar, sugar, white sugar.
 
 Organism: none. Refined from sugarcane or sugar beet, and USDA's name does not say which.
 
@@ -360,7 +360,7 @@ Aliases: pure vanilla extract, vanilla, vanilla extract.
 
 Organism: `NCBITaxon_51239`, from Wikidata item Q12008959 through its natural product of taxon, Q7224923.
 
-Origin: none. Extracted from vanilla beans in ethanol and water, none of which is an ingredient.
+Origin: none. Extracted from vanilla beans in ethanol and water; vanilla beans and ethanol are no ingredient.
 
 | state | default | fdc_id | dataset | USDA's name | of 16 | FoodOn |
 |---|---|---|---|---|---|---|

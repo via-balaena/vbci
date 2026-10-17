@@ -3707,7 +3707,8 @@ codes = ["269", "269.3"]
                 "yes",
             ),
             // Vegan unknown, decided with Jon, 2026-10-17: its name does not say cane or beet.
-            // Vegetarian unknown by its category, mixed.
+            // Vegetarian unknown by its category, mixed; bone char would be a processing aid the
+            // Vegetarian Society's criteria exclude.
             ("Sugars, granulated", "unknown", "unknown"),
         ];
         for (name, vegan, vegetarian) in fixtures {

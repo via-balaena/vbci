@@ -7,7 +7,7 @@ taxon = "NCBITaxon_51239"
 wikidata = "Q12008959"
 
 [origin]
-none = "Extracted from vanilla beans in ethanol and water, none of which is an ingredient."
+none = "Extracted from vanilla beans in ethanol and water; vanilla beans and ethanol are no ingredient."
 
 [[form]]
 state = "as_sold"

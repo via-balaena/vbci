@@ -318,7 +318,7 @@
       },
       {
         "path": "diet/exceptions.toml",
-        "sha256": "8cd842201361afdd301efa9a32a97def0e35d886342ab9f076830b66005fc1f6"
+        "sha256": "2e5fae8a719363722b42b72ccc3a5ded1d677c2fdc7ebaa3a59559e077b1e7dd"
       },
       {
         "path": "diet/rules.toml",
@@ -330,15 +330,15 @@
       },
       {
         "path": "ingredients/baking-powder.toml",
-        "sha256": "c153df7204937e2c635168164e564e0be6a522dd72982f07fa0ef0852c8ccfbd"
+        "sha256": "19ecac998afde9d3d3b8f51eb94ee00d6948e4310514acc19e6cc07bcc5bcf92"
       },
       {
         "path": "ingredients/baking-soda.toml",
-        "sha256": "29c737582b92e172374adb68f2c8e06e570f0c68086181c12238fd08a70ef8de"
+        "sha256": "a72da678fa06f37ddc686111a354e6a8f89ab7a38bc98cd71100fe19c5c46d67"
       },
       {
         "path": "ingredients/black-pepper.toml",
-        "sha256": "c3241d5a698812ce77d0230a8972ad2750838df3b7bc79e7b954b4e21951970a"
+        "sha256": "82977d31dd4075288a2cc7fd5c109286925f012a4fa2f1b877ace7c2329b531a"
       },
       {
         "path": "ingredients/brown-rice.toml",
@@ -422,7 +422,7 @@
       },
       {
         "path": "ingredients/sugar.toml",
-        "sha256": "c7aec2181cdad80cebd819727ae39992dec31dc9a2410b426da3f98dc7188eec"
+        "sha256": "0947436ef4bb6d2be1d0025ad8c058e84313814872307cff25bfca2e0bc47abb"
       },
       {
         "path": "ingredients/tofu.toml",
@@ -434,7 +434,7 @@
       },
       {
         "path": "ingredients/vanilla.toml",
-        "sha256": "48f394ce79d46cf177dbc99eb463f265e7a3e756b9d3f60b854f9ee09484014e"
+        "sha256": "b863ce24873e2a4fc5a4fe8a685d36d44bd46801fda5926a89a6d5ff708e52dd"
       },
       {
         "path": "ingredients/vegetable-broth.toml",
@@ -135655,7 +135655,6 @@
         ["brown lentils","lentils"],
         ["brown rice","brown-rice"],
         ["butter","butter"],
-        ["cane sugar","sugar"],
         ["carrot","carrot"],
         ["carrots","carrot"],
         ["chickpea","chickpeas"],
@@ -135854,7 +135853,7 @@
         ["ingredient","state","is_default","fdc_id","dataset","description","foodon","nutrients"],
         ["baking-powder","as_sold",true,172803,"sr-legacy","Leavening agents, baking powder, double-acting, sodium aluminum sulfate",null,15],
         ["baking-soda","as_sold",true,175040,"sr-legacy","Leavening agents, baking soda",null,15],
-        ["black-pepper","as_sold",true,170931,"sr-legacy","Spices, pepper, black",null,16],
+        ["black-pepper","dry",true,170931,"sr-legacy","Spices, pepper, black",null,16],
         ["brown-rice","cooked",false,169704,"sr-legacy","Rice, brown, long-grain, cooked (Includes foods for USDA's Food Distribution Program)",null,16],
         ["brown-rice","dry",true,169703,"sr-legacy","Rice, brown, long-grain, raw (Includes foods for USDA's Food Distribution Program)",null,16],
         ["butter","as_sold",true,173430,"sr-legacy","Butter, without salt",null,16],
@@ -135954,7 +135953,7 @@
       },
       "data": [
         ["ingredient","taxon","fdc_id","wikidata","taxon_item","none"],
-        ["baking-powder",null,null,null,null,"Mineral salts, not from an organism."],
+        ["baking-powder",null,null,null,null,"Leavening salts and a filler, 27.7 g of carbohydrate in 100 g by USDA, whose source its name does not give."],
         ["baking-soda",null,null,null,null,"Sodium bicarbonate, a mineral salt, not from an organism."],
         ["black-pepper","NCBITaxon_13216",null,"Q22915010","Q43084",null],
         ["brown-rice","NCBITaxon_4530",2512380,null,null,null],
@@ -136025,9 +136024,9 @@
       },
       "data": [
         ["ingredient","origin","none"],
-        ["baking-powder","none","Mixed from mineral salts, which no ingredient is."],
-        ["baking-soda","none","Made as sodium bicarbonate, which no ingredient is."],
-        ["black-pepper","none","Ground from dried peppercorns, which no ingredient is."],
+        ["baking-powder","none","Mixed from leavening salts and a filler; USDA's name gives sodium aluminum sulfate alone."],
+        ["baking-soda","none","Manufactured, not grown or made from a food."],
+        ["black-pepper","harvested",null],
         ["brown-rice","none","Hulled from paddy rice, the grain as harvested, which no USDA food is."],
         ["butter","made_from",null],
         ["carrot","harvested",null],
@@ -136051,7 +136050,7 @@
         ["sugar","none","Refined from sugarcane or sugar beet, which no ingredient is."],
         ["tofu","made_from",null],
         ["tomato","harvested",null],
-        ["vanilla","none","Extracted from vanilla beans in ethanol and water, none of which is an ingredient."],
+        ["vanilla","none","Extracted from vanilla beans in ethanol and water; vanilla beans and ethanol are no ingredient."],
         ["vegetable-broth","none","Made from several vegetables, which USDA's name for the broth does not say."],
         ["water","none","Drawn from a tap or a spring, not grown or made from a food."]
       ]
