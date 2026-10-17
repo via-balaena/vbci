@@ -1382,7 +1382,7 @@ mod tests {
         assert_eq!(
             grams("@onion{1%cup}(finely chopped)"),
             Ok((both(115.0, 160.0), cups)),
-            "the note's words are not in either portion's text"
+            "the note's words are not, as one run, in either portion's text"
         );
         assert_eq!(
             grams("@red lentils{1/2%cup}"),
@@ -1560,6 +1560,80 @@ mod tests {
         ] {
             assert!(md.contains(how), "{how}\n{md}");
         }
+        for (how, said) in [
+            (
+                How::Whole(texts(&["a"])),
+                "whole items, by USDA's portion `a`",
+            ),
+            (
+                How::Whole(texts(&["a", "b"])),
+                "whole items, by USDA's portions `a`; `b`",
+            ),
+            (
+                How::WholeByNote(texts(&["a"])),
+                "whole items, by USDA's portion the note names, `a`",
+            ),
+            (
+                How::WholeByNote(texts(&["a", "b"])),
+                "whole items, by USDA's portions the note names, `a`; `b`",
+            ),
+        ] {
+            assert_eq!(how.said(), said);
+        }
+    }
+
+    /// A bare count of each ingredient, by its first alias and in its default form, against the
+    /// export: one whole item's grams, or none. A unit marked whole or not, or a new ingredient,
+    /// changes this list.
+    #[test]
+    fn a_bare_count_of_each_ingredient_is_weighed_by_its_whole_items() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let export = Export::load(&root).unwrap();
+        let (t, [alias, ingredient]) =
+            columns(&export, "ingredient_alias", ["alias", "ingredient"]).unwrap();
+        let mut first = BTreeMap::new();
+        for r in &t.rows {
+            if let (Some(a), Some(i)) = (text(&r[alias]), text(&r[ingredient])) {
+                first.entry(i.to_string()).or_insert_with(|| a.to_string());
+            }
+        }
+        let src: String = first.values().map(|a| format!("@{a}{{1}} ")).collect();
+        let got: Vec<String> = analyze(&src, &export)
+            .unwrap()
+            .lines
+            .iter()
+            .map(|l| {
+                let i = l.food.as_ref().map_or("no food", |f| f.ingredient.as_str());
+                match &l.grams {
+                    Ok((g, _)) => format!("{i} {}", shown_range(*g)),
+                    Err(NoGrams::NoWhole) => format!("{i} none"),
+                    Err(e) => format!("{i} {e:?}"),
+                }
+            })
+            .collect();
+        assert_eq!(
+            got,
+            [
+                "brown-rice none",
+                "carrot 50.0–72.0",
+                "chickpeas none",
+                "cumin none",
+                "garlic none",
+                "lemon 58.0–84.0",
+                "lemon-juice none",
+                "lentils none",
+                "olive-oil none",
+                "onion 70.0–150.0",
+                "parmesan none",
+                "potato 92.0–369.0",
+                "red-lentils none",
+                "soybeans none",
+                "spinach none",
+                "tofu none",
+                "tomato 91.0–182.0",
+                "vegetable-broth none",
+            ]
+        );
     }
 
     #[test]

@@ -2255,6 +2255,10 @@ codes = ["269", "269.3"]
                 false,
             ),
             (
+                "INSERT INTO silver.usda_rejected VALUES ('t', 'd', 'x', 'a reason')",
+                true,
+            ),
+            (
                 "INSERT INTO silver.usda_rejected VALUES ('t', 'd', 'x', ' ')",
                 false,
             ),
